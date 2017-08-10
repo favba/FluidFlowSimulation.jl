@@ -40,7 +40,7 @@ function compute_nonlinear!(rhs::VectorField{T,N,A,N1,C,R},u::VectorField{T,N,A,
     rfft!(u)
 end
 
-function dealias!(u::FieldVector)
+function dealias!(u::VectorField)
   nx,ny,nz = size(u.cx)
   @inbounds for k in div(2nz,3):nz
     @inbounds for j in div(2ny,3):ny
@@ -71,7 +71,7 @@ function addpressure!(rhs::VectorField,aux::VectorField)
   end
 end
 
-function timestep!(u::VectorField,rhs::Vector::Field,dt::Real)
+function time_step!(u::VectorField,rhs::VectorField,dt::Real)
   @inbounds for i in length(u)
     u[i] += dt*rhs[i]
   end
