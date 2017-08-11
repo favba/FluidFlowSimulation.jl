@@ -1,31 +1,30 @@
 
-struct VectorField{T, N1, A<:AbstractPaddedArray{T, N1}, N2, C<:AbstractArray{Complex{T}, N2}, R<:AbstractArray{T, N2}} <: AbstractPaddedArray{T,N1}
+struct VectorField{T, N, A<:AbstractPaddedArray{T, N, false}} <: AbstractPaddedArray{T,N,false}
   data::A
-  cx::C
-  cy::C
-  cz::C
-  rx::R
-  ry::R
-  rz::R
+  cx::SubArray{Complex{T},3,Array{Complex{T},4},Tuple{Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}},Int64},true}
+  cy::SubArray{Complex{T},3,Array{Complex{T},4},Tuple{Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}},Int64},true}
+  cz::SubArray{Complex{T},3,Array{Complex{T},4},Tuple{Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}},Int64},true}
+  rx::SubArray{T,3,Array{T,4},Tuple{Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}},Int64},true}
+  ry::SubArray{T,3,Array{T,4},Tuple{Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}},Int64},true}
+  rz::SubArray{T,3,Array{T,4},Tuple{Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}},Int64},true}
 
-  function VectorField(data::PaddedArray{T,N}) where {T,N}
-    N2 = N-1
-    cx = view(complex(data),(Colon() for i=1:N2)...,1)
-    cy = view(complex(data),(Colon() for i=1:N2)...,2)
-    cz = view(complex(data),(Colon() for i=1:N2)...,3)
-    rx = view(rawreal(data),(Colon() for i=1:N2)...,1)
-    ry = view(rawreal(data),(Colon() for i=1:N2)...,2)
-    rz = view(rawreal(data),(Colon() for i=1:N2)...,3)
-    C = typeof(cx)
-    R = typeof(rx)
-    return new{T,N,PaddedArray{T,N},N2,C,R}(data,cx,cy,cz,rx,ry,rz)
+  function VectorField{T,N,A}(data::A) where {T,N,A<:AbstractPaddedArray{T, N,false}}
+    cx = view(complex(data),(Colon() for i=1:3)...,1)
+    cy = view(complex(data),(Colon() for i=1:3)...,2)
+    cz = view(complex(data),(Colon() for i=1:3)...,3)
+    rx = view(rawreal(data),(Colon() for i=1:3)...,1)
+    ry = view(rawreal(data),(Colon() for i=1:3)...,2)
+    rz = view(rawreal(data),(Colon() for i=1:3)...,3)
+    return new{T,N,A}(data,cx,cy,cz,rx,ry,rz)
   end
 end
 
-@inline real(V::VectorField) = real(V.data)
-@inline complex(V::VectorField) = complex(V.data) 
+VectorField(data::AbstractPaddedArray{T,N,false}) where {T,N} = VectorField{T,N,typeof(data)}(data)
+
+@inline Base.real(V::VectorField) = real(V.data)
+@inline Base.complex(V::VectorField) = complex(V.data) 
 @inline InplaceRealFFTW.rawreal(V::VectorField) = rawreal(V.data)
 Base.similar(V::VectorField) = VectorField(similar(V.data))
 
-InplaceRealFFTW.rfft!(V::VectorField{T,N1,A,N2,C,R}) where {T,N1,A,N2,C,R} = rfft!(V,1:N2) 
-InplaceRealFFTW.irfft!(V::VectorField{T,N1,A,N2,C,R}) where {T,N1,A,N2,C,R} = irfft!(V,1:N2) 
+InplaceRealFFTW.rfft!(V::VectorField{T,N,A}) where {T,N,A} = rfft!(V,1:3) 
+InplaceRealFFTW.irfft!(V::VectorField{T,N,A}) where {T,N,A} = irfft!(V,1:3) 
