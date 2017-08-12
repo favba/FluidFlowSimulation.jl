@@ -1,33 +1,38 @@
 
-struct VectorField{T, N, A<:AbstractPaddedArray{T, N, false}} <: AbstractPaddedArray{T,N,false}
+struct VectorField{T, A<:AbstractPaddedArray{T, 4, false}} <: AbstractPaddedArray{T,4,false}
   data::A
-  cx::SubArray{Complex{T},3,Array{Complex{T},4},Tuple{Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}},Int64},true}
-  cy::SubArray{Complex{T},3,Array{Complex{T},4},Tuple{Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}},Int64},true}
-  cz::SubArray{Complex{T},3,Array{Complex{T},4},Tuple{Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}},Int64},true}
-  rx::SubArray{T,3,Array{T,4},Tuple{Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}},Int64},true}
-  ry::SubArray{T,3,Array{T,4},Tuple{Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}},Int64},true}
-  rz::SubArray{T,3,Array{T,4},Tuple{Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}},Base.Slice{Base.OneTo{Int64}},Int64},true}
+  cx::Array{Complex{T},3}
+  cy::Array{Complex{T},3}
+  cz::Array{Complex{T},3}
+  rx::Array{T,3}
+  ry::Array{T,3}
+  rz::Array{T,3}
 
-  function VectorField{T,N,A}(data::A) where {T,N,A<:AbstractPaddedArray{T, N,false}}
-    cx = view(complex(data),(Colon() for i=1:3)...,1)
-    cy = view(complex(data),(Colon() for i=1:3)...,2)
-    cz = view(complex(data),(Colon() for i=1:3)...,3)
-    rx = view(rawreal(data),(Colon() for i=1:3)...,1)
-    ry = view(rawreal(data),(Colon() for i=1:3)...,2)
-    rz = view(rawreal(data),(Colon() for i=1:3)...,3)
-    return new{T,N,A}(data,cx,cy,cz,rx,ry,rz)
+  function VectorField{T,A}(data::A) where {T,A<:AbstractPaddedArray{T, 4,false}}
+    cdims = size(data)
+    cnx, cny, cnz, _ = cdims
+    cx = unsafe_wrap(Array{Complex{T},3},pointer(complex(data)),(cnx,cny,cnz))
+    cy = unsafe_wrap(Array{Complex{T},3},pointer(complex(data),sub2ind(cdims,1,1,1,2)),(cnx,cny,cnz))
+    cz = unsafe_wrap(Array{Complex{T},3},pointer(complex(data),sub2ind(cdims,1,1,1,3)),(cnx,cny,cnz))
+
+    rnx,rny,rnz,_ = size(rawreal(data))
+    rdims = (rnx,rny,rnz)
+    rx = reinterpret(T,cx,rdims)
+    ry = reinterpret(T,cy,rdims)
+    rz = reinterpret(T,cz,rdims)
+    return new{T,A}(data,cx,cy,cz,rx,ry,rz)
   end
 end
 
-VectorField(data::AbstractPaddedArray{T,N,false}) where {T,N} = VectorField{T,N,typeof(data)}(data)
+VectorField(data::AbstractPaddedArray{T,4,false}) where {T} = VectorField{T,typeof(data)}(data)
 
 @inline Base.real(V::VectorField) = real(V.data)
 @inline Base.complex(V::VectorField) = complex(V.data) 
 @inline InplaceRealFFTW.rawreal(V::VectorField) = rawreal(V.data)
 Base.similar(V::VectorField) = VectorField(similar(V.data))
 
-InplaceRealFFTW.rfft!(V::VectorField{T,N,A}) where {T,N,A} = rfft!(V,1:3) 
-InplaceRealFFTW.irfft!(V::VectorField{T,N,A}) where {T,N,A} = irfft!(V,1:3) 
+InplaceRealFFTW.rfft!(V::VectorField{T,A}) where {T,A} = rfft!(V,1:3) 
+InplaceRealFFTW.irfft!(V::VectorField{T,A}) where {T,A} = irfft!(V,1:3) 
 
 #------------------------------------------------------------------------------------------------------
 

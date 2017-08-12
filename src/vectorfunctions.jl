@@ -36,15 +36,15 @@ function curl!(out::VectorField,u::VectorField,kx::AbstractVector,ky::AbstractVe
     cross!(out.cx,out.cy,out.cz,im .* kx,im .* ky,im .* kz,u.cx,u.cy,u.cz)
 end
 
-function rfftfreq(n::Integer,s::Real)
-  d = 2π*s/n
-  [(n/2 - i)/(d*n) for i = n/2:-1:0]
+function rfftfreq(n::Integer,s::Real)::Vector{Float64}
+  d = 2π*s
+  Float64[(n/2 - i)/d for i = n/2:-1:0]
 end
 
-function fftfreq(n::Integer,s::Real)
-  d = 2π*s/n
+function fftfreq(n::Integer,s::Real)::Vector{Float64}
+  d = 2π*s
   if iseven(n)
-    return vcat([(n/2 - i)/(d*n) for i = n/2:-1:1],[-i/(d*n) for i = n/2:-1:1])
-  else return vcat([(n/2 - i)/(d*n) for i = n/2:-1:0],[-i/(d*n) for i = (n-1)/2:-1:1])
+    return vcat(Float64[(n/2 - i)/d for i = n/2:-1:1],Float64[-i/d for i = n/2:-1:1])
+  else return vcat(Float64[(n/2 - i)/d for i = n/2:-1:0],Float64[-i/d for i = (n-1)/2:-1:1])
   end
 end
