@@ -1,4 +1,4 @@
-@fastmath function cross!(outx::AbstractArray,outy::AbstractArray,outz::AbstractArray,
+function cross!(outx::AbstractArray,outy::AbstractArray,outz::AbstractArray,
                 ux::AbstractArray,uy::AbstractArray,uz::AbstractArray,
                 vx::AbstractArray,vy::AbstractArray,vz::AbstractArray)
  for i in 1:length(outx)
@@ -8,8 +8,8 @@
   end
 end
 
-@fastmath function cross!(outx::AbstractArray{T,3},outy::AbstractArray{T,3},outz::AbstractArray{T,3},
-                ux::AbstractArray{T,1},uy::AbstractArray{T,1},uz::AbstractArray{T,1},
+function cross!(outx::AbstractArray{T,3},outy::AbstractArray{T,3},outz::AbstractArray{T,3},
+                ux::AbstractVector,uy::AbstractVector,uz::AbstractVector,
                 vx::AbstractArray{T,3},vy::AbstractArray{T,3},vz::AbstractArray{T,3}) where T
   nx,ny,nz = size(outx)
   for k in 1:nz
@@ -32,7 +32,7 @@ function ccross!(out::VectorField,u::VectorField,v::VectorField)
     cross!(out.cx,out.cy,out.cz,u.cx,u.cy,u.cz,v.cx,v.cy,v.cz)
 end
 
-function curl!(out::VectorField,u::VectorField)
+function curl!(out::VectorField,u::VectorField,kx::AbstractVector,ky::AbstractVector,kz::AbstractVector)
     cross!(out.cx,out.cy,out.cz,im .* kx,im .* ky,im .* kz,u.cx,u.cy,u.cz)
 end
 
