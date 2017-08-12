@@ -51,9 +51,9 @@ end
 function dealias!(u::VectorField)
   nx,ny,nz = size(u.cx)
   for l=1:3
-  for k in div(2nz,3):nz #Fix
-    for j in div(2ny,3):ny #Fix
-      for i in div(2nx,3):nx
+  for k in (div(nz,3)+2):(div(2nz,3)+1)
+    for j in (div(ny,3)+2):(div(2ny,3)+1)
+      for i in (div(2nx,3)+1):nx
       @inbounds  u[i,j,k,l] = 0.0 + 0.0im
       end
     end
