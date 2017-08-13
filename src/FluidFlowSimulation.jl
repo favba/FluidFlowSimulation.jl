@@ -3,6 +3,7 @@ module FluidFlowSimulation
 export dns, VectorField, Parameters
 
 using InplaceRealFFTW
+using StaticArrays
 
 include("types.jl")
 include("vectorfunctions.jl")
@@ -15,7 +16,7 @@ function dns(u::VectorField,s::AbstractParameters,Nt::Int64,dt::Float64)
 
   for t=1:Nt
     calculate_rhs!(rhs,u,aux,s)
-    time_step!(u,rhs,dt)
+    time_step!(u,rhs,dt,s)
   end
 
   return u
@@ -23,28 +24,27 @@ end
 
 function calculate_rhs!(rhs::VectorField,u::VectorField,aux::VectorField,s::AbstractParameters)
   compute_nonlinear!(rhs,u,aux,s)  
-  add_viscosity!(rhs,u,s.ν,s.kx,s.ky,s.kz)
-  addpressure!(rhs,aux,s.kx,s.ky,s.kz)
+  add_viscosity!(rhs,u,s.ν,s.kx,s.ky,s.kz,s)
+  addpressure!(rhs,aux,s.kx,s.ky,s.kz,s)
 end
 
 function compute_nonlinear!(rhs::VectorField,u::VectorField,aux::VectorField,s::AbstractParameters)
-    curl!(rhs,u,s.kx,s.ky,s.kz)
+    curl!(rhs,u,s)
     s.p\u
 
     A_mul_B!(real(aux),s.ip,complex(rhs))
 
-    rcross!(rhs,u,aux)
+    rcross!(rhs,u,aux,s)
     s.p*rhs
-    dealias!(rhs)
+    dealias!(rhs,s)
     s.p*u
 end
 
-function dealias!(u::VectorField)
-  nx,ny,nz = size(u.cx)
+function dealias!(u::VectorField,s::AbstractParameters{Nx,Ny,Nz}) where {Nx,Ny,Nz}
   for l=1:3
-  for k in (div(nz,3)+2):(div(2nz,3)+1)
-    for j in (div(ny,3)+2):(div(2ny,3)+1)
-      for i in (div(2nx,3)+1):nx
+  for k in (div(Nz,3)+2):(div(2Nz,3)+1)
+    for j in (div(Ny,3)+2):(div(2Ny,3)+1)
+      for i in (div(2Nx,3)+1):Nx
       @inbounds  u[i,j,k,l] = 0.0 + 0.0im
       end
     end
@@ -52,12 +52,11 @@ function dealias!(u::VectorField)
   end
 end
 
-function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,kx::AbstractVector,ky::AbstractVector,kz::AbstractVector)
-  nx,ny,nz,_ = size(rhs) 
+function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::AbstractParameters{Nx,Ny,Nz}) where {Nx,Ny,Nz}
   for l =1:3 
-    for k = 1:nz
-      for j=1:ny
-        for i=1:nx
+    for k = 1:Nz
+      for j = 1:Ny
+        for i = 1:Nx
           @inbounds rhs[i,j,k,l] = (kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])*ν*u[i,j,k,l]
         end
       end
@@ -65,11 +64,10 @@ function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,kx::AbstractVec
   end
 end
 
-function addpressure!(rhs::VectorField,aux::VectorField,kx::AbstractVector,ky::AbstractVector,kz::AbstractVector)
-  nx,ny,nz,_ = size(rhs)  
-  for k in 1:nz
-    for j in 1:ny
-      for i in 1:nx
+function addpressure!(rhs::VectorField,aux::VectorField,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::AbstractParameters{Nx,Ny,Nz}) where {Nx,Ny,Nz}
+  for k in 1:Nz
+    for j in 1:Ny
+      for i in 1:Nx
         @inbounds p1 = (kx[i]*rhs.cx[i,j,k] + ky[j]*rhs.cy[i,j,k] + kz[k]*rhs.cz[i,j,k])
         @inbounds p1 = p1/(kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])
         @inbounds aux.cx[i,j,k] = kx[i]*p1
@@ -79,13 +77,13 @@ function addpressure!(rhs::VectorField,aux::VectorField,kx::AbstractVector,ky::A
     end
   end
 
-  for i in 1:length(rhs)
+  for i in 1:3*Nx*Ny*Nz
     @inbounds rhs[i] = rhs[i] - aux[i]
   end
 end
 
-function time_step!(u::VectorField,rhs::VectorField,dt::Real)
-  for i in length(u)
+function time_step!(u::VectorField,rhs::VectorField,dt::Real,s::AbstractParameters{Nx,Ny,Nz}) where {Nx,Ny,Nz}
+  for i in 1:3*Nx*Ny*Nz
     @inbounds u[i] += dt*rhs[i]
   end
 end
