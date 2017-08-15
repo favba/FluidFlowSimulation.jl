@@ -26,10 +26,19 @@ end
 
 VectorField(data::AbstractPaddedArray{T,4,false}) where {T} = VectorField{T,typeof(data)}(data)
 
+function VectorField(ux::AbstractString,uy::AbstractString,uz::AbstractString,nx::Integer,ny::Integer,nz::Integer)
+  field = VectorField(PaddedArray(nx,ny,nz,3))
+  read!(ux,field.rx)
+  read!(uy,field.ry)
+  read!(uz,field.rz)
+  return field
+end
+
 @inline Base.real(V::VectorField) = real(V.data)
 @inline Base.complex(V::VectorField) = complex(V.data) 
 @inline InplaceRealFFTW.rawreal(V::VectorField) = rawreal(V.data)
 Base.similar(V::VectorField{T,A}) where {T,A} = VectorField{T,A}(similar(V.data))
+Base.copy(V::VectorField{T,A}) where {T,A} = VectorField{T,A}(copy(V.data))
 
 InplaceRealFFTW.rfft!(V::VectorField{T,A}) where {T,A} = rfft!(V,1:3) 
 InplaceRealFFTW.irfft!(V::VectorField{T,A}) where {T,A} = irfft!(V,1:3) 
