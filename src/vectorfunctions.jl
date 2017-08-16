@@ -1,18 +1,18 @@
 function cross!(outx::AbstractArray{T},outy::AbstractArray{T},outz::AbstractArray{T},
                 ux::AbstractArray{T},uy::AbstractArray{T},uz::AbstractArray{T},
                 vx::AbstractArray{T},vy::AbstractArray{T},vz::AbstractArray{T},
-                s::AbstractParameters{Nx,Ny,Nz}) where {T<:Real,Nx,Ny,Nz}
-  for i in 1:(2*Nx*Ny*Nz)
+                s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {T<:Real,Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
+  for i in 1:Lrs
     @inbounds outx[i] = uy[i]*vz[i] - uz[i]*vy[i]
     @inbounds outy[i] = uz[i]*vx[i] - ux[i]*vz[i]
     @inbounds outz[i] = ux[i]*vy[i] - uy[i]*vx[i]
   end
 end
 
-function cross!(outx::AbstractArray,outy::AbstractArray,outz::AbstractArray,
-                ux::AbstractArray,uy::AbstractArray,uz::AbstractArray,
-                vx::AbstractArray,vy::AbstractArray,vz::AbstractArray,s::AbstractParameters{Nx,Ny,Nz}) where {Nx,Ny,Nz}
-for i in 1:Nx*Ny*Nz
+function cross!(outx::AbstractArray{T},outy::AbstractArray{T},outz::AbstractArray{T},
+                ux::AbstractArray{T},uy::AbstractArray{T},uz::AbstractArray{T},
+                vx::AbstractArray{T},vy::AbstractArray{T},vz::AbstractArray{T},s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {T<:Complex128,Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
+for i in 1:Lcs
     @inbounds outx[i] = uy[i]*vz[i] - uz[i]*vy[i]
     @inbounds outy[i] = uz[i]*vx[i] - ux[i]*vz[i]
     @inbounds outz[i] = ux[i]*vy[i] - uy[i]*vx[i]
@@ -21,7 +21,7 @@ end
 
 function crossk!(outx::AbstractArray{T,3},outy::AbstractArray{T,3},outz::AbstractArray{T,3},
                 ux::StaticArray,uy::StaticArray,uz::StaticArray,
-                vx::AbstractArray{T,3},vy::AbstractArray{T,3},vz::AbstractArray{T,3},s::AbstractParameters{Nx,Ny,Nz}) where {T,Nx,Ny,Nz}
+                vx::AbstractArray{T,3},vy::AbstractArray{T,3},vz::AbstractArray{T,3},s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {T,Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
 for k in 1:Nz
     for j in 1:Ny
       for i in 1:Nx

@@ -45,7 +45,7 @@ InplaceRealFFTW.irfft!(V::VectorField{T,A}) where {T,A} = irfft!(V,1:3)
 
 #------------------------------------------------------------------------------------------------------
 
-abstract type AbstractParameters{Nx,Ny,Nz} end
+abstract type AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv} end
 
 Integrator(x::AbstractParameters) = :Adams_Bashforth3rdO
 
@@ -66,10 +66,10 @@ Integrator(x::AbstractParameters) = :Adams_Bashforth3rdO
   rm2::Array{Complex128,4}
 end
 
-struct Parameters{Nx,Ny,Nz} <: AbstractParameters{Nx,Ny,Nz}
+struct Parameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv} <: AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
   @GenericParameters
   
-  function Parameters{Nx,Ny,Nz}(nx::Int64,ny::Int64,nz::Int64,lx::Float64,ly::Float64,lz::Float64,ν::Float64) where {Nx,Ny,Nz}
+  function Parameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}(nx::Int64,ny::Int64,nz::Int64,lx::Float64,ly::Float64,lz::Float64,ν::Float64) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
 
     kx = SArray{Tuple{Nx,1,1}}(reshape(rfftfreq(nx,lx),(Nx,1,1)))
     ky = SArray{Tuple{1,Ny,1}}(reshape(fftfreq(ny,ly),(1,Ny,1)))
@@ -81,9 +81,17 @@ struct Parameters{Nx,Ny,Nz} <: AbstractParameters{Nx,Ny,Nz}
     ip = Base.DFT.ScaledPlan(FFTW.rFFTWPlan{Complex{Float64},FFTW.BACKWARD,false,4}(complex(aux), real(aux), 1:3, FFTW.MEASURE&FFTW.DESTROY_INPUT,FFTW.NO_TIMELIMIT),Base.DFT.normalization(Float64, size(real(aux)), 1:3))
     rm1 = Array{Complex128}((Nx,Ny,Nz,4))
     rm2 = Array{Complex128}((Nx,Ny,Nz,4))
-    return new{Nx,Ny,Nz}(nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2)
+    return new{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}(nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2)
   end
 
 end
 
-Parameters(nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real) = Parameters{div(nx,2)+1,ny,nz}(nx,ny,nz,lx,ly,lz,ν)
+function Parameters(nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real) 
+  ncx = div(nx,2)+1
+  lcs = ncx*ny*nz
+  lcv = 3*lcs
+  nrx = 2*ncx
+  lrs = 2*lcs
+  lrv = 2*lcv
+  return Parameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv}(nx,ny,nz,lx,ly,lz,ν)
+end

@@ -49,7 +49,7 @@ function compute_nonlinear!(rhs::VectorField,u::VectorField,aux::VectorField,s::
     s.p*u
 end
 
-function dealias!(rhs::VectorField{T,A},s::AbstractParameters{Nx,Ny,Nz}) where {T,A,Nx,Ny,Nz} 
+function dealias!(rhs::VectorField{T,A},s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {T,A,Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv} 
   for l=1:3
   for k in (div(Nz,3)+2):(div(2Nz,3)+1)
     for j in (div(Ny,3)+2):(div(2Ny,3)+1)
@@ -61,7 +61,7 @@ function dealias!(rhs::VectorField{T,A},s::AbstractParameters{Nx,Ny,Nz}) where {
   end
 end
 
-function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::AbstractParameters{Nx,Ny,Nz}) where {Nx,Ny,Nz}
+function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
   for l =1:3 
     for k = 1:Nz
       for j = 1:Ny
@@ -73,15 +73,15 @@ function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,kx::AbstractArr
   end
 end
 
-function addpressure!(rhs::VectorField,aux::VectorField,s::AbstractParameters{Nx,Ny,Nz}) where {Nx,Ny,Nz}
+function addpressure!(rhs::VectorField,aux::VectorField,s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
 
-  for i in 1:3*Nx*Ny*Nz
+  for i in 1:Lcv
     @inbounds rhs[i] = rhs[i] - aux[i]
   end
 
 end
 
-function calculate_pressure!(auxx,auxy,auxz,rhsx,rhsy,rhsz,kx,ky,kz,s::AbstractParameters{Nx,Ny,Nz}) where {Nx,Ny,Nz}
+function calculate_pressure!(auxx,auxy,auxz,rhsx,rhsy,rhsz,kx,ky,kz,s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
   for k in 2:Nz
     for j in 2:Ny
       for i in 2:Nx
@@ -95,7 +95,7 @@ function calculate_pressure!(auxx,auxy,auxz,rhsx,rhsy,rhsz,kx,ky,kz,s::AbstractP
   end
 end
 
-function time_step!(u::VectorField,rhs::VectorField,dt::Real,s::AbstractParameters{Nx,Ny,Nz}) where {Nx,Ny,Nz}
+function time_step!(u::VectorField,rhs::VectorField,dt::Real,s::AbstractParameters)
   if Integrator(s) == :Euller
     Euller!(u,rhs,dt,s)
   elseif Integrator(s) == :Adams_Bashforth3rdO
