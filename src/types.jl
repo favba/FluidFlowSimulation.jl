@@ -47,7 +47,9 @@ InplaceRealFFTW.irfft!(V::VectorField{T,A}) where {T,A} = irfft!(V,1:3)
 
 abstract type AbstractParameters{Nx,Ny,Nz} end
 
-struct Parameters{Nx,Ny,Nz} <: AbstractParameters{Nx,Ny,Nz}
+Integrator(x::AbstractParameters) = :Adams_Bashforth3rdO
+
+@def GenericParameters begin
   nx::Int64
   ny::Int64
   nz::Int64
@@ -60,6 +62,12 @@ struct Parameters{Nx,Ny,Nz} <: AbstractParameters{Nx,Ny,Nz}
   kz::SArray{Tuple{1,1,Nz},Float64,3,Nz}
   p::Base.DFT.FFTW.rFFTWPlan{Float64,-1,true,4}
   ip::Base.DFT.ScaledPlan{Complex{Float64},Base.DFT.FFTW.rFFTWPlan{Complex{Float64},1,false,4},Float64}
+  rm1::Array{Complex128,4}
+  rm2::Array{Complex128,4}
+end
+
+struct Parameters{Nx,Ny,Nz} <: AbstractParameters{Nx,Ny,Nz}
+  @GenericParameters
   
   function Parameters{Nx,Ny,Nz}(nx::Int64,ny::Int64,nz::Int64,lx::Float64,ly::Float64,lz::Float64,ν::Float64) where {Nx,Ny,Nz}
 
@@ -71,7 +79,9 @@ struct Parameters{Nx,Ny,Nz} <: AbstractParameters{Nx,Ny,Nz}
     p = plan_rfft!(aux,1:3,flags=FFTW.MEASURE)
     p.pinv = plan_irfft!(aux,1:3,flags=FFTW.MEASURE)
     ip = Base.DFT.ScaledPlan(FFTW.rFFTWPlan{Complex{Float64},FFTW.BACKWARD,false,4}(complex(aux), real(aux), 1:3, FFTW.MEASURE&FFTW.DESTROY_INPUT,FFTW.NO_TIMELIMIT),Base.DFT.normalization(Float64, size(real(aux)), 1:3))
-    return new{Nx,Ny,Nz}(nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip)
+    rm1 = Array{Complex128}((Nx,Ny,Nz,4))
+    rm2 = Array{Complex128}((Nx,Ny,Nz,4))
+    return new{Nx,Ny,Nz}(nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2)
   end
 
 end
