@@ -5,10 +5,13 @@ export dns, VectorField, Parameters
 using InplaceRealFFTW
 using StaticArrays
 
+include("ReadGlobal.jl")
 include("macros.jl")
 include("types.jl")
 include("vectorfunctions.jl")
 include("time_step_functions.jl")
+
+using .ReadGlobal
 
 function dns(u::VectorField,s::AbstractParameters,Nt::Int64,dt::Float64)
 
