@@ -1,5 +1,5 @@
 module ReadGlobal
-export readglobal, getdimsize, readpadded, readfield, checkinput, treadfield, treadfield!, getnfilter
+export readglobal, getdimsize, checkinput
 
 function findglobal()
   filename="global"
