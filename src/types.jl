@@ -1,30 +1,30 @@
 
-struct VectorField{T, A<:AbstractPaddedArray{T, 4, false}} <: AbstractPaddedArray{T,4,false}
+struct VectorField{A<:AbstractPaddedArray{Float64, 4, false}} <: AbstractPaddedArray{Float64,4,false}
   data::A
-  cx::Array{Complex{T},3}
-  cy::Array{Complex{T},3}
-  cz::Array{Complex{T},3}
-  rx::Array{T,3}
-  ry::Array{T,3}
-  rz::Array{T,3}
+  cx::Array{Complex128,3}
+  cy::Array{Complex128,3}
+  cz::Array{Complex128,3}
+  rx::Array{Float64,3}
+  ry::Array{Float64,3}
+  rz::Array{Float64,3}
 
-  function VectorField{T,A}(data::A) where {T,A<:AbstractPaddedArray{T, 4,false}}
+  function VectorField{A}(data::A) where {A<:AbstractPaddedArray{Float64, 4,false}}
     cdims = size(data)
     cnx, cny, cnz, _ = cdims
-    cx = unsafe_wrap(Array{Complex{T},3},pointer(complex(data)),(cnx,cny,cnz))
-    cy = unsafe_wrap(Array{Complex{T},3},pointer(complex(data),sub2ind(cdims,1,1,1,2)),(cnx,cny,cnz))
-    cz = unsafe_wrap(Array{Complex{T},3},pointer(complex(data),sub2ind(cdims,1,1,1,3)),(cnx,cny,cnz))
+    cx = unsafe_wrap(Array{Complex128,3},pointer(complex(data)),(cnx,cny,cnz))
+    cy = unsafe_wrap(Array{Complex128,3},pointer(complex(data),sub2ind(cdims,1,1,1,2)),(cnx,cny,cnz))
+    cz = unsafe_wrap(Array{Complex128,3},pointer(complex(data),sub2ind(cdims,1,1,1,3)),(cnx,cny,cnz))
 
     rnx,rny,rnz,_ = size(rawreal(data))
     rdims = (rnx,rny,rnz)
-    rx = reinterpret(T,cx,rdims)
-    ry = reinterpret(T,cy,rdims)
-    rz = reinterpret(T,cz,rdims)
-    return new{T,A}(data,cx,cy,cz,rx,ry,rz)
+    rx = reinterpret(Float64,cx,rdims)
+    ry = reinterpret(Float64,cy,rdims)
+    rz = reinterpret(Float64,cz,rdims)
+    return new{A}(data,cx,cy,cz,rx,ry,rz)
   end
 end
 
-VectorField(data::AbstractPaddedArray{T,4,false}) where {T} = VectorField{T,typeof(data)}(data)
+VectorField(data::AbstractPaddedArray{Float64,4,false}) = VectorField{typeof(data)}(data)
 
 function VectorField(ux::AbstractString,uy::AbstractString,uz::AbstractString,nx::Integer,ny::Integer,nz::Integer)
   field = VectorField(PaddedArray(nx,ny,nz,3))
@@ -37,11 +37,11 @@ end
 @inline Base.real(V::VectorField) = real(V.data)
 @inline Base.complex(V::VectorField) = complex(V.data) 
 @inline InplaceRealFFTW.rawreal(V::VectorField) = rawreal(V.data)
-Base.similar(V::VectorField{T,A}) where {T,A} = VectorField{T,A}(similar(V.data))
-Base.copy(V::VectorField{T,A}) where {T,A} = VectorField{T,A}(copy(V.data))
+Base.similar(V::VectorField{A}) where {A} = VectorField{A}(similar(V.data))
+Base.copy(V::VectorField{A}) where {A} = VectorField{A}(copy(V.data))
 
-InplaceRealFFTW.rfft!(V::VectorField{T,A}) where {T,A} = rfft!(V,1:3) 
-InplaceRealFFTW.irfft!(V::VectorField{T,A}) where {T,A} = irfft!(V,1:3) 
+InplaceRealFFTW.rfft!(V::VectorField{A}) where {A} = rfft!(V,1:3) 
+InplaceRealFFTW.irfft!(V::VectorField{A}) where {A} = irfft!(V,1:3) 
 
 #------------------------------------------------------------------------------------------------------
 
@@ -50,6 +50,9 @@ abstract type AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv} end
 Integrator(x::AbstractParameters) = :Adams_Bashforth3rdO
 
 @def GenericParameters begin
+  u::VectorField{PaddedArray{Float64,4,false}}
+  rhs::VectorField{PaddedArray{Float64,4,false}}
+  aux::VectorField{PaddedArray{Float64,4,false}}
   nx::Int64
   ny::Int64
   nz::Int64
@@ -69,7 +72,10 @@ end
 struct Parameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv} <: AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
   @GenericParameters
   
-  function Parameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}(nx::Int64,ny::Int64,nz::Int64,lx::Float64,ly::Float64,lz::Float64,ν::Float64) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
+  function Parameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}(u::VectorField{PaddedArray{Float64,4,false}},nx::Int64,ny::Int64,nz::Int64,lx::Float64,ly::Float64,lz::Float64,ν::Float64) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
+    
+    rhs = similar(u)
+    aux = similar(u)
 
     kx = SArray{Tuple{Nx,1,1}}(reshape(rfftfreq(nx,lx),(Nx,1,1)))
     ky = SArray{Tuple{1,Ny,1}}(reshape(fftfreq(ny,ly),(1,Ny,1)))
@@ -81,17 +87,17 @@ struct Parameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv} <: AbstractParameters{Nx,Ny,Nz,L
     ip = Base.DFT.ScaledPlan(FFTW.rFFTWPlan{Complex{Float64},FFTW.BACKWARD,false,4}(complex(aux), real(aux), 1:3, FFTW.MEASURE&FFTW.DESTROY_INPUT,FFTW.NO_TIMELIMIT),Base.DFT.normalization(Float64, size(real(aux)), 1:3))
     rm1 = Array{Complex128}((Nx,Ny,Nz,4))
     rm2 = Array{Complex128}((Nx,Ny,Nz,4))
-    return new{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}(nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2)
+    return new{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2)
   end
 
 end
 
-function Parameters(nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real) 
+function Parameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real) 
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
   nrx = 2*ncx
   lrs = 2*lcs
   lrv = 2*lcv
-  return Parameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv}(nx,ny,nz,lx,ly,lz,ν)
+  return Parameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv}(u,nx,ny,nz,lx,ly,lz,ν)
 end

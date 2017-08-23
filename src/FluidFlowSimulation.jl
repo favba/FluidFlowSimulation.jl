@@ -13,58 +13,60 @@ include("time_step_functions.jl")
 
 using .ReadGlobal
 
-function dns(u::VectorField,s::AbstractParameters,Nt::Int64,dt::Float64)
+function advance_in_time!(s::AbstractParameters,init::Int64,Nsteps::Int64,dt::Float64)
 
-  rhs = similar(u)
-  aux = similar(rhs)
-  s.p*u
+  s.p*s.u
 
   if Integrator(s) !== :Euller
-    calculate_rhs!(rhs,u,aux,s)
-    copy!(s.rm2,rhs)
-    copy!(s.rm1,s.rm2)
+    if init==1
+      calculate_rhs!(s)
+      copy!(s.rm2,complex(s.rhs))
+      copy!(s.rm1,s.rm2)
+    end
   end
 
-  for t=1:Nt
-    calculate_rhs!(rhs,u,aux,s)
-    time_step!(u,rhs,dt,s)
+  for t=1:Nsteps
+    init += 1
+    calculate_rhs!(s)
+    time_step!(s,dt)
   end
 
-  return s.p\u
+  s.p\s.u
+  return init
 end
 
-function calculate_rhs!(rhs::VectorField,u::VectorField,aux::VectorField,s::AbstractParameters)
-  compute_nonlinear!(rhs,u,aux,s)  
-  calculate_pressure!(aux.cx,aux.cy,aux.cz,rhs.cx,rhs.cy,rhs.cz,s.kx,s.ky,s.kz,s)
-  addpressure!(rhs,aux,s)
-  add_viscosity!(rhs,u,s.ν,s.kx,s.ky,s.kz,s)
+function calculate_rhs!(s::AbstractParameters)
+  compute_nonlinear!(s)  
+  calculate_pressure!(s.aux.cx,s.aux.cy,s.aux.cz,s.rhs.cx,s.rhs.cy,s.rhs.cz,s.kx,s.ky,s.kz,s)
+  addpressure!(complex(s.rhs),complex(s.aux),s)
+  add_viscosity!(complex(s.rhs),complex(s.u),s.ν,s.kx,s.ky,s.kz,s)
 end
 
-function compute_nonlinear!(rhs::VectorField,u::VectorField,aux::VectorField,s::AbstractParameters)
-    curl!(rhs,u,s)
-    s.p\u
+function compute_nonlinear!(s::AbstractParameters)
+    curl!(s.rhs,s.u,s)
+    s.p\s.u
 
-    A_mul_B!(real(aux),s.ip,complex(rhs))
+    A_mul_B!(real(s.aux),s.ip,complex(s.rhs))
 
-    rcross!(rhs,u,aux,s)
-    s.p*rhs
-    dealias!(rhs,s)
-    s.p*u
+    rcross!(s.rhs,s.u,s.aux,s)
+    s.p*s.rhs
+    dealias!(complex(s.rhs),s)
+    s.p*s.u
 end
 
-function dealias!(rhs::VectorField{T,A},s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {T,A,Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv} 
+function dealias!(rhs::AbstractArray{T,4},s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {T,Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv} 
   for l=1:3
   for k in (div(Nz,3)+2):(div(2Nz,3)+1)
     for j in (div(Ny,3)+2):(div(2Ny,3)+1)
       for i in (div(2Nx,3)+1):Nx
-      @inbounds  rhs[i,j,k,l] = zero(Complex{T})
+      @inbounds  rhs[i,j,k,l] = zero(Complex128)
       end
     end
   end
   end
 end
 
-function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
+function add_viscosity!(rhs::AbstractArray,u::AbstractArray,ν::Real,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
   for l =1:3 
     for k = 1:Nz
       for j = 1:Ny
@@ -76,7 +78,7 @@ function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,kx::AbstractArr
   end
 end
 
-function addpressure!(rhs::VectorField,aux::VectorField,s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
+function addpressure!(rhs::AbstractArray,aux::AbstractArray,s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
 
   for i in 1:Lcv
     @inbounds rhs[i] = rhs[i] - aux[i]
@@ -98,11 +100,11 @@ function calculate_pressure!(auxx,auxy,auxz,rhsx,rhsy,rhsz,kx,ky,kz,s::AbstractP
   end
 end
 
-function time_step!(u::VectorField,rhs::VectorField,dt::Real,s::AbstractParameters)
+function time_step!(s::AbstractParameters,dt::Real)
   if Integrator(s) == :Euller
-    Euller!(u,rhs,dt,s)
+    Euller!(complex(s.u),complex(s.rhs),dt,s)
   elseif Integrator(s) == :Adams_Bashforth3rdO
-    Adams_Bashforth3rdO!(u,rhs,dt,s.rm1,s.rm2,s)
+    Adams_Bashforth3rdO!(complex(s.u),complex(s.rhs),dt,s.rm1,s.rm2,s)
   end
 end
 
