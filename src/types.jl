@@ -101,3 +101,16 @@ function Parameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,
   lrv = 2*lcv
   return Parameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv}(u,nx,ny,nz,lx,ly,lz,ν)
 end
+
+function Parameters()
+  par = readglobal()
+  nx = parse(Int,par["nx"])
+  ny = parse(Int,par["ny"])
+  nz = parse(Int,par["nz"])
+  lx = parse(Float64,par["xDomainSize"])
+  ly = parse(Float64,par["yDomainSize"])
+  lz = parse(Float64,par["zDomainSize"])
+  ν = parse(Float64,par["kinematicViscosity"])
+  u = VectorField("u1.0","u2.0","u3.0",nx,ny,nz)
+  return Parameters(u,nx,ny,nz,lx,ly,lz,ν)
+end
