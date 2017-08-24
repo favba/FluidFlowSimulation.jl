@@ -2,6 +2,7 @@ function Euller!(u::AbstractArray,rhs::AbstractArray,dt::Real,s::AbstractParamet
   for i in 1:Lcv
     @inbounds u[i] += dt*rhs[i]
   end
+  return nothing
 end
 
 function Adams_Bashforth3rdO!(u::AbstractArray, rhs::AbstractArray, dt::Real, rm1::AbstractArray, rm2::AbstractArray, s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
@@ -13,4 +14,5 @@ function Adams_Bashforth3rdO!(u::AbstractArray, rhs::AbstractArray, dt::Real, rm
 
   copy!(rm2,rm1)
   copy!(rm1,rhs)
+  return nothing
 end

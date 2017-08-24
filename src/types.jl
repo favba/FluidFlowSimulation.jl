@@ -104,6 +104,10 @@ end
 
 function Parameters()
   par = readglobal()
+  return Parameters(par)
+end
+
+function Parameters(par::Dict)
   nx = parse(Int,par["nx"])
   ny = parse(Int,par["ny"])
   nz = parse(Int,par["nz"])
@@ -113,4 +117,36 @@ function Parameters()
   ν = parse(Float64,par["kinematicViscosity"])
   u = VectorField("u1.0","u2.0","u3.0",nx,ny,nz)
   return Parameters(u,nx,ny,nz,lx,ly,lz,ν)
+end
+
+struct BoussinesqParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv} <: AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
+  @GenericParameters
+  ρ::PaddedArray{Float64,3,false}
+  α::Float64 
+  dρdz::Float64 #This is actually dρsdz/ρ₀
+  g::Float64
+  rrm1::Array{3,Complex128}
+  rrm2::Array{3,Complex128}
+
+  function BoussinesqParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}(u::VectorField, nx::Integer, ny::Integer, nz::Integer, lx::Real, ly::Real, lz::Real, ν::Real, ρ::PaddedArray, α::Real, dρdz::Real, g::Real) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
+    
+    rhs = similar(u)
+    aux = similar(u)
+
+    kx = SArray{Tuple{Nx,1,1}}(reshape(rfftfreq(nx,lx),(Nx,1,1)))
+    ky = SArray{Tuple{1,Ny,1}}(reshape(fftfreq(ny,ly),(1,Ny,1)))
+    kz = SArray{Tuple{1,1,Nz}}(reshape(fftfreq(nz,lz),(1,1,Nz)))
+    
+    aux = VectorField(PaddedArray(nx,ny,nz,3))
+    p = plan_rfft!(aux,1:3,flags=FFTW.MEASURE)
+    p.pinv = plan_irfft!(aux,1:3,flags=FFTW.MEASURE)
+    ip = Base.DFT.ScaledPlan(FFTW.rFFTWPlan{Complex{Float64},FFTW.BACKWARD,false,4}(complex(aux), real(aux), 1:3, FFTW.MEASURE&FFTW.DESTROY_INPUT,FFTW.NO_TIMELIMIT),Base.DFT.normalization(Float64, size(real(aux)), 1:3))
+    rm1 = Array{Complex128}((Nx,Ny,Nz,4))
+    rm2 = Array{Complex128}((Nx,Ny,Nz,4))
+    rrm1 = Array{Complex128}((Nx,Ny,Nz))
+    rrm2 = Array{Complex128}((Nx,Ny,Nz))
+
+    return new{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2,ρ,α,dρdz,g,rrm1,rrm2)
+  end
+
 end
