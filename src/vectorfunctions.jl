@@ -61,3 +61,40 @@ function fftfreq(n::Integer,s::Real)::Vector{Float64}
   else return vcat(Float64[(n/2 - i)/d for i = n/2:-1:0],Float64[-i/d for i = (n-1)/2:-1:1])
   end
 end
+
+function scalar_advection!(out::AbstractArray{Float64,4},scalar::AbstractArray{Float64,3},v::AbstractArray{Float64,4},s::ScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
+
+  for l in 1:3
+  for k in 1:Nz
+    for j in 1:Ny
+      for i in 1:Nrx
+        @inbounds out[i,j,k,l] = scalar[i,j,k]*v[i,j,k,l]
+      end
+    end
+  end
+  end
+end
+
+function div!(out::AbstractArray{Complex128,3},kx,ky,kz,ux,uy,uz,w,dρdz::Real, s::ScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
+
+  for k in 1:Nz
+    for j in 1:Ny
+      for i in 1:Nx
+        @inbounds out[i,j,k] = -im*(kx[i]*ux[i,j,k] + ky[j]*uy[i,j,k] + kz[k]*uz[i,j,k]) - dρdz*w[i,j,k]
+      end
+    end
+  end
+
+end
+
+function div!(out::AbstractArray{Complex128,3},kx,ky,kz,ux,uy,uz, s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
+
+  for k in 1:Nz
+    for j in 1:Ny
+      for i in 1:Nx
+        @inbounds out[i,j,k] = -im*(kx[i]*ux[i,j,k] + ky[j]*uy[i,j,k] + kz[k]*uz[i,j,k])
+      end
+    end
+  end
+
+end
