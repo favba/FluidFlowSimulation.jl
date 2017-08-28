@@ -27,7 +27,7 @@ function run_simulation(s::AbstractParameters,dtStats::Integer,dtOutput::Integer
   writeheader(s)
   stats(s,init,dt)
 
-  @assert totalnsteps > dtOutput > dtStats
+  @assert totalnsteps >= dtOutput >= dtStats
   for i = 1:(totalnsteps ÷ dtOutput)
     for j = 1:(dtOutput ÷ dtStats)
       init = advance_in_time!(s,init,dtStats,dt)

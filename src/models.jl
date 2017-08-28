@@ -28,10 +28,9 @@ end
   
 function calculate_rhs!(s::A) where {A<:AbstractParameters}
   compute_nonlinear!(s)  
-  calculate_pressure!(s.aux.cx,s.aux.cy,s.aux.cz,s.rhs.cx,s.rhs.cy,s.rhs.cz,s.kx,s.ky,s.kz,s)
-  addpressure!(complex(s.rhs),complex(s.aux),s)
-  A<:BoussinesqParameters && addgravity!(s.rhs.cz,complex(s.ρ),-s.g,s)
   add_viscosity!(complex(s.rhs),complex(s.u),s.ν,s.kx,s.ky,s.kz,s)
+  A<:BoussinesqParameters && addgravity!(s.rhs.cz,complex(s.ρ),-s.g,s)
+  pressure_projection!(s.rhs.cx,s.rhs.cy,s.rhs.cz,s.kx,s.ky,s.kz,s)
   A<:ScalarParameters && add_scalar_difusion!(complex(s.ρrhs),complex(s.ρ),s.α,s.kx,s.ky,s.kz,s)
 end
   
@@ -50,9 +49,9 @@ function compute_nonlinear!(s::A) where {A<:AbstractParameters}
     s.p*s.aux
     dealias!(complex(s.aux),s)
     s.ps*s.ρ
+    div!(complex(s.ρrhs),s.kx,s.ky,s.kz,s.aux.cx,s.aux.cy,s.aux.cz,s.u.cz,s.dρdz,s)
   end
   s.p*s.u
-  A<:ScalarParameters &&  div!(complex(s.ρrhs),s.kx,s.ky,s.kz,s.aux.cx,s.aux.cy,s.aux.cz,s.u.cz,s.dρdz,s)
   return nothing
 end
   
@@ -90,23 +89,14 @@ function add_scalar_difusion!(rhs::AbstractArray,u::AbstractArray,ν::Real,kx::A
   end
 end
  
-function addpressure!(rhs::AbstractArray,aux::AbstractArray,s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
-  
-  for i in 1:Lcv
-    @inbounds rhs[i] = rhs[i] - aux[i]
-  end
- 
-end
-  
-function calculate_pressure!(auxx,auxy,auxz,rhsx,rhsy,rhsz,kx,ky,kz,s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
+function pressure_projection!(rhsx,rhsy,rhsz,kx,ky,kz,s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
   for k in 2:Nz
     for j in 2:Ny
       for i in 2:Nx
-        @inbounds p1 = (kx[i]*rhsx[i,j,k] + ky[j]*rhsy[i,j,k] + kz[k]*rhsz[i,j,k])
-        @inbounds p1 = p1/(kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])
-        @inbounds auxx[i,j,k] = kx[i]*p1
-        @inbounds auxy[i,j,k] = ky[j]*p1
-        @inbounds auxz[i,j,k] = kz[k]*p1
+        @inbounds p1 = (kx[i]*rhsx[i,j,k] + ky[j]*rhsy[i,j,k] + kz[k]*rhsz[i,j,k])/(kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])
+        @inbounds rhsx[i,j,k] -= kx[i]*p1
+        @inbounds rhsy[i,j,k] -= ky[j]*p1
+        @inbounds rhsz[i,j,k] -= kz[k]*p1
       end
     end
   end
