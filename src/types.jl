@@ -244,3 +244,5 @@ function parameters(d::Dict)
   end
   return s
 end
+
+parameters() = parameters(readglobal())

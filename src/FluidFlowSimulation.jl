@@ -1,6 +1,6 @@
 __precompile__()
 module FluidFlowSimulation
-export run_simulation, advance_in_time!, VectorField, Parameters
+export run_simulation, advance_in_time!, VectorField, parameters, readglobal
 
 using InplaceRealFFTW
 using StaticArrays
