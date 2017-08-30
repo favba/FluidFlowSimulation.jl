@@ -28,7 +28,7 @@ end
   
 function calculate_rhs!(s::A) where {A<:AbstractParameters}
   compute_nonlinear!(s)  
-  add_viscosity!(complex(s.rhs),complex(s.u),s.ν,s.kx,s.ky,s.kz,s)
+  add_viscosity!(s.rhs,s.u,s.ν,s.kx,s.ky,s.kz,s)
   A<:BoussinesqParameters && addgravity!(s.rhs.cz,complex(s.ρ),-s.g,s)
   pressure_projection!(s.rhs.cx,s.rhs.cy,s.rhs.cz,s.kx,s.ky,s.kz,s)
   A<:ScalarParameters && add_scalar_difusion!(complex(s.ρrhs),complex(s.ρ),s.α,s.kx,s.ky,s.kz,s)
@@ -45,7 +45,7 @@ function compute_nonlinear!(s::A) where {A<:AbstractParameters}
   dealias!(complex(s.rhs),s)
   if A<:ScalarParameters
     s.ps\s.ρ
-    scalar_advection!(rawreal(s.aux),rawreal(s.ρ),rawreal(s.u),s)
+    scalar_advection!(s.aux,s.ρ,s.u,s)
     s.p*s.aux
     dealias!(complex(s.aux),s)
     s.ps*s.ρ
@@ -67,43 +67,42 @@ function dealias!(rhs::AbstractArray{T,4},s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv
   end
 end
   
-function add_viscosity!(rhs::AbstractArray,u::AbstractArray,ν::Real,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
-  for l =1:3 
-    for k = 1:Nz
-      for j = 1:Ny
-        for i = 1:Nx
-          @inbounds rhs[i,j,k,l] -= (kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])*ν*u[i,j,k,l]
-        end
+function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
+  _add_viscosity!(rhs.cx,u.cx,-ν,kx,ky,kz,s)
+  _add_viscosity!(rhs.cy,u.cy,-ν,kx,ky,kz,s)
+  _add_viscosity!(rhs.cz,u.cz,-ν,kx,ky,kz,s)
+end
+
+function _add_viscosity!(rhs::AbstractArray,u::AbstractArray,mν::Real,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
+  @condthreads Isthreaded(s) for k = 1:Nz
+    for j = 1:Ny
+      for i = 1:Nx
+#        @inbounds rhs[i,j,k] = (kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])*mν*u[i,j,k] + rhs[i,j,k]
+        @inbounds rhs[i,j,k] = muladd(muladd(kx[i], kx[i], muladd(ky[j], ky[j], kz[k]*kz[k])), mν*u[i,j,k], rhs[i,j,k])
       end
     end
   end
 end
 
 function add_scalar_difusion!(rhs::AbstractArray,u::AbstractArray,ν::Real,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
-  for k = 1:Nz
-    for j = 1:Ny
-      for i = 1:Nx
-        @inbounds rhs[i,j,k] -= (kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])*ν*u[i,j,k]
-      end
-    end
-  end
+  _add_viscosity!(rhs,u,-ν,kx,ky,kz,s)
 end
  
 function pressure_projection!(rhsx,rhsy,rhsz,kx,ky,kz,s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
-  for k in 2:Nz
+  @condthreads Isthreaded(s) for k in 2:Nz
     for j in 2:Ny
       for i in 2:Nx
-        @inbounds p1 = (kx[i]*rhsx[i,j,k] + ky[j]*rhsy[i,j,k] + kz[k]*rhsz[i,j,k])/(kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])
-        @inbounds rhsx[i,j,k] -= kx[i]*p1
-        @inbounds rhsy[i,j,k] -= ky[j]*p1
-        @inbounds rhsz[i,j,k] -= kz[k]*p1
+        @inbounds p1 = -(kx[i]*rhsx[i,j,k] + ky[j]*rhsy[i,j,k] + kz[k]*rhsz[i,j,k])/(kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])
+        @inbounds rhsx[i,j,k] = muladd(kx[i],p1,rhsx[i,j,k])
+        @inbounds rhsy[i,j,k] = muladd(ky[j],p1,rhsy[i,j,k])
+        @inbounds rhsz[i,j,k] = muladd(kz[k],p1,rhsz[i,j,k])
       end
     end
   end
 end
 
 function addgravity!(rhs,ρ,g::Real,s::BoussinesqParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
-  for i=1:Lcs
+  @condthreads Isthreaded(s) for i=1:Lcs
     @inbounds rhs[i] = muladd(ρ[i],g,rhs[i])
   end
 end

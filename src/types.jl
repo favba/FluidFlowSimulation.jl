@@ -48,6 +48,7 @@ InplaceRealFFTW.irfft!(V::VectorField{A}) where {A} = irfft!(V,1:3)
 abstract type AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv} end
 
 Integrator(x::AbstractParameters) = :Adams_Bashforth3rdO
+Isthreaded(x::AbstractParameters) = false
 
 @def GenericParameters begin
   u::VectorField{PaddedArray{Float64,4,false}}

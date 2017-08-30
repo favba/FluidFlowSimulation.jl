@@ -2,7 +2,7 @@ function cross!(outx::AbstractArray{T},outy::AbstractArray{T},outz::AbstractArra
                 ux::AbstractArray{T},uy::AbstractArray{T},uz::AbstractArray{T},
                 vx::AbstractArray{T},vy::AbstractArray{T},vz::AbstractArray{T},
                 s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {T<:Real,Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
-  for i in 1:Lrs
+  @condthreads Isthreaded(s) for i in 1:Lrs
     @inbounds outx[i] = uy[i]*vz[i] - uz[i]*vy[i]
     @inbounds outy[i] = uz[i]*vx[i] - ux[i]*vz[i]
     @inbounds outz[i] = ux[i]*vy[i] - uy[i]*vx[i]
@@ -12,7 +12,7 @@ end
 function cross!(outx::AbstractArray{T},outy::AbstractArray{T},outz::AbstractArray{T},
                 ux::AbstractArray{T},uy::AbstractArray{T},uz::AbstractArray{T},
                 vx::AbstractArray{T},vy::AbstractArray{T},vz::AbstractArray{T},s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {T<:Complex128,Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
-for i in 1:Lcs
+@condthreads Isthreaded(s) for i in 1:Lcs
     @inbounds outx[i] = uy[i]*vz[i] - uz[i]*vy[i]
     @inbounds outy[i] = uz[i]*vx[i] - ux[i]*vz[i]
     @inbounds outz[i] = ux[i]*vy[i] - uy[i]*vx[i]
@@ -22,7 +22,7 @@ end
 function crossk!(outx::AbstractArray{T,3},outy::AbstractArray{T,3},outz::AbstractArray{T,3},
                 ux::StaticArray,uy::StaticArray,uz::StaticArray,
                 vx::AbstractArray{T,3},vy::AbstractArray{T,3},vz::AbstractArray{T,3},s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {T,Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
-for k in 1:Nz
+@condthreads Isthreaded(s) for k in 1:Nz
     for j in 1:Ny
       for i in 1:Nx
         @inbounds outx[i,j,k] = im*(uy[j]*vz[i,j,k] - uz[k]*vy[i,j,k])
@@ -62,22 +62,23 @@ function fftfreq(n::Integer,s::Real)::Vector{Float64}
   end
 end
 
-function scalar_advection!(out::AbstractArray{Float64,4},scalar::AbstractArray{Float64,3},v::AbstractArray{Float64,4},s::ScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
+function scalar_advection!(out::VectorField,scalar::AbstractArray,v::VectorField,s::ScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
 
-  for l in 1:3
-  for k in 1:Nz
-    for j in 1:Ny
-      for i in 1:Nrx
-        @inbounds out[i,j,k,l] = scalar[i,j,k]*v[i,j,k,l]
-      end
-    end
-  end
+  _scalar_advection!(out.rx,rawreal(scalar),v.rx,s)
+  _scalar_advection!(out.ry,rawreal(scalar),v.ry,s)
+  _scalar_advection!(out.rz,rawreal(scalar),v.rz,s)
+
+end
+
+function _scalar_advection!(out::AbstractArray{Float64,3},scalar::AbstractArray{Float64,3},v::AbstractArray{Float64,3},s::ScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
+  @condthreads Isthreaded(s) for i in 1:Lrs
+    @inbounds out[i] = scalar[i]*v[i]
   end
 end
 
 function div!(out::AbstractArray{Complex128,3},kx,ky,kz,ux,uy,uz,w,dρdz::Real, s::ScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
 
-  for k in 1:Nz
+  @condthreads Isthreaded(s) for k in 1:Nz
     for j in 1:Ny
       for i in 1:Nx
         @inbounds out[i,j,k] = -im*(kx[i]*ux[i,j,k] + ky[j]*uy[i,j,k] + kz[k]*uz[i,j,k]) - dρdz*w[i,j,k]
@@ -89,7 +90,7 @@ end
 
 function div!(out::AbstractArray{Complex128,3},kx,ky,kz,ux,uy,uz, s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
 
-  for k in 1:Nz
+  @condthreads Isthreaded(s) for k in 1:Nz
     for j in 1:Ny
       for i in 1:Nx
         @inbounds out[i,j,k] = -im*(kx[i]*ux[i,j,k] + ky[j]*uy[i,j,k] + kz[k]*uz[i,j,k])
