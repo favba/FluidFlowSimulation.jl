@@ -45,10 +45,9 @@ InplaceRealFFTW.irfft!(V::VectorField{A}) where {A} = irfft!(V,1:3)
 
 #------------------------------------------------------------------------------------------------------
 
-abstract type AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv} end
+abstract type AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr} end
 
 Integrator(x::AbstractParameters) = :Adams_Bashforth3rdO
-Isthreaded(x::AbstractParameters) = false
 
 @def GenericParameters begin
   u::VectorField{PaddedArray{Float64,4,false}}
@@ -66,14 +65,14 @@ Isthreaded(x::AbstractParameters) = false
   kz::SArray{Tuple{1,1,Nz},Float64,3,Nz}
   p::Base.DFT.FFTW.rFFTWPlan{Float64,-1,true,4}
   ip::Base.DFT.ScaledPlan{Complex{Float64},Base.DFT.FFTW.rFFTWPlan{Complex{Float64},1,false,4},Float64}
-  rm1::Array{Complex128,4}
-  rm2::Array{Complex128,4}
+  rm1::Array{Float64,4}
+  rm2::Array{Float64,4}
 end
 
-struct Parameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv} <: AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
+struct Parameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr} <: AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
   @GenericParameters
   
-  function Parameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}(u::VectorField{PaddedArray{Float64,4,false}},nx::Int64,ny::Int64,nz::Int64,lx::Float64,ly::Float64,lz::Float64,ν::Float64) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
+  function Parameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}(u::VectorField{PaddedArray{Float64,4,false}},nx::Int64,ny::Int64,nz::Int64,lx::Float64,ly::Float64,lz::Float64,ν::Float64) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
     
     rhs = similar(u)
     aux = similar(u)
@@ -86,53 +85,36 @@ struct Parameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv} <: AbstractParameters{Nx,Ny,Nz,L
     p = plan_rfft!(aux,1:3,flags=FFTW.MEASURE)
     p.pinv = plan_irfft!(aux,1:3,flags=FFTW.MEASURE)
     ip = Base.DFT.ScaledPlan(FFTW.rFFTWPlan{Complex{Float64},FFTW.BACKWARD,false,4}(complex(aux), real(aux), 1:3, FFTW.MEASURE&FFTW.DESTROY_INPUT,FFTW.NO_TIMELIMIT),Base.DFT.normalization(Float64, size(real(aux)), 1:3))
-    rm1 = Array{Complex128}((Nx,Ny,Nz,4))
-    rm2 = Array{Complex128}((Nx,Ny,Nz,4))
-    return new{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2)
+    rm1 = Array{Float64}((Nrx,Ny,Nz,4))
+    rm2 = Array{Float64}((Nrx,Ny,Nz,4))
+    return new{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2)
   end
 
 end
 
-function Parameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real) 
+function Parameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,tr::Bool) 
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
   nrx = 2*ncx
   lrs = 2*lcs
   lrv = 2*lcv
-  return Parameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv}(u,nx,ny,nz,lx,ly,lz,ν)
+  return Parameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv,tr}(u,nx,ny,nz,lx,ly,lz,ν)
 end
 
-function Parameters()
-  par = readglobal()
-  return Parameters(par)
-end
+abstract type ScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr} <: AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr} end
 
-function Parameters(par::Dict)
-  nx = parse(Int,par["nx"])
-  ny = parse(Int,par["ny"])
-  nz = parse(Int,par["nz"])
-  lx = parse(Float64,par["xDomainSize"])
-  ly = parse(Float64,par["yDomainSize"])
-  lz = parse(Float64,par["zDomainSize"])
-  ν = parse(Float64,par["kinematicViscosity"])
-  u = VectorField("u1.0","u2.0","u3.0",nx,ny,nz)
-  return Parameters(u,nx,ny,nz,lx,ly,lz,ν)
-end
-
-abstract type ScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv} <: AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv} end
-
-struct PassiveScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv} <: ScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
+struct PassiveScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr} <: ScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
   @GenericParameters
   ρ::PaddedArray{Float64,3,false}
   ps::Base.DFT.FFTW.rFFTWPlan{Float64,-1,true,3}
   α::Float64 #Difusitivity = ν/Pr  
   dρdz::Float64  
   ρrhs::PaddedArray{Float64,3,false}
-  rrm1::Array{Complex128,3}
-  rrm2::Array{Complex128,3}
+  rrm1::Array{Float64,3}
+  rrm2::Array{Float64,3}
 
-  function PassiveScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}(u::VectorField, nx::Integer, ny::Integer, nz::Integer, lx::Real, ly::Real, lz::Real, ν::Real, ρ::PaddedArray, α::Real,dρdz::Real) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
+  function PassiveScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}(u::VectorField, nx::Integer, ny::Integer, nz::Integer, lx::Real, ly::Real, lz::Real, ν::Real, ρ::PaddedArray, α::Real,dρdz::Real) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
     
     rhs = similar(u)
     aux = similar(u)
@@ -145,30 +127,30 @@ struct PassiveScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv} <: ScalarParameters
     p = plan_rfft!(aux,1:3,flags=FFTW.MEASURE)
     p.pinv = plan_irfft!(aux,1:3,flags=FFTW.MEASURE)
     ip = Base.DFT.ScaledPlan(FFTW.rFFTWPlan{Complex{Float64},FFTW.BACKWARD,false,4}(complex(aux), real(aux), 1:3, FFTW.MEASURE&FFTW.DESTROY_INPUT,FFTW.NO_TIMELIMIT),Base.DFT.normalization(Float64, size(real(aux)), 1:3))
-    rm1 = Array{Complex128}((Nx,Ny,Nz,4))
-    rm2 = Array{Complex128}((Nx,Ny,Nz,4))
+    rm1 = Array{Float64}((Nrx,Ny,Nz,4))
+    rm2 = Array{Float64}((Nrx,Ny,Nz,4))
     ρrhs = similar(ρ)
     ps = plan_rfft!(ρrhs,flags=FFTW.MEASURE)
     ps.pinv = plan_irfft!(ρrhs,flags=FFTW.MEASURE)
-    rrm1 = Array{Complex128}((Nx,Ny,Nz))
-    rrm2 = Array{Complex128}((Nx,Ny,Nz))
+    rrm1 = Array{Float64}((Nrx,Ny,Nz))
+    rrm2 = Array{Float64}((Nrx,Ny,Nz))
 
-    return new{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2,ρ,ps,α,dρdz, ρrhs, rrm1,rrm2)
+    return new{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2,ρ,ps,α,dρdz, ρrhs, rrm1,rrm2)
   end
 
 end
 
-function PassiveScalarParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, α::Real,dρdz::Real) 
+function PassiveScalarParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, α::Real,dρdz::Real,tr::Bool) 
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
   nrx = 2*ncx
   lrs = 2*lcs
   lrv = 2*lcv
-  return PassiveScalarParameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz)
+  return PassiveScalarParameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv,tr}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz)
 end
 
-struct BoussinesqParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv} <: ScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
+struct BoussinesqParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr} <: ScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
   @GenericParameters
   ρ::PaddedArray{Float64,3,false}
   ps::Base.DFT.FFTW.rFFTWPlan{Float64,-1,true,3}
@@ -176,10 +158,10 @@ struct BoussinesqParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv} <: ScalarParameters{Nx
   dρdz::Float64 #This is actually dρsdz/ρ₀
   g::Float64
   ρrhs::PaddedArray{Float64,3,false}
-  rrm1::Array{Complex128,3}
-  rrm2::Array{Complex128,3}
+  rrm1::Array{Float64,3}
+  rrm2::Array{Float64,3}
 
-  function BoussinesqParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}(u::VectorField, nx::Integer, ny::Integer, nz::Integer, lx::Real, ly::Real, lz::Real, ν::Real, ρ::PaddedArray, α::Real, dρdz::Real, g::Real) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}
+  function BoussinesqParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}(u::VectorField, nx::Integer, ny::Integer, nz::Integer, lx::Real, ly::Real, lz::Real, ν::Real, ρ::PaddedArray, α::Real, dρdz::Real, g::Real) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
     
     rhs = similar(u)
     aux = similar(u)
@@ -192,27 +174,27 @@ struct BoussinesqParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv} <: ScalarParameters{Nx
     p = plan_rfft!(aux,1:3,flags=FFTW.MEASURE)
     p.pinv = plan_irfft!(aux,1:3,flags=FFTW.MEASURE)
     ip = Base.DFT.ScaledPlan(FFTW.rFFTWPlan{Complex{Float64},FFTW.BACKWARD,false,4}(complex(aux), real(aux), 1:3, FFTW.MEASURE&FFTW.DESTROY_INPUT,FFTW.NO_TIMELIMIT),Base.DFT.normalization(Float64, size(real(aux)), 1:3))
-    rm1 = Array{Complex128}((Nx,Ny,Nz,4))
-    rm2 = Array{Complex128}((Nx,Ny,Nz,4))
+    rm1 = Array{Float64}((Nrx,Ny,Nz,4))
+    rm2 = Array{Float64}((Nrx,Ny,Nz,4))
     ρrhs = similar(ρ)
     ps = plan_rfft!(ρrhs,flags=FFTW.MEASURE)
     ps.pinv = plan_irfft!(ρrhs,flags=FFTW.MEASURE)
-    rrm1 = Array{Complex128}((Nx,Ny,Nz))
-    rrm2 = Array{Complex128}((Nx,Ny,Nz))
+    rrm1 = Array{Float64}((Nrx,Ny,Nz))
+    rrm2 = Array{Float64}((Nrx,Ny,Nz))
 
-    return new{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv}(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2,ρ,ps,α,dρdz,g, ρrhs, rrm1,rrm2)
+    return new{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2,ρ,ps,α,dρdz,g, ρrhs, rrm1,rrm2)
   end
 
 end
 
-function BoussinesqParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, dρdz::Real,α::Real,g::Real) 
+function BoussinesqParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, dρdz::Real,α::Real,g::Real,tr::Bool) 
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
   nrx = 2*ncx
   lrs = 2*lcs
   lrv = 2*lcv
-  return BoussinesqParameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz,g)
+  return BoussinesqParameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv,tr}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz,g)
 end
 
 function parameters(d::Dict)
@@ -226,22 +208,30 @@ function parameters(d::Dict)
   ν = parse(Float64,d["kinematicViscosity"])
   u = VectorField("u1.0","u2.0","u3.0",nx,ny,nz)
 
+
+  if haskey(d,"threaded")
+    threaded = parse(d["threaded"])
+    threaded && FFTW.set_num_threads(Threads.nthreads())
+  else
+    threaded = false
+  end
+
   if haskey(d,"model")
     model = Symbol(d["model"])
     if model == :PassiveScalar
       α = ν/parse(Float64,d["Pr"])
       dρdz = parse(Float64,d["densityGradient"])/parse(Float64,d["referenceDensity"])
-      s = PassiveScalarParameters(u,nx,ny,nz,lx,ly,lz,ν,PaddedArray(zeros(nx,ny,nz)),α,dρdz)
+      s = PassiveScalarParameters(u,nx,ny,nz,lx,ly,lz,ν,PaddedArray(zeros(nx,ny,nz)),α,dρdz,threaded)
     elseif model == :Boussinesq 
       α = ν/parse(Float64,d["Pr"])
       dρdz = parse(Float64,d["densityGradient"])/parse(Float64,d["referenceDensity"])
       g = parse(Float64,d["zAcceleration"])
-      s = BoussinesqParameters(u,nx,ny,nz,lx,ly,lz,ν,PaddedArray(zeros(nx,ny,nz)),α,dρdz,g)
+      s = BoussinesqParameters(u,nx,ny,nz,lx,ly,lz,ν,PaddedArray(zeros(nx,ny,nz)),α,dρdz,g,threaded)
     else
       error("Unkown Model in global file")
     end
   else
-    s = Parameters(d)
+    s = Parameters(u,nx,ny,nz,lx,ly,lz,ν,threaded)
   end
   return s
 end
