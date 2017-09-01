@@ -216,6 +216,8 @@ function parameters(d::Dict)
     threaded = false
   end
 
+  isfile("fftw_wisdom") && FFTW.import_wisdom("fftw_wisdom")
+
   if haskey(d,"model")
     model = Symbol(d["model"])
     if model == :PassiveScalar
@@ -233,6 +235,9 @@ function parameters(d::Dict)
   else
     s = Parameters(u,nx,ny,nz,lx,ly,lz,ν,threaded)
   end
+
+  FFTW.export_wisdom("fftw_wisdom")
+
   return s
 end
 
