@@ -45,9 +45,7 @@ InplaceRealFFTW.irfft!(V::VectorField{A}) where {A} = irfft!(V,1:3)
 
 #------------------------------------------------------------------------------------------------------
 
-abstract type AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr} end
-
-Integrator(x::AbstractParameters) = :Adams_Bashforth3rdO
+abstract type @par(AbstractParameters) end
 
 @def GenericParameters begin
   u::VectorField{PaddedArray{Float64,4,false}}
@@ -69,10 +67,10 @@ Integrator(x::AbstractParameters) = :Adams_Bashforth3rdO
   rm2::Array{Float64,4}
 end
 
-struct Parameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr} <: AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+struct @par(Parameters) <: @par(AbstractParameters)
   @GenericParameters
   
-  function Parameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}(u::VectorField{PaddedArray{Float64,4,false}},nx::Int64,ny::Int64,nz::Int64,lx::Float64,ly::Float64,lz::Float64,ν::Float64) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+  @par function @par(Parameters)(u::VectorField{PaddedArray{Float64,4,false}},nx::Int64,ny::Int64,nz::Int64,lx::Float64,ly::Float64,lz::Float64,ν::Float64) 
     
     rhs = similar(u)
     aux = similar(u)
@@ -87,7 +85,7 @@ struct Parameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr} <: AbstractParameters{Nx,Ny,N
     ip = Base.DFT.ScaledPlan(FFTW.rFFTWPlan{Complex{Float64},FFTW.BACKWARD,false,4}(complex(aux), real(aux), 1:3, FFTW.MEASURE&FFTW.DESTROY_INPUT,FFTW.NO_TIMELIMIT),Base.DFT.normalization(Float64, size(real(aux)), 1:3))
     rm1 = Array{Float64}((Nrx,Ny,Nz,4))
     rm2 = Array{Float64}((Nrx,Ny,Nz,4))
-    return new{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2)
+    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2)
   end
 
 end
@@ -99,12 +97,12 @@ function Parameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,
   nrx = 2*ncx
   lrs = 2*lcs
   lrv = 2*lcv
-  return Parameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv,tr}(u,nx,ny,nz,lx,ly,lz,ν)
+  return Parameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv,tr,:Adams_Bashforth3rdO}(u,nx,ny,nz,lx,ly,lz,ν)
 end
 
-abstract type ScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr} <: AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr} end
+abstract type @par(ScalarParameters) <: @par(AbstractParameters) end
 
-struct PassiveScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr} <: ScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+struct @par(PassiveScalarParameters) <: @par(ScalarParameters)
   @GenericParameters
   ρ::PaddedArray{Float64,3,false}
   ps::Base.DFT.FFTW.rFFTWPlan{Float64,-1,true,3}
@@ -114,7 +112,7 @@ struct PassiveScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr} <: ScalarParamet
   rrm1::Array{Float64,3}
   rrm2::Array{Float64,3}
 
-  function PassiveScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}(u::VectorField, nx::Integer, ny::Integer, nz::Integer, lx::Real, ly::Real, lz::Real, ν::Real, ρ::PaddedArray, α::Real,dρdz::Real) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+  @par function @par(PassiveScalarParameters)(u::VectorField, nx::Integer, ny::Integer, nz::Integer, lx::Real, ly::Real, lz::Real, ν::Real, ρ::PaddedArray, α::Real,dρdz::Real) 
     
     rhs = similar(u)
     aux = similar(u)
@@ -135,7 +133,7 @@ struct PassiveScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr} <: ScalarParamet
     rrm1 = Array{Float64}((Nrx,Ny,Nz))
     rrm2 = Array{Float64}((Nrx,Ny,Nz))
 
-    return new{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2,ρ,ps,α,dρdz, ρrhs, rrm1,rrm2)
+    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2,ρ,ps,α,dρdz, ρrhs, rrm1,rrm2)
   end
 
 end
@@ -147,10 +145,10 @@ function PassiveScalarParameters(u::VectorField,nx::Integer,ny::Integer,nz::Inte
   nrx = 2*ncx
   lrs = 2*lcs
   lrv = 2*lcv
-  return PassiveScalarParameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv,tr}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz)
+  return PassiveScalarParameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv,tr,:Adams_Bashforth3rdO}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz)
 end
 
-struct BoussinesqParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr} <: ScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+struct @par(BoussinesqParameters) <: @par(ScalarParameters)
   @GenericParameters
   ρ::PaddedArray{Float64,3,false}
   ps::Base.DFT.FFTW.rFFTWPlan{Float64,-1,true,3}
@@ -161,7 +159,7 @@ struct BoussinesqParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr} <: ScalarParameters
   rrm1::Array{Float64,3}
   rrm2::Array{Float64,3}
 
-  function BoussinesqParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}(u::VectorField, nx::Integer, ny::Integer, nz::Integer, lx::Real, ly::Real, lz::Real, ν::Real, ρ::PaddedArray, α::Real, dρdz::Real, g::Real) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+  @par function @par(BoussinesqParameters)(u::VectorField, nx::Integer, ny::Integer, nz::Integer, lx::Real, ly::Real, lz::Real, ν::Real, ρ::PaddedArray, α::Real, dρdz::Real, g::Real)
     
     rhs = similar(u)
     aux = similar(u)
@@ -182,7 +180,7 @@ struct BoussinesqParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr} <: ScalarParameters
     rrm1 = Array{Float64}((Nrx,Ny,Nz))
     rrm2 = Array{Float64}((Nrx,Ny,Nz))
 
-    return new{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2,ρ,ps,α,dρdz,g, ρrhs, rrm1,rrm2)
+    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2,ρ,ps,α,dρdz,g, ρrhs, rrm1,rrm2)
   end
 
 end
@@ -194,7 +192,7 @@ function BoussinesqParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer
   nrx = 2*ncx
   lrs = 2*lcs
   lrv = 2*lcv
-  return BoussinesqParameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv,tr}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz,g)
+  return BoussinesqParameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv,tr,:Adams_Bashforth3rdO}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz,g)
 end
 
 function parameters(d::Dict)

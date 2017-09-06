@@ -18,10 +18,16 @@ end
 
 sim_par = (:Nx,:Ny,:Nz,:Lcs,:Lcv,:Nrx,:Lrs,:Lrv,:Tr,:Integrator)
 
+"""
+Add the parameters defined in `sim_par` to the Symbol
+"""
 macro par(t::Symbol)
   return esc(Expr(:curly,t,sim_par...))
 end
 
+"""
+Add the parameters defined in `sim_par` after a `where` on a function definition
+"""
 macro par(ex::Expr)
   if ex.head == :function
     if ex.args[1].head == :where

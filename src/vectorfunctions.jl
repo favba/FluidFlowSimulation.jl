@@ -1,7 +1,7 @@
-function cross!(outx::AbstractArray{T},outy::AbstractArray{T},outz::AbstractArray{T},
+@par function cross!(outx::AbstractArray{T},outy::AbstractArray{T},outz::AbstractArray{T},
                 ux::AbstractArray{T},uy::AbstractArray{T},uz::AbstractArray{T},
                 vx::AbstractArray{T},vy::AbstractArray{T},vz::AbstractArray{T},
-                s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}) where {T,Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+                s::@par(AbstractParameters)) where {T}
   if Tr
     _tcross!(outx,outy,outz,ux,uy,uz,vx,vy,vz,s)
   else
@@ -13,10 +13,10 @@ function cross!(outx::AbstractArray{T},outy::AbstractArray{T},outz::AbstractArra
   end
 end
 
-function _tcross!(outx::AbstractArray{T},outy::AbstractArray{T},outz::AbstractArray{T},
+@par function _tcross!(outx::AbstractArray{T},outy::AbstractArray{T},outz::AbstractArray{T},
                   ux::AbstractArray{T},uy::AbstractArray{T},uz::AbstractArray{T},
                   vx::AbstractArray{T},vy::AbstractArray{T},vz::AbstractArray{T},
-                  s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}) where {T,Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+                  s::@par(AbstractParameters)) where {T}
   Threads.@threads for i in 1:(T<:Real ? Lrs : Lcs)
     @inbounds outx[i] = uy[i]*vz[i] - uz[i]*vy[i]
     @inbounds outy[i] = uz[i]*vx[i] - ux[i]*vz[i]
@@ -24,9 +24,9 @@ function _tcross!(outx::AbstractArray{T},outy::AbstractArray{T},outz::AbstractAr
   end
 end
 
-function crossk!(outx::AbstractArray{T,3},outy::AbstractArray{T,3},outz::AbstractArray{T,3},
+@par function crossk!(outx::AbstractArray{T,3},outy::AbstractArray{T,3},outz::AbstractArray{T,3},
                 ux::StaticArray,uy::StaticArray,uz::StaticArray,
-                vx::AbstractArray{T,3},vy::AbstractArray{T,3},vz::AbstractArray{T,3},s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}) where {T,Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+                vx::AbstractArray{T,3},vy::AbstractArray{T,3},vz::AbstractArray{T,3},s::@par(AbstractParameters)) where {T}
 
   if Tr
     _tcrossk!(outx,outy,outz,ux,uy,uz,vx,vy,vz,s)
@@ -43,7 +43,7 @@ function crossk!(outx::AbstractArray{T,3},outy::AbstractArray{T,3},outz::Abstrac
   end
 end
 
-function _tcrossk!(outx,outy,outz,ux,uy,uz,vx,vy,vz,s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+@par function _tcrossk!(outx,outy,outz,ux,uy,uz,vx,vy,vz,s::@par(AbstractParameters)) 
   Threads.@threads for k in 1:Nz
     for j in 1:Ny
       for i in 1:Nx
@@ -83,7 +83,7 @@ function fftfreq(n::Integer,s::Real)::Vector{Float64}
   end
 end
 
-function scalar_advection!(out::VectorField,scalar::AbstractArray,v::VectorField,s::ScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+function scalar_advection!(out::VectorField,scalar::AbstractArray,v::VectorField,s::ScalarParameters)
 
   _scalar_advection!(out.rx,rawreal(scalar),v.rx,s)
   _scalar_advection!(out.ry,rawreal(scalar),v.ry,s)
@@ -91,7 +91,7 @@ function scalar_advection!(out::VectorField,scalar::AbstractArray,v::VectorField
 
 end
 
-function _scalar_advection!(out::AbstractArray{Float64,3},scalar::AbstractArray{Float64,3},v::AbstractArray{Float64,3},s::ScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+@par function _scalar_advection!(out::AbstractArray{Float64,3},scalar::AbstractArray{Float64,3},v::AbstractArray{Float64,3},s::@par(ScalarParameters))
   if Tr
     _tscalar_advection!(out,scalar,v,s)
   else
@@ -101,14 +101,14 @@ function _scalar_advection!(out::AbstractArray{Float64,3},scalar::AbstractArray{
   end
 end
 
-function _tscalar_advection!(out::AbstractArray{Float64,3},scalar::AbstractArray{Float64,3},v::AbstractArray{Float64,3},s::ScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+@par function _tscalar_advection!(out::AbstractArray{Float64,3},scalar::AbstractArray{Float64,3},v::AbstractArray{Float64,3},s::@par(ScalarParameters))
   Threads.@threads for i in 1:Lrs
       @inbounds out[i] = scalar[i]*v[i]
   end
 end
 
-function div!(out::AbstractArray{Complex128,3},kx,ky,kz,ux,uy,uz,w,mdρdz::Real, s::ScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
-  mim = -im
+@par function div!(out::AbstractArray{Complex128,3},kx,ky,kz,ux,uy,uz,w,mdρdz::Real, s::@par(ScalarParameters))
+  mim::Complex128 = -im
   if Tr
     _tdiv!(out,kx,ky,kz,ux,uy,uz,w,mdρdz,s,mim)
   else
@@ -123,7 +123,7 @@ function div!(out::AbstractArray{Complex128,3},kx,ky,kz,ux,uy,uz,w,mdρdz::Real,
   end
 end
 
-function _tdiv!(out::AbstractArray{Complex128,3},kx,ky,kz,ux,uy,uz,w,mdρdz::Real, s::ScalarParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr},mim) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+@par function _tdiv!(out::AbstractArray{Complex128,3},kx,ky,kz,ux,uy,uz,w,mdρdz::Real, s::@par(ScalarParameters),mim)
     Threads.@threads for k in 1:Nz
       for j in 1:Ny
         for i in 1:Nx
@@ -134,8 +134,8 @@ function _tdiv!(out::AbstractArray{Complex128,3},kx,ky,kz,ux,uy,uz,w,mdρdz::Rea
     end
 end
 
-function div!(out::AbstractArray{Complex128,3},kx,ky,kz,ux,uy,uz, s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
-  mim = -im
+@par function div!(out::AbstractArray{Complex128,3},kx,ky,kz,ux,uy,uz, s::@par(AbstractParameters))
+  mim::Complex128 = -im
 
   if Tr
     _tdiv!(out,kx,ky,kz,ux,uy,uz,s,mim)
@@ -151,7 +151,7 @@ function div!(out::AbstractArray{Complex128,3},kx,ky,kz,ux,uy,uz, s::AbstractPar
   end
 end
 
-function _tdiv!(out::AbstractArray{Complex128,3},kx,ky,kz,ux,uy,uz, s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr},mim) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+@par function _tdiv!(out::AbstractArray{Complex128,3},kx,ky,kz,ux,uy,uz, s::@par(AbstractParameters),mim)
     Threads.@threads for k in 1:Nz
       for j in 1:Ny
         for i in 1:Nx

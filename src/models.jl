@@ -1,9 +1,9 @@
-function advance_in_time!(s::A,init::Int64,Nsteps::Int64,dt::Float64) where {A<:AbstractParameters}
+function advance_in_time!(s::A,init::Int64,Nsteps::Int64,dt::Float64) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr,Integrator,A<:@par(AbstractParameters)}
   
   s.p*s.u
   A <: ScalarParameters && s.ps*s.ρ
 
-  if Integrator(s) !== :Euller
+  if Integrator !== :Euller
     if init==0
       calculate_rhs!(s)
       copy!(s.rm2,rawreal(s.rhs))
@@ -55,7 +55,7 @@ function compute_nonlinear!(s::A) where {A<:AbstractParameters}
   return nothing
 end
   
-function dealias!(rhs::AbstractArray{T,4},s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}) where {T,Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr} 
+@par function dealias!(rhs::AbstractArray{T,4},s::@par(AbstractParameters)) where {T} 
   for l=1:3
   for k in (div(Nz,3)+2):(div(2Nz,3)+1)
     for j in (div(Ny,3)+2):(div(2Ny,3)+1)
@@ -73,7 +73,7 @@ function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,kx::AbstractArr
   _add_viscosity!(rhs.cz,u.cz,-ν,kx,ky,kz,s)
 end
 
-function _add_viscosity!(rhs::AbstractArray,u::AbstractArray,mν::Real,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+@par function _add_viscosity!(rhs::AbstractArray,u::AbstractArray,mν::Real,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::@par(AbstractParameters)) 
   if Tr
     _tadd_viscosity!(rhs,u,mν,kx,ky,kz,s)
   else
@@ -88,7 +88,7 @@ function _add_viscosity!(rhs::AbstractArray,u::AbstractArray,mν::Real,kx::Abstr
   end
 end
 
-function _tadd_viscosity!(rhs::AbstractArray,u::AbstractArray,mν::Real,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+@par function _tadd_viscosity!(rhs::AbstractArray,u::AbstractArray,mν::Real,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::@par(AbstractParameters)) 
   Threads.@threads for k = 1:Nz
     for j = 1:Ny
       for i = 1:Nx
@@ -99,11 +99,11 @@ function _tadd_viscosity!(rhs::AbstractArray,u::AbstractArray,mν::Real,kx::Abst
   end
 end
 
-function add_scalar_difusion!(rhs::AbstractArray,u::AbstractArray,ν::Real,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+function add_scalar_difusion!(rhs::AbstractArray,u::AbstractArray,ν::Real,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::AbstractParameters)
   _add_viscosity!(rhs,u,-ν,kx,ky,kz,s)
 end
  
-function pressure_projection!(rhsx,rhsy,rhsz,kx,ky,kz,s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+@par function pressure_projection!(rhsx,rhsy,rhsz,kx,ky,kz,s::@par(AbstractParameters))
   if Tr
     _tpressure_projection!(rhsx,rhsy,rhsz,kz,ky,kz,s)
   else
@@ -121,7 +121,7 @@ function pressure_projection!(rhsx,rhsy,rhsz,kx,ky,kz,s::AbstractParameters{Nx,N
   end
 end
 
-function _tpressure_projection!(rhsx,rhsy,rhsz,kx,ky,kz,s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+@par function _tpressure_projection!(rhsx,rhsy,rhsz,kx,ky,kz,s::@par(AbstractParameters))
   Threads.@threads for k in 2:Nz
     for j in 2:Ny
       for i in 2:Nx
@@ -135,7 +135,7 @@ function _tpressure_projection!(rhsx,rhsy,rhsz,kx,ky,kz,s::AbstractParameters{Nx
   end
 end
 
-function addgravity!(rhs,ρ,g::Real,s::BoussinesqParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+@par function addgravity!(rhs,ρ,g::Real,s::@par(BoussinesqParameters))
   if Tr
     _taddgravity!(rhs,ρ,g,s)
   else
@@ -145,18 +145,26 @@ function addgravity!(rhs,ρ,g::Real,s::BoussinesqParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx
   end
 end
 
-function _taddgravity!(rhs,ρ,g::Real,s::BoussinesqParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+@par function _taddgravity!(rhs,ρ,g::Real,s::@par(BoussinesqParameters))
   Threads.@threads for i=1:Lcs
     @inbounds rhs[i] = muladd(ρ[i],g,rhs[i])
   end
 end
 
-function time_step!(s::A,dt::Real) where {A<:AbstractParameters}
-  if Integrator(s) == :Euller
+@par function time_step!(s::@par(AbstractParameters),dt::Real)
+  if Integrator == :Euller
     Euller!(rawreal(s.u),rawreal(s.rhs),dt,s)
-    A<:ScalarParameters && Euller!(complex(s.ρ),complex(s.ρrhs),dt,s)
-  elseif Integrator(s) == :Adams_Bashforth3rdO
+  elseif Integrator == :Adams_Bashforth3rdO
     Adams_Bashforth3rdO!(rawreal(s.u),rawreal(s.rhs),dt,s.rm1,s.rm2,s)
-    A<:ScalarParameters && Adams_Bashforth3rdO!(rawreal(s.ρ),rawreal(s.ρrhs),dt,s.rrm1,s.rrm2,s)
+  end
+end
+
+@par function time_step!(s::@par(ScalarParameters),dt::Real)
+  if Integrator == :Euller
+    Euller!(rawreal(s.u),rawreal(s.rhs),dt,s)
+    Euller!(complex(s.ρ),complex(s.ρrhs),dt,s)
+  elseif Integrator == :Adams_Bashforth3rdO
+    Adams_Bashforth3rdO!(rawreal(s.u),rawreal(s.rhs),dt,s.rm1,s.rm2,s)
+    Adams_Bashforth3rdO!(rawreal(s.ρ),rawreal(s.ρrhs),dt,s.rrm1,s.rrm2,s)
   end
 end
