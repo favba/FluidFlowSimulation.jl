@@ -15,3 +15,20 @@ macro condthreads(condition,loop)
     end
   end)
 end
+
+sim_par = (:Nx,:Ny,:Nz,:Lcs,:Lcv,:Nrx,:Lrs,:Lrv,:Tr,:Integrator)
+
+macro par(t::Symbol)
+  return esc(Expr(:curly,t,sim_par...))
+end
+
+macro par(ex::Expr)
+  if ex.head == :function
+    if ex.args[1].head == :where
+      append!(ex.args[1].args,sim_par)
+    elseif ex.args[1].head == :call
+      ex.args[1] = Expr(:where, ex.args[1], sim_par...) 
+    end
+  end
+  return esc(ex)
+end
