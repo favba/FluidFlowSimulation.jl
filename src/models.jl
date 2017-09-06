@@ -67,7 +67,7 @@ function dealias!(rhs::AbstractArray{T,4},s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv
   end
 end
   
-function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::AbstractParameters)
   _add_viscosity!(rhs.cx,u.cx,-ν,kx,ky,kz,s)
   _add_viscosity!(rhs.cy,u.cy,-ν,kx,ky,kz,s)
   _add_viscosity!(rhs.cz,u.cz,-ν,kx,ky,kz,s)
