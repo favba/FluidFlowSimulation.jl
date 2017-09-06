@@ -1,4 +1,4 @@
-function advance_in_time!(s::A,init::Int64,Nsteps::Int64,dt::Float64) where {Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr,Integrator,A<:@par(AbstractParameters)}
+@par function advance_in_time!(s::A,init::Int64,Nsteps::Int64,dt::Float64) where {A<:@par(AbstractParameters)}
   
   s.p*s.u
   A <: ScalarParameters && s.ps*s.ρ
@@ -60,7 +60,7 @@ end
   for k in (div(Nz,3)+2):(div(2Nz,3)+1)
     for j in (div(Ny,3)+2):(div(2Ny,3)+1)
       for i in (div(2Nx,3)+1):Nx
-        @inbounds rhs[i,j,k,l] = zero(Complex128)
+        @inbounds rhs[i,j,k,l] = zero(T)
       end
     end
   end
@@ -151,20 +151,12 @@ end
   end
 end
 
-@par function time_step!(s::@par(AbstractParameters),dt::Real)
+@par function time_step!(s::A,dt::Real) where {A<:@par(AbstractParameters)}
   if Integrator == :Euller
     Euller!(rawreal(s.u),rawreal(s.rhs),dt,s)
+    A <: ScalarParameters && Euller!(complex(s.ρ),complex(s.ρrhs),dt,s)
   elseif Integrator == :Adams_Bashforth3rdO
     Adams_Bashforth3rdO!(rawreal(s.u),rawreal(s.rhs),dt,s.rm1,s.rm2,s)
-  end
-end
-
-@par function time_step!(s::@par(ScalarParameters),dt::Real)
-  if Integrator == :Euller
-    Euller!(rawreal(s.u),rawreal(s.rhs),dt,s)
-    Euller!(complex(s.ρ),complex(s.ρrhs),dt,s)
-  elseif Integrator == :Adams_Bashforth3rdO
-    Adams_Bashforth3rdO!(rawreal(s.u),rawreal(s.rhs),dt,s.rm1,s.rm2,s)
-    Adams_Bashforth3rdO!(rawreal(s.ρ),rawreal(s.ρrhs),dt,s.rrm1,s.rrm2,s)
+    A <: ScalarParameters && Adams_Bashforth3rdO!(rawreal(s.ρ),rawreal(s.ρrhs),dt,s.rrm1,s.rrm2,s)
   end
 end

@@ -6,7 +6,7 @@ macro def(name, definition) # thanks to http://www.stochasticlifestyle.com/type-
     end)
 end
 
-macro condthreads(condition,loop)
+macro condthreads(condition,loop) #does not work well because of #15276
   return esc(quote
     if $condition
       Threads.@threads $loop
@@ -19,19 +19,46 @@ end
 sim_par = (:Nx,:Ny,:Nz,:Lcs,:Lcv,:Nrx,:Lrs,:Lrv,:Tr,:Integrator)
 
 """
-Add the parameters defined in `sim_par` to the Symbol
+    @par(t::Symbol)
+Add the parameters defined in `sim_par` to the Symbol.
+
+# Examples
+```julia-repl
+julia> sim_par = (:Nx,:Ny,:Nz,:Lcs,:Lcv,:Nrx,:Lrs,:Lrv,:Tr,:Integrator)
+(:Nx, :Ny, :Nz, :Lcs, :Lcv, :Nrx, :Lrs, :Lrv, :Tr, :Integrator)
+
+julia> @macroexpand @par(Parameters)
+:(Parameters{Nx, Ny, Nz, Lcs, Lcv, Nrx, Lrs, Lrv, Tr, Integrator})
+
+julia> @macroexpand @par(BoussinesqParameters)
+:(BoussinesqParameters{Nx, Ny, Nz, Lcs, Lcv, Nrx, Lrs, Lrv, Tr, Integrator})
+```
 """
 macro par(t::Symbol)
   return esc(Expr(:curly,t,sim_par...))
 end
 
 """
-Add the parameters defined in `sim_par` after a `where` on a function definition
+---
+    @par(ex:Expr)
+Add the parameters defined in `sim_par` after a `where` on a function definition.
+
+# Examples
+```julia-repl
+julia> sim_par = (:Nx,:Ny,:Nz,:Lcs,:Lcv,:Nrx,:Lrs,:Lrv,:Tr,:Integrator)
+(:Nx, :Ny, :Nz, :Lcs, :Lcv, :Nrx, :Lrs, :Lrv, :Tr, :Integrator)
+
+julia> @macroexpand @par function test(s::@par(Parameters),b::Array{T,N}) where {T,N}; return 1; end
+:(function test(s::Parameters{Nx, Ny, Nz, Lcs, Lcv, Nrx, Lrs, Lrv, Tr, Integrator}, b::Array{T, N}) where {Nx, Ny, Nz, Lcs, Lcv, Nrx, Lrs, Lrv, Tr, Integrator, T, N} # REPL[1], line 1:
+return 1
+end)
+```
 """
 macro par(ex::Expr)
   if ex.head == :function
     if ex.args[1].head == :where
-      append!(ex.args[1].args,sim_par)
+      # append!(ex.args[1].args,sim_par)
+      ex.args[1].args = vcat(ex.args[1].args[1], sim_par..., ex.args[1].args[2:end]) # This way the parameters are available to the existing parameters
     elseif ex.args[1].head == :call
       ex.args[1] = Expr(:where, ex.args[1], sim_par...) 
     end
