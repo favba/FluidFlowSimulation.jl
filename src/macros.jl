@@ -55,7 +55,7 @@ end)
 ```
 """
 macro par(ex::Expr)
-  if ex.head == :function
+  if ex.head == :function || ex.head == :(=)
     if ex.args[1].head == :where
       # append!(ex.args[1].args,sim_par)
       ex.args[1].args = vcat(ex.args[1].args[1], sim_par..., ex.args[1].args[2:end]) # This way the parameters are available to the existing parameters
