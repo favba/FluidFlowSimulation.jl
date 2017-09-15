@@ -197,18 +197,18 @@ end
 
 function parameters(d::Dict)
 
-  nx = parse(Int,d["nx"])
-  ny = parse(Int,d["ny"])
-  nz = parse(Int,d["nz"])
-  lx = parse(Float64,d["xDomainSize"])
-  ly = parse(Float64,d["yDomainSize"])
-  lz = parse(Float64,d["zDomainSize"])
-  ν = parse(Float64,d["kinematicViscosity"])
+  nx = parse(Int,d[:nx])
+  ny = parse(Int,d[:ny])
+  nz = parse(Int,d[:nz])
+  lx = parse(Float64,d[:xDomainSize])
+  ly = parse(Float64,d[:yDomainSize])
+  lz = parse(Float64,d[:zDomainSize])
+  ν = parse(Float64,d[:kinematicViscosity])
   u = VectorField("u1.0","u2.0","u3.0",nx,ny,nz)
 
 
-  if haskey(d,"threaded")
-    threaded = parse(d["threaded"])
+  if haskey(d,:threaded)
+    threaded = parse(d[:threaded])
     threaded && FFTW.set_num_threads(Threads.nthreads())
   else
     threaded = false
@@ -216,16 +216,16 @@ function parameters(d::Dict)
 
   isfile("fftw_wisdom") && FFTW.import_wisdom("fftw_wisdom")
 
-  if haskey(d,"model")
-    model = Symbol(d["model"])
+  if haskey(d,:model)
+    model = Symbol(d[:model])
     if model == :PassiveScalar
-      α = ν/parse(Float64,d["Pr"])
-      dρdz = parse(Float64,d["densityGradient"])/parse(Float64,d["referenceDensity"])
+      α = ν/parse(Float64,d[:Pr])
+      dρdz = parse(Float64,d[:densityGradient])/parse(Float64,d[:referenceDensity])
       s = PassiveScalarParameters(u,nx,ny,nz,lx,ly,lz,ν,PaddedArray(zeros(nx,ny,nz)),α,dρdz,threaded)
     elseif model == :Boussinesq 
-      α = ν/parse(Float64,d["Pr"])
-      dρdz = parse(Float64,d["densityGradient"])/parse(Float64,d["referenceDensity"])
-      g = parse(Float64,d["zAcceleration"])
+      α = ν/parse(Float64,d[:Pr])
+      dρdz = parse(Float64,d[:densityGradient])/parse(Float64,d[:referenceDensity])
+      g = parse(Float64,d[:zAcceleration])
       s = BoussinesqParameters(u,nx,ny,nz,lx,ly,lz,ν,PaddedArray(zeros(nx,ny,nz)),α,dρdz,g,threaded)
     else
       error("Unkown Model in global file")

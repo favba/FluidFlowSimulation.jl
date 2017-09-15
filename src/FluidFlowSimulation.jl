@@ -19,7 +19,7 @@ using .ReadGlobal
 function run_simulation()
   par = readglobal()
   s = parameters(par)
-  run_simulation(s,parse(Int,par["dtStat"]),parse(Int,par["writeTime"]),parse(Int,par["Nt"]),parse(Float64,par["dt"]))
+  run_simulation(s,parse(Int,par[:dtStat]),parse(Int,par[:writeTime]),parse(Int,par[:Nt]),parse(Float64,par[:dt]))
 end
 
 function run_simulation(s::AbstractParameters,dtStats::Integer,dtOutput::Integer,totalnsteps::Integer,dt::Real)
