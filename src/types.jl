@@ -214,7 +214,7 @@ function parameters(d::Dict)
     threaded = false
   end
   
-  haskey(d,:time_integrator) ? (integrator = Symbol(d[:time_integrator])) : (integrator = :Adams_Bashforth3rdO)
+  haskey(d,:timeIntegrator) ? (integrator = Symbol(d[:timeIntegrator])) : (integrator = :Adams_Bashforth3rdO)
   integrator in (:Euller,:Adams_Bashforth3rdO) || error("Unkown time integration method in global file: $integrator")
 
   isfile("fftw_wisdom") && FFTW.import_wisdom("fftw_wisdom")
