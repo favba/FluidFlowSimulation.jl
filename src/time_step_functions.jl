@@ -1,4 +1,4 @@
-function Euller!(u::AbstractArray{Float64,N},rhs::AbstractArray,dt::Real,s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}) where {N,Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+@par function Euller!(u::AbstractArray{Float64,N},rhs::AbstractArray,dt::Real,s::@par(AbstractParameters)) where {N}
   if Tr
     _tEuller!(u,rhs,dt,s)
  else
@@ -10,14 +10,14 @@ function Euller!(u::AbstractArray{Float64,N},rhs::AbstractArray,dt::Real,s::Abst
   return nothing
 end
 
-function _tEuller!(u::AbstractArray{Float64,N},rhs::AbstractArray,dt::Real,s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}) where {N,Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+@par function _tEuller!(u::AbstractArray{Float64,N},rhs::AbstractArray,dt::Real,s::@par(AbstractParameters)) where {N}
   Threads.@threads for i in 1:(N==3 ? Lrs : Lrv)
     #@inbounds u[i] += dt*rhs[i]
     @inbounds u[i] = muladd(dt,rhs[i],u[i])
   end
 end
 
-function Adams_Bashforth3rdO!(u::AbstractArray{Float64,N}, rhs::AbstractArray, dt::Real, rm1::AbstractArray, rm2::AbstractArray, s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}) where {N,Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+@par function Adams_Bashforth3rdO!(u::AbstractArray{Float64,N}, rhs::AbstractArray, dt::Real, rm1::AbstractArray, rm2::AbstractArray, s::@par(AbstractParameters)) where {N}
   dt12 = dt/12
 
   if Tr
@@ -34,7 +34,7 @@ function Adams_Bashforth3rdO!(u::AbstractArray{Float64,N}, rhs::AbstractArray, d
   return nothing
 end
 
-function _tAdams_Bashforth3rdO!(u::AbstractArray{Float64,N}, rhs::AbstractArray, dt12::Real, rm1::AbstractArray, rm2::AbstractArray, s::AbstractParameters{Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}) where {N,Nx,Ny,Nz,Lcs,Lcv,Nrx,Lrs,Lrv,Tr}
+@par function _tAdams_Bashforth3rdO!(u::AbstractArray{Float64,N}, rhs::AbstractArray, dt12::Real, rm1::AbstractArray, rm2::AbstractArray, s::@par(AbstractParameters)) where {N}
     Threads.@threads for i in 1:(N==3 ? Lrs : Lrv)
       #@inbounds u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
       @inbounds u[i] = muladd(muladd(23, rhs[i], muladd(-16, rm1[i], 5rm2[i])), dt12, u[i])
