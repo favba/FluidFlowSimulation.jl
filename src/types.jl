@@ -90,14 +90,14 @@ struct @par(Parameters) <: @par(AbstractParameters)
 
 end
 
-function Parameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,tr::Bool) 
+function Parameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,tr::Bool,integrator::Symbol) 
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
   nrx = 2*ncx
   lrs = 2*lcs
   lrv = 2*lcv
-  return Parameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv,tr,:Adams_Bashforth3rdO}(u,nx,ny,nz,lx,ly,lz,ν)
+  return Parameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv,tr,integrator}(u,nx,ny,nz,lx,ly,lz,ν)
 end
 
 abstract type @par(ScalarParameters) <: @par(AbstractParameters) end
@@ -138,14 +138,14 @@ struct @par(PassiveScalarParameters) <: @par(ScalarParameters)
 
 end
 
-function PassiveScalarParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, α::Real,dρdz::Real,tr::Bool) 
+function PassiveScalarParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, α::Real,dρdz::Real,tr::Bool,integrator::Symbol) 
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
   nrx = 2*ncx
   lrs = 2*lcs
   lrv = 2*lcv
-  return PassiveScalarParameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv,tr,:Adams_Bashforth3rdO}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz)
+  return PassiveScalarParameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv,tr,integrator}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz)
 end
 
 struct @par(BoussinesqParameters) <: @par(ScalarParameters)
@@ -185,14 +185,14 @@ struct @par(BoussinesqParameters) <: @par(ScalarParameters)
 
 end
 
-function BoussinesqParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, dρdz::Real,α::Real,g::Real,tr::Bool) 
+function BoussinesqParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, dρdz::Real,α::Real,g::Real,tr::Bool,integrator::Symbol) 
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
   nrx = 2*ncx
   lrs = 2*lcs
   lrv = 2*lcv
-  return BoussinesqParameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv,tr,:Adams_Bashforth3rdO}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz,g)
+  return BoussinesqParameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv,tr,integrator}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz,g)
 end
 
 function parameters(d::Dict)
@@ -213,6 +213,9 @@ function parameters(d::Dict)
   else
     threaded = false
   end
+  
+  haskey(d,:time_integrator) ? (integrator = Symbol(d[:time_integrator])) : (integrator = :Adams_Bashforth3rdO)
+  integrator in (:Euller,:Adams_Bashforth3rdO) || error("Unkown time integration method in global file: $integrator")
 
   isfile("fftw_wisdom") && FFTW.import_wisdom("fftw_wisdom")
 
@@ -221,17 +224,17 @@ function parameters(d::Dict)
     if model == :PassiveScalar
       α = ν/parse(Float64,d[:Pr])
       dρdz = parse(Float64,d[:densityGradient])/parse(Float64,d[:referenceDensity])
-      s = PassiveScalarParameters(u,nx,ny,nz,lx,ly,lz,ν,PaddedArray(zeros(nx,ny,nz)),α,dρdz,threaded)
+      s = PassiveScalarParameters(u,nx,ny,nz,lx,ly,lz,ν,PaddedArray(zeros(nx,ny,nz)),α,dρdz,threaded,integrator)
     elseif model == :Boussinesq 
       α = ν/parse(Float64,d[:Pr])
       dρdz = parse(Float64,d[:densityGradient])/parse(Float64,d[:referenceDensity])
       g = parse(Float64,d[:zAcceleration])
-      s = BoussinesqParameters(u,nx,ny,nz,lx,ly,lz,ν,PaddedArray(zeros(nx,ny,nz)),α,dρdz,g,threaded)
+      s = BoussinesqParameters(u,nx,ny,nz,lx,ly,lz,ν,PaddedArray(zeros(nx,ny,nz)),α,dρdz,g,threaded,integrator)
     else
-      error("Unkown Model in global file")
+      error("Unkown Model in global file: $model")
     end
   else
-    s = Parameters(u,nx,ny,nz,lx,ly,lz,ν,threaded)
+    s = Parameters(u,nx,ny,nz,lx,ly,lz,ν,threaded,integrator)
   end
 
   FFTW.export_wisdom("fftw_wisdom")
