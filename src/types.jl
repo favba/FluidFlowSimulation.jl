@@ -83,8 +83,8 @@ struct @par(Parameters) <: @par(AbstractParameters)
     p = plan_rfft!(aux,1:3,flags=FFTW.MEASURE)
     p.pinv = plan_irfft!(aux,1:3,flags=FFTW.MEASURE)
     ip = Base.DFT.ScaledPlan(FFTW.rFFTWPlan{Complex{Float64},FFTW.BACKWARD,false,4}(complex(aux), real(aux), 1:3, FFTW.MEASURE&FFTW.DESTROY_INPUT,FFTW.NO_TIMELIMIT),Base.DFT.normalization(Float64, size(real(aux)), 1:3))
-    rm1 = Array{Float64}((Nrx,Ny,Nz,4))
-    rm2 = Array{Float64}((Nrx,Ny,Nz,4))
+    rm1 = Array{Float64}((2Nx,Ny,Nz,4))
+    rm2 = Array{Float64}((2Nx,Ny,Nz,4))
     return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2)
   end
 
@@ -94,10 +94,9 @@ function Parameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
-  nrx = 2*ncx
   lrs = 2*lcs
   lrv = 2*lcv
-  return Parameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv,integrator}(u,nx,ny,nz,lx,ly,lz,ν)
+  return Parameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator}(u,nx,ny,nz,lx,ly,lz,ν)
 end
 
 abstract type @par(ScalarParameters) <: @par(AbstractParameters) end
@@ -125,13 +124,13 @@ struct @par(PassiveScalarParameters) <: @par(ScalarParameters)
     p = plan_rfft!(aux,1:3,flags=FFTW.MEASURE)
     p.pinv = plan_irfft!(aux,1:3,flags=FFTW.MEASURE)
     ip = Base.DFT.ScaledPlan(FFTW.rFFTWPlan{Complex{Float64},FFTW.BACKWARD,false,4}(complex(aux), real(aux), 1:3, FFTW.MEASURE&FFTW.DESTROY_INPUT,FFTW.NO_TIMELIMIT),Base.DFT.normalization(Float64, size(real(aux)), 1:3))
-    rm1 = Array{Float64}((Nrx,Ny,Nz,4))
-    rm2 = Array{Float64}((Nrx,Ny,Nz,4))
+    rm1 = Array{Float64}((2Nx,Ny,Nz,4))
+    rm2 = Array{Float64}((2Nx,Ny,Nz,4))
     ρrhs = similar(ρ)
     ps = plan_rfft!(ρrhs,flags=FFTW.MEASURE)
     ps.pinv = plan_irfft!(ρrhs,flags=FFTW.MEASURE)
-    rrm1 = Array{Float64}((Nrx,Ny,Nz))
-    rrm2 = Array{Float64}((Nrx,Ny,Nz))
+    rrm1 = Array{Float64}((2Nx,Ny,Nz))
+    rrm2 = Array{Float64}((2Nx,Ny,Nz))
 
     return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2,ρ,ps,α,dρdz, ρrhs, rrm1,rrm2)
   end
@@ -142,10 +141,9 @@ function PassiveScalarParameters(u::VectorField,nx::Integer,ny::Integer,nz::Inte
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
-  nrx = 2*ncx
   lrs = 2*lcs
   lrv = 2*lcv
-  return PassiveScalarParameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv,integrator}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz)
+  return PassiveScalarParameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz)
 end
 
 struct @par(BoussinesqParameters) <: @par(ScalarParameters)
@@ -172,13 +170,13 @@ struct @par(BoussinesqParameters) <: @par(ScalarParameters)
     p = plan_rfft!(aux,1:3,flags=FFTW.MEASURE)
     p.pinv = plan_irfft!(aux,1:3,flags=FFTW.MEASURE)
     ip = Base.DFT.ScaledPlan(FFTW.rFFTWPlan{Complex{Float64},FFTW.BACKWARD,false,4}(complex(aux), real(aux), 1:3, FFTW.MEASURE&FFTW.DESTROY_INPUT,FFTW.NO_TIMELIMIT),Base.DFT.normalization(Float64, size(real(aux)), 1:3))
-    rm1 = Array{Float64}((Nrx,Ny,Nz,4))
-    rm2 = Array{Float64}((Nrx,Ny,Nz,4))
+    rm1 = Array{Float64}((2Nx,Ny,Nz,4))
+    rm2 = Array{Float64}((2Nx,Ny,Nz,4))
     ρrhs = similar(ρ)
     ps = plan_rfft!(ρrhs,flags=FFTW.MEASURE)
     ps.pinv = plan_irfft!(ρrhs,flags=FFTW.MEASURE)
-    rrm1 = Array{Float64}((Nrx,Ny,Nz))
-    rrm2 = Array{Float64}((Nrx,Ny,Nz))
+    rrm1 = Array{Float64}((2Nx,Ny,Nz))
+    rrm2 = Array{Float64}((2Nx,Ny,Nz))
 
     return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2,ρ,ps,α,dρdz,g, ρrhs, rrm1,rrm2)
   end
@@ -189,10 +187,9 @@ function BoussinesqParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
-  nrx = 2*ncx
   lrs = 2*lcs
   lrv = 2*lcv
-  return BoussinesqParameters{ncx,ny,nz,lcs,lcv,nrx,lrs,lrv,integrator}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz,g)
+  return BoussinesqParameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz,g)
 end
 
 function parameters(d::Dict)
