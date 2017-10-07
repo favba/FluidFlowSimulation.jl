@@ -88,21 +88,6 @@ function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,kx::AbstractArr
 end
 
 @par function _add_viscosity!(rhs::AbstractArray,u::AbstractArray,mν::Real,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::@par(AbstractParameters))
-  if Tr
-    _tadd_viscosity!(rhs,u,mν,kx,ky,kz,s)
-  else
-    for k = 1:Nz
-      for j = 1:Ny
-        for i = 1:Nx
-          #@inbounds rhs[i,j,k] = (kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])*mν*u[i,j,k] + rhs[i,j,k]
-          @inbounds rhs[i,j,k] = muladd(muladd(kx[i], kx[i], muladd(ky[j], ky[j], kz[k]*kz[k])), mν*u[i,j,k], rhs[i,j,k])
-        end
-      end
-    end
-  end
-end
-
-@par function _tadd_viscosity!(rhs::AbstractArray,u::AbstractArray,mν::Real,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::@par(AbstractParameters))
   Threads.@threads for k = 1:Nz
     for j = 1:Ny
       for i = 1:Nx
@@ -118,24 +103,6 @@ function add_scalar_difusion!(rhs::AbstractArray,u::AbstractArray,ν::Real,kx::A
 end
 
 @par function pressure_projection!(rhsx,rhsy,rhsz,kx,ky,kz,s::@par(AbstractParameters))
-  if Tr
-    _tpressure_projection!(rhsx,rhsy,rhsz,kz,ky,kz,s)
-  else
-    for k in 2:Nz
-      for j in 2:Ny
-        for i in 2:Nx
-          #@inbounds p1 = -(kx[i]*rhsx[i,j,k] + ky[j]*rhsy[i,j,k] + kz[k]*rhsz[i,j,k])/(kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])
-          @inbounds p1 = -muladd(kx[i], rhsx[i,j,k], muladd(ky[j], rhsy[i,j,k], kz[k]*rhsz[i,j,k]))/muladd(kx[i], kx[i], muladd(ky[j], ky[j],  kz[k]*kz[k]))
-          @inbounds rhsx[i,j,k] = muladd(kx[i],p1,rhsx[i,j,k])
-          @inbounds rhsy[i,j,k] = muladd(ky[j],p1,rhsy[i,j,k])
-          @inbounds rhsz[i,j,k] = muladd(kz[k],p1,rhsz[i,j,k])
-        end
-      end
-    end
-  end
-end
-
-@par function _tpressure_projection!(rhsx,rhsy,rhsz,kx,ky,kz,s::@par(AbstractParameters))
   Threads.@threads for k in 2:Nz
     for j in 2:Ny
       for i in 2:Nx
@@ -150,16 +117,6 @@ end
 end
 
 @par function addgravity!(rhs,ρ,g::Real,s::@par(BoussinesqParameters))
-  if Tr
-    _taddgravity!(rhs,ρ,g,s)
-  else
-    for i=1:Lcs
-      @inbounds rhs[i] = muladd(ρ[i],g,rhs[i])
-    end
-  end
-end
-
-@par function _taddgravity!(rhs,ρ,g::Real,s::@par(BoussinesqParameters))
   Threads.@threads for i=1:Lcs
     @inbounds rhs[i] = muladd(ρ[i],g,rhs[i])
   end
