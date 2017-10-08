@@ -14,11 +14,9 @@ function stats(s::AbstractParameters,init::Integer,dt::Real)
 end
 
 function kinetic_energy(s::AbstractParameters)
-  @views begin
-  u2 = mean(x->x^2,s.u.rx[1:end-2,:,:])
-  v2 = mean(x->x^2,s.u.ry[1:end-2,:,:])
-  w2 = mean(x->x^2,s.u.rz[1:end-2,:,:])
-  end
+  u2 = tmean(x->x^2,s.u.rx,s)
+  v2 = tmean(x->x^2,s.u.ry,s)
+  w2 = tmean(x->x^2,s.u.rz,s)
   return u2,v2,w2
 end
 
@@ -31,7 +29,7 @@ function enstrophy(s::AbstractParameters)
   curl!(rhs,a,s)
   s.p\rhs
   @. rhs.rx = rhs.rx^2 + rhs.ry^2 + rhs.rz^2
-  @views ω = mean(rhs.rx[1:end-2,:,:])
+  ω = tmean(rhs.rx,s)
   return ω
 end
 
@@ -52,7 +50,20 @@ function stats(s::ScalarParameters,init::Integer,dt::Real)
   end
 end
 
-function ape(s::ScalarParameters)
-  @views ans = mean(x->x^2,real(s.ρ)[1:end-2,:,:])
-  return ans
+ape(s::ScalarParameters) = tmean(x->x^2,rawreal(s.ρ),s)
+
+@par function tmean(f::Function,x::AbstractArray{T,3},s::@par(AbstractParameters)) where {T<:Number}
+
+  result = zeros(T,Threads.nthreads())
+  Threads.@threads for k in 1:Nz
+    for j in 1:Ny
+      for i in 1:Nrx
+        result[Threads.threadid()] += f(x[i,j,k])::T
+      end
+    end
+  end
+
+  return sum(result)/(Nrx*Ny*Nz)
 end
+
+tmean(x::AbstractArray,s::AbstractParameters) = tmean(identity,x,s)
