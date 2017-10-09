@@ -58,7 +58,7 @@ ape(s::ScalarParameters) = tmean(x->x^2,rawreal(s.ρ),s)
   Threads.@threads for k in 1:Nz
     for j in 1:Ny
       for i in 1:Nrx
-        result[Threads.threadid()] += f(x[i,j,k])::T
+        @inbounds result[Threads.threadid()] += f(x[i,j,k])::T
       end
     end
   end
