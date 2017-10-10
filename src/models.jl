@@ -55,30 +55,8 @@ function compute_nonlinear!(s::A) where {A<:AbstractParameters}
   return nothing
 end
 
-@par function dealias!(rhs::AbstractArray{T,4},s::@par(AbstractParameters)) where {T<:Complex}
-  @inbounds for l=1:3
-  for k in (div(Nz,3)+2):(div(2Nz,3)+1)
-    for j in 1:Ny
-      for i in 1:Nx
-        rhs[i,j,k,l] = zero(T)
-      end
-    end
-  end
-  for k in 1:Nz
-    for j in (div(Ny,3)+2):(div(2Ny,3)+1)
-      for i in 1:Nx
-        rhs[i,j,k,l] = zero(T)
-      end
-    end
-  end
-  for k in 1:Nz
-    for j in 1:Ny
-      for i in (div(2Nx,3)+1):Nx
-        rhs[i,j,k,l] = zero(T)
-      end
-    end
-  end
-  end
+@inline @par function dealias!(rhs::AbstractArray{T,4},s::@par(AbstractParameters)) where {T<:Complex}
+  rhs[s.dealias] = zero(T)
 end
 
 function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::AbstractParameters)
