@@ -84,14 +84,14 @@ struct @par(Parameters) <: @par(AbstractParameters)
     p = plan_rfft!(aux,1:3,flags=FFTW.MEASURE)
     p.pinv = plan_irfft!(aux,1:3,flags=FFTW.MEASURE)
     ip = Base.DFT.ScaledPlan(FFTW.rFFTWPlan{Complex{Float64},FFTW.BACKWARD,false,4}(complex(aux), real(aux), 1:3, FFTW.MEASURE&FFTW.DESTROY_INPUT,FFTW.NO_TIMELIMIT),Base.DFT.normalization(Float64, size(real(aux)), 1:3))
-    rm1 = Array{Float64}((2Nx,Ny,Nz,4))
-    rm2 = Array{Float64}((2Nx,Ny,Nz,4))
+    rm1 = Array{Float64}((2Nx,Ny,Nz,3))
+    rm2 = Array{Float64}((2Nx,Ny,Nz,3))
 
     dealias = BitArray(Nx,Ny,Nz,3)
     cutoff = (2kx[end]/3)^2
-    @. dealias[:,:,:,1] = kx^2 + ky^2 + kz^2 > cutoff
-    @. dealias[:,:,:,2] = kx^2 + ky^2 + kz^2 > cutoff
-    @. dealias[:,:,:,3] = kx^2 + ky^2 + kz^2 > cutoff
+    @. dealias[:,:,:,1] = (kx^2 + ky^2 + kz^2) > cutoff
+    @. dealias[:,:,:,2] = (kx^2 + ky^2 + kz^2) > cutoff
+    @. dealias[:,:,:,3] = (kx^2 + ky^2 + kz^2) > cutoff
     return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2,dealias)
   end
 
@@ -131,8 +131,8 @@ struct @par(PassiveScalarParameters) <: @par(ScalarParameters)
     p = plan_rfft!(aux,1:3,flags=FFTW.MEASURE)
     p.pinv = plan_irfft!(aux,1:3,flags=FFTW.MEASURE)
     ip = Base.DFT.ScaledPlan(FFTW.rFFTWPlan{Complex{Float64},FFTW.BACKWARD,false,4}(complex(aux), real(aux), 1:3, FFTW.MEASURE&FFTW.DESTROY_INPUT,FFTW.NO_TIMELIMIT),Base.DFT.normalization(Float64, size(real(aux)), 1:3))
-    rm1 = Array{Float64}((2Nx,Ny,Nz,4))
-    rm2 = Array{Float64}((2Nx,Ny,Nz,4))
+    rm1 = Array{Float64}((2Nx,Ny,Nz,3))
+    rm2 = Array{Float64}((2Nx,Ny,Nz,3))
     ρrhs = similar(ρ)
     ps = plan_rfft!(ρrhs,flags=FFTW.MEASURE)
     ps.pinv = plan_irfft!(ρrhs,flags=FFTW.MEASURE)
@@ -141,9 +141,9 @@ struct @par(PassiveScalarParameters) <: @par(ScalarParameters)
 
     dealias = BitArray(Nx,Ny,Nz,3)
     cutoff = (2kx[end]/3)^2
-    @. dealias[:,:,:,1] = kx^2 + ky^2 + kz^2 > cutoff
-    @. dealias[:,:,:,2] = kx^2 + ky^2 + kz^2 > cutoff
-    @. dealias[:,:,:,3] = kx^2 + ky^2 + kz^2 > cutoff
+    @. dealias[:,:,:,1] = (kx^2 + ky^2 + kz^2) > cutoff
+    @. dealias[:,:,:,2] = (kx^2 + ky^2 + kz^2) > cutoff
+    @. dealias[:,:,:,3] = (kx^2 + ky^2 + kz^2) > cutoff
 
     return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2,dealias,ρ,ps,α,dρdz, ρrhs, rrm1,rrm2)
   end
@@ -183,8 +183,8 @@ struct @par(BoussinesqParameters) <: @par(ScalarParameters)
     p = plan_rfft!(aux,1:3,flags=FFTW.MEASURE)
     p.pinv = plan_irfft!(aux,1:3,flags=FFTW.MEASURE)
     ip = Base.DFT.ScaledPlan(FFTW.rFFTWPlan{Complex{Float64},FFTW.BACKWARD,false,4}(complex(aux), real(aux), 1:3, FFTW.MEASURE&FFTW.DESTROY_INPUT,FFTW.NO_TIMELIMIT),Base.DFT.normalization(Float64, size(real(aux)), 1:3))
-    rm1 = Array{Float64}((2Nx,Ny,Nz,4))
-    rm2 = Array{Float64}((2Nx,Ny,Nz,4))
+    rm1 = Array{Float64}((2Nx,Ny,Nz,3))
+    rm2 = Array{Float64}((2Nx,Ny,Nz,3))
     ρrhs = similar(ρ)
     ps = plan_rfft!(ρrhs,flags=FFTW.MEASURE)
     ps.pinv = plan_irfft!(ρrhs,flags=FFTW.MEASURE)
@@ -193,9 +193,9 @@ struct @par(BoussinesqParameters) <: @par(ScalarParameters)
 
     dealias = BitArray(Nx,Ny,Nz,3)
     cutoff = (2kx[end]/3)^2
-    @. dealias[:,:,:,1] = kx^2 + ky^2 + kz^2 > cutoff
-    @. dealias[:,:,:,2] = kx^2 + ky^2 + kz^2 > cutoff
-    @. dealias[:,:,:,3] = kx^2 + ky^2 + kz^2 > cutoff
+    @. dealias[:,:,:,1] = (kx^2 + ky^2 + kz^2) > cutoff
+    @. dealias[:,:,:,2] = (kx^2 + ky^2 + kz^2) > cutoff
+    @. dealias[:,:,:,3] = (kx^2 + ky^2 + kz^2) > cutoff
 
     return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2,dealias,ρ,ps,α,dρdz,g, ρrhs, rrm1,rrm2)
   end
