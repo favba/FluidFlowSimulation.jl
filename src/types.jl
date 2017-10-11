@@ -89,21 +89,29 @@ struct @par(Parameters) <: @par(AbstractParameters)
 
     dealias = BitArray(Nx,Ny,Nz,3)
     cutoff = (2kx[end]/3)^2
-    @. dealias[:,:,:,1] = (kx^2 + ky^2 + kz^2) > cutoff
-    @. dealias[:,:,:,2] = (kx^2 + ky^2 + kz^2) > cutoff
-    @. dealias[:,:,:,3] = (kx^2 + ky^2 + kz^2) > cutoff
+
+    if Dealiastype == :sphere
+      @. dealias[:,:,:,1] = (kx^2 + ky^2 + kz^2) > cutoff
+      @. dealias[:,:,:,2] = (kx^2 + ky^2 + kz^2) > cutoff
+      @. dealias[:,:,:,3] = (kx^2 + ky^2 + kz^2) > cutoff
+    elseif Dealiastype == :cube
+      @. dealias[:,:,:,1] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
+      @. dealias[:,:,:,2] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
+      @. dealias[:,:,:,3] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
+    end
+
     return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2,dealias)
   end
 
 end
 
-function Parameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,integrator::Symbol) 
+function Parameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,integrator::Symbol,deat::Symbol) 
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
   lrs = 2*lcs
   lrv = 2*lcv
-  return Parameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator}(u,nx,ny,nz,lx,ly,lz,ν)
+  return Parameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,deat}(u,nx,ny,nz,lx,ly,lz,ν)
 end
 
 abstract type @par(ScalarParameters) <: @par(AbstractParameters) end
@@ -141,22 +149,30 @@ struct @par(PassiveScalarParameters) <: @par(ScalarParameters)
 
     dealias = BitArray(Nx,Ny,Nz,3)
     cutoff = (2kx[end]/3)^2
-    @. dealias[:,:,:,1] = (kx^2 + ky^2 + kz^2) > cutoff
-    @. dealias[:,:,:,2] = (kx^2 + ky^2 + kz^2) > cutoff
-    @. dealias[:,:,:,3] = (kx^2 + ky^2 + kz^2) > cutoff
+
+    if Dealiastype == :sphere
+      @. dealias[:,:,:,1] = (kx^2 + ky^2 + kz^2) > cutoff
+      @. dealias[:,:,:,2] = (kx^2 + ky^2 + kz^2) > cutoff
+      @. dealias[:,:,:,3] = (kx^2 + ky^2 + kz^2) > cutoff
+    elseif Dealiastype == :cube
+      @. dealias[:,:,:,1] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
+      @. dealias[:,:,:,2] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
+      @. dealias[:,:,:,3] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
+    end
+
 
     return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2,dealias,ρ,ps,α,dρdz, ρrhs, rrm1,rrm2)
   end
 
 end
 
-function PassiveScalarParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, α::Real,dρdz::Real,integrator::Symbol) 
+function PassiveScalarParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, α::Real,dρdz::Real,integrator::Symbol,deat::Symbol) 
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
   lrs = 2*lcs
   lrv = 2*lcv
-  return PassiveScalarParameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz)
+  return PassiveScalarParameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,deat}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz)
 end
 
 struct @par(BoussinesqParameters) <: @par(ScalarParameters)
@@ -193,22 +209,28 @@ struct @par(BoussinesqParameters) <: @par(ScalarParameters)
 
     dealias = BitArray(Nx,Ny,Nz,3)
     cutoff = (2kx[end]/3)^2
-    @. dealias[:,:,:,1] = (kx^2 + ky^2 + kz^2) > cutoff
-    @. dealias[:,:,:,2] = (kx^2 + ky^2 + kz^2) > cutoff
-    @. dealias[:,:,:,3] = (kx^2 + ky^2 + kz^2) > cutoff
+    if Dealiastype == :sphere
+      @. dealias[:,:,:,1] = (kx^2 + ky^2 + kz^2) > cutoff
+      @. dealias[:,:,:,2] = (kx^2 + ky^2 + kz^2) > cutoff
+      @. dealias[:,:,:,3] = (kx^2 + ky^2 + kz^2) > cutoff
+    elseif Dealiastype == :cube
+      @. dealias[:,:,:,1] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
+      @. dealias[:,:,:,2] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
+      @. dealias[:,:,:,3] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
+    end
 
     return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1,rm2,dealias,ρ,ps,α,dρdz,g, ρrhs, rrm1,rrm2)
   end
 
 end
 
-function BoussinesqParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, dρdz::Real,α::Real,g::Real,integrator::Symbol) 
+function BoussinesqParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, dρdz::Real,α::Real,g::Real,integrator::Symbol,deat::Symbol) 
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
   lrs = 2*lcs
   lrv = 2*lcv
-  return BoussinesqParameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz,g)
+  return BoussinesqParameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,deat}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz,g)
 end
 
 function parameters(d::Dict)
@@ -228,6 +250,8 @@ function parameters(d::Dict)
   haskey(d,:timeIntegrator) ? (integrator = Symbol(d[:timeIntegrator])) : (integrator = :Adams_Bashforth3rdO)
   integrator in (:Euller,:Adams_Bashforth3rdO) || error("Unkown time integration method in global file: $integrator")
 
+  haskey(d,:dealias) ? (Dealiastype = Symbol(d[:dealias])) : (Dealiastype = :sphere)
+
   isfile("fftw_wisdom") && FFTW.import_wisdom("fftw_wisdom")
 
   if haskey(d,:model)
@@ -235,17 +259,17 @@ function parameters(d::Dict)
     if model == :PassiveScalar
       α = ν/parse(Float64,d[:Pr])
       dρdz = parse(Float64,d[:densityGradient])/parse(Float64,d[:referenceDensity])
-      s = PassiveScalarParameters(u,nx,ny,nz,lx,ly,lz,ν,PaddedArray(zeros(nx,ny,nz)),α,dρdz,integrator)
+      s = PassiveScalarParameters(u,nx,ny,nz,lx,ly,lz,ν,PaddedArray(zeros(nx,ny,nz)),α,dρdz,integrator,Dealiastype)
     elseif model == :Boussinesq 
       α = ν/parse(Float64,d[:Pr])
       dρdz = parse(Float64,d[:densityGradient])/parse(Float64,d[:referenceDensity])
       g = parse(Float64,d[:zAcceleration])
-      s = BoussinesqParameters(u,nx,ny,nz,lx,ly,lz,ν,PaddedArray(zeros(nx,ny,nz)),α,dρdz,g,integrator)
+      s = BoussinesqParameters(u,nx,ny,nz,lx,ly,lz,ν,PaddedArray(zeros(nx,ny,nz)),α,dρdz,g,integrator,Dealiastype)
     else
       error("Unkown Model in global file: $model")
     end
   else
-    s = Parameters(u,nx,ny,nz,lx,ly,lz,ν,integrator)
+    s = Parameters(u,nx,ny,nz,lx,ly,lz,ν,integrator,Dealiastype)
   end
 
   FFTW.export_wisdom("fftw_wisdom")

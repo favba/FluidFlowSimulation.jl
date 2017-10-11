@@ -16,7 +16,7 @@ macro condthreads(condition,loop) #does not work well because of #15276
   end)
 end
 
-sim_par = (:Nx,:Ny,:Nz,:Lcs,:Lcv,:Nrx,:Lrs,:Lrv,:Integrator)
+sim_par = (:Nx,:Ny,:Nz,:Lcs,:Lcv,:Nrx,:Lrs,:Lrv,:Integrator,:Dealiastype)
 
 """
     @par(t::Symbol)
