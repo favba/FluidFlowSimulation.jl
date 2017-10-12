@@ -6,10 +6,14 @@
   if Integrator !== :Euller
     if init==0
       calculate_rhs!(s)
-      copy!(s.rm2,rawreal(s.rhs))
-      copy!(s.rm1,s.rm2)
+      mycopy!(s.rm2x,s.rhs.cx,s)
+      copy!(s.rm1x,s.rm2x)
+      mycopy!(s.rm2y,s.rhs.cy,s)
+      copy!(s.rm1y,s.rm2y)
+      mycopy!(s.rm2z,s.rhs.cz,s)
+      copy!(s.rm1z,s.rm2z)
       if A <: ScalarParameters
-        copy!(s.rrm1,rawreal(s.ρrhs))
+        mycopy!(s.rrm1,complex(s.ρrhs),s)
         copy!(s.rrm2,s.rrm1)
       end
     end
@@ -66,9 +70,9 @@ function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,kx::AbstractArr
 end
 
 @par function _add_viscosity!(rhs::AbstractArray,u::AbstractArray,mν::Real,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::@par(AbstractParameters))
-  Threads.@threads for k = 1:Nz
-    for j = 1:Ny
-      for i = 1:Nx
+  Threads.@threads for k in Kzr
+    for j in Kyr
+      @simd for i in Kxr
         #@inbounds rhs[i,j,k] = (kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])*mŒΩ*u[i,j,k] + rhs[i,j,k]
         @inbounds rhs[i,j,k] = muladd(muladd(kx[i], kx[i], muladd(ky[j], ky[j], kz[k]*kz[k])), mν*u[i,j,k], rhs[i,j,k])
       end
@@ -80,10 +84,11 @@ function add_scalar_difusion!(rhs::AbstractArray,u::AbstractArray,ν::Real,kx::A
   _add_viscosity!(rhs,u,-ν,kx,ky,kz,s)
 end
 
-@par function pressure_projection!(rhsx,rhsy,rhsz,kx,ky,kz,s::@par(AbstractParameters))
-  Threads.@threads for k in 2:Nz
-    for j in 2:Ny
-      for i in 2:Nx
+@fastmath @par function pressure_projection!(rhsx,rhsy,rhsz,kx,ky,kz,s::@par(AbstractParameters))
+  @inbounds a = (rhsx[1],rhsy[1],rhsz[1])
+  Threads.@threads for k in Kzr
+    for j in Kyr
+      for i in Kxr
         #@inbounds p1 = -(kx[i]*rhsx[i,j,k] + ky[j]*rhsy[i,j,k] + kz[k]*rhsz[i,j,k])/(kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])
         @inbounds p1 = -muladd(kx[i], rhsx[i,j,k], muladd(ky[j], rhsy[i,j,k], kz[k]*rhsz[i,j,k]))/muladd(kx[i], kx[i], muladd(ky[j], ky[j],  kz[k]*kz[k]))
         @inbounds rhsx[i,j,k] = muladd(kx[i],p1,rhsx[i,j,k])
@@ -92,11 +97,16 @@ end
       end
     end
   end
+  @inbounds rhsx[1],rhsy[1],rhsz[1] = a
 end
 
 @par function addgravity!(rhs,ρ,g::Real,s::@par(BoussinesqParameters))
-  Threads.@threads for i=1:Lcs
-    @inbounds rhs[i] = muladd(ρ[i],g,rhs[i])
+  Threads.@threads for k in Kzr
+    for j in Kyr
+      for i in Kxr
+        @inbounds rhs[i,j,k] = muladd(ρ[i,j,k],g,rhs[i,j,k])
+      end
+    end
   end
 end
 
@@ -105,7 +115,16 @@ end
     Euller!(rawreal(s.u),rawreal(s.rhs),dt,s)
     A <: ScalarParameters && Euller!(complex(s.ρ),complex(s.ρrhs),dt,s)
   elseif Integrator == :Adams_Bashforth3rdO
-    Adams_Bashforth3rdO!(rawreal(s.u),rawreal(s.rhs),dt,s.rm1,s.rm2,s)
-    A <: ScalarParameters && Adams_Bashforth3rdO!(rawreal(s.ρ),rawreal(s.ρrhs),dt,s.rrm1,s.rrm2,s)
+    Adams_Bashforth3rdO!(dt,s)
+  end
+end
+
+@par function mycopy!(rm::AbstractArray{T,3},rhs::AbstractArray{T,3},s::@par(AbstractParameters)) where T<:Complex
+  for (kk,k) in enumerate(Kzr)
+    for (jj,j) in enumerate(Kyr)
+      for i in Kxr
+        @inbounds rm[i,jj,kk] = rhs[i,j,k]
+      end
+    end
   end
 end

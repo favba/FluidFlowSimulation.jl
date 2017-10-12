@@ -1,18 +1,33 @@
 @par function cross!(outx::AbstractArray{T},outy::AbstractArray{T},outz::AbstractArray{T},
                   ux::AbstractArray{T},uy::AbstractArray{T},uz::AbstractArray{T},
                   vx::AbstractArray{T},vy::AbstractArray{T},vz::AbstractArray{T},
-                  s::@par(AbstractParameters)) where {T}
-  Threads.@threads for i in 1:(T<:Real ? Lrs : Lcs)
+                  s::@par(AbstractParameters)) where {T<:Real}
+  Threads.@threads for i in 1:Lrs
     @inbounds outx[i] = uy[i]*vz[i] - uz[i]*vy[i]
     @inbounds outy[i] = uz[i]*vx[i] - ux[i]*vz[i]
     @inbounds outz[i] = ux[i]*vy[i] - uy[i]*vx[i]
   end
 end
 
+@par function cross!(outx::AbstractArray{T},outy::AbstractArray{T},outz::AbstractArray{T},
+  ux::AbstractArray{T},uy::AbstractArray{T},uz::AbstractArray{T},
+  vx::AbstractArray{T},vy::AbstractArray{T},vz::AbstractArray{T},
+  s::@par(AbstractParameters)) where {T<:Complex}
+  Threads.@threads for k in Kzr
+    for j in Kyr
+      @simd for i in Kxr
+        @inbounds outx[i] = uy[i]*vz[i] - uz[i]*vy[i]
+        @inbounds outy[i] = uz[i]*vx[i] - ux[i]*vz[i]
+        @inbounds outz[i] = ux[i]*vy[i] - uy[i]*vx[i]
+      end
+    end
+  end
+end
+
 @par function crossk!(outx,outy,outz,ux,uy,uz,vx,vy,vz,s::@par(AbstractParameters)) 
-  Threads.@threads for k in 1:Nz
-    for j in 1:Ny
-      for i in 1:Nx
+  Threads.@threads for k in Kzr
+    for j in Kyr
+      @simd for i in Kxr 
         @inbounds outx[i,j,k] = im*(uy[j]*vz[i,j,k] - uz[k]*vy[i,j,k])
         @inbounds outy[i,j,k] = im*(uz[k]*vx[i,j,k] - ux[i]*vz[i,j,k])
         @inbounds outz[i,j,k] = im*(ux[i]*vy[i,j,k] - uy[j]*vx[i,j,k])
@@ -65,9 +80,9 @@ end
 
 @par function div!(out::AbstractArray{Complex128,3},kx,ky,kz,ux,uy,uz,w,mdρdz::Real, s::@par(ScalarParameters))
     mim::Complex128 = -im
-    Threads.@threads for k in 1:Nz
-      for j in 1:Ny
-        for i in 1:Nx
+    Threads.@threads for k in Kzr
+      for j in Kyr
+        @simd for i in Kxr
          # @inbounds out[i,j,k] = mim*(kx[i]*ux[i,j,k] + ky[j]*uy[i,j,k] + kz[k]*uz[i,j,k]) + mdœÅdz*w[i,j,k]
           @inbounds out[i,j,k] = muladd(mim,muladd(kx[i], ux[i,j,k], muladd(ky[j], uy[i,j,k], kz[k]*uz[i,j,k])), mdρdz*w[i,j,k])
         end
@@ -77,9 +92,9 @@ end
 
 @par function div!(out::AbstractArray{Complex128,3},kx,ky,kz,ux,uy,uz, s::@par(AbstractParameters))
   mim::Complex128 = -im
-    Threads.@threads for k in 1:Nz
-      for j in 1:Ny
-        for i in 1:Nx
+    Threads.@threads for k in Kzr
+      for j in Kyr
+        @simd for i in Kxr
           #@inbounds out[i,j,k] = -im*(kx[i]*ux[i,j,k] + ky[j]*uy[i,j,k] + kz[k]*uz[i,j,k])
           @inbounds out[i,j,k] = mim*muladd(kx[i], ux[i,j,k], muladd(ky[j], uy[i,j,k], kz[k]*uz[i,j,k]))
         end

@@ -6,19 +6,37 @@
   return nothing
 end
 
-@par function Adams_Bashforth3rdO!(u::AbstractArray{Float64,N}, rhs::AbstractArray, dt::Real, rm1::AbstractArray, rm2::AbstractArray, s::@par(AbstractParameters)) where {N}
+@par function Adams_Bashforth3rdO!(dt::Real, s::A) where {A<:@par(AbstractParameters)}
   dt12 = dt/12
 
-  _tAdams_Bashforth3rdO!(u,rhs,dt12,rm1,rm2,s)
+  _tAdams_Bashforth3rdO!(s.u.cx,s.rhs.cx,dt12,s.rm1x,s.rm2x,s)
+  _tAdams_Bashforth3rdO!(s.u.cy,s.rhs.cy,dt12,s.rm1y,s.rm2y,s)
+  _tAdams_Bashforth3rdO!(s.u.cz,s.rhs.cz,dt12,s.rm1z,s.rm2z,s)
 
-  copy!(rm2,rm1)
-  copy!(rm1,rhs)
+  copy!(s.rm2x,s.rm1x)
+  copy!(s.rm2y,s.rm1y)
+  copy!(s.rm2z,s.rm1z)
+  mycopy!(s.rm1x,s.rhs.cx,s)
+  mycopy!(s.rm1y,s.rhs.cy,s)
+  mycopy!(s.rm1z,s.rhs.cz,s)
+
+  if A<:ScalarParameters
+    _tAdams_Bashforth3rdO!(complex(s.ρ),complex(s.ρrhs),dt12,s.rrm1,s.rrm2,s)
+    copy!(s.rrm2,s.rrm1)
+    mycopy!(s.rrm1,complex(s.ρrhs),s)
+  end
+
   return nothing
 end
 
-@par function _tAdams_Bashforth3rdO!(u::AbstractArray{Float64,N}, rhs::AbstractArray, dt12::Real, rm1::AbstractArray, rm2::AbstractArray, s::@par(AbstractParameters)) where {N}
-    Threads.@threads for i in 1:(N==3 ? Lrs : Lrv)
-      #@inbounds u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
-      @inbounds u[i] = muladd(muladd(23, rhs[i], muladd(-16, rm1[i], 5rm2[i])), dt12, u[i])
+@par function _tAdams_Bashforth3rdO!(u::AbstractArray{Complex128,3}, rhs::AbstractArray, dt12::Real, rm1::AbstractArray, rm2::AbstractArray, s::@par(AbstractParameters)) 
+    Threads.@threads for kk in 1:length(Kzr)
+      k = Kzr[kk]
+      for (jj,j) in enumerate(Kyr)
+        for i in Kxr
+          #@inbounds u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
+          @inbounds u[i,j,k] = muladd(muladd(23, rhs[i,j,k], muladd(-16, rm1[i,jj,kk], 5rm2[i,jj,kk])), dt12, u[i,j,k])
+        end
+      end
     end
 end
