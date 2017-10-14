@@ -6,14 +6,14 @@
   if Integrator !== :Euller
     if init==0
       calculate_rhs!(s)
-      mycopy!(s.rm2x,s.rhs.cx,s)
+      mycopy!(s.rm2x,s.rhs.rx,s)
       copy!(s.rm1x,s.rm2x)
-      mycopy!(s.rm2y,s.rhs.cy,s)
+      mycopy!(s.rm2y,s.rhs.ry,s)
       copy!(s.rm1y,s.rm2y)
-      mycopy!(s.rm2z,s.rhs.cz,s)
+      mycopy!(s.rm2z,s.rhs.rz,s)
       copy!(s.rm1z,s.rm2z)
       if A <: ScalarParameters
-        mycopy!(s.rrm1,complex(s.ρrhs),s)
+        mycopy!(s.rrm1,rawreal(s.ρrhs),s)
         copy!(s.rrm2,s.rrm1)
       end
     end
@@ -123,6 +123,16 @@ end
   for (kk,k) in enumerate(Kzr)
     for (jj,j) in enumerate(Kyr)
       for i in Kxr
+        @inbounds rm[i,jj,kk] = rhs[i,j,k]
+      end
+    end
+  end
+end
+
+@par function mycopy!(rm::AbstractArray{T,3},rhs::AbstractArray{T,3},s::@par(AbstractParameters)) where T<:Real
+  for (kk,k) in enumerate(Kzr)
+    for (jj,j) in enumerate(Kyr)
+      for i in 1:(2length(Kxr))
         @inbounds rm[i,jj,kk] = rhs[i,j,k]
       end
     end

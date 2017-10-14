@@ -63,12 +63,12 @@ abstract type @par(AbstractParameters) end
   kz::SArray{Tuple{1,1,Nz},Float64,3,Nz}
   p::Base.DFT.FFTW.rFFTWPlan{Float64,-1,true,4}
   ip::Base.DFT.ScaledPlan{Complex{Float64},Base.DFT.FFTW.rFFTWPlan{Complex{Float64},1,false,4},Float64}
-  rm1x::Array{Complex128,3}
-  rm1y::Array{Complex128,3}
-  rm1z::Array{Complex128,3}
-  rm2x::Array{Complex128,3}
-  rm2y::Array{Complex128,3}
-  rm2z::Array{Complex128,3}
+  rm1x::Array{Float64,3}
+  rm1y::Array{Float64,3}
+  rm1z::Array{Float64,3}
+  rm2x::Array{Float64,3}
+  rm2y::Array{Float64,3}
+  rm2z::Array{Float64,3}
   dealias::BitArray{4}
   reduction::Vector{Float64}
 end
@@ -89,12 +89,12 @@ struct @par(Parameters) <: @par(AbstractParameters)
     p = plan_rfft!(aux,1:3,flags=FFTW.MEASURE)
     p.pinv = plan_irfft!(aux,1:3,flags=FFTW.MEASURE)
     ip = Base.DFT.ScaledPlan(FFTW.rFFTWPlan{Complex{Float64},FFTW.BACKWARD,false,4}(complex(aux), real(aux), 1:3, FFTW.MEASURE&FFTW.DESTROY_INPUT,FFTW.NO_TIMELIMIT),Base.DFT.normalization(Float64, size(real(aux)), 1:3))
-    rm1x = Array{Complex128}(length(Kxr),length(Kyr),length(Kzr))
-    rm1y = Array{Complex128}(length(Kxr),length(Kyr),length(Kzr))
-    rm1z = Array{Complex128}(length(Kxr),length(Kyr),length(Kzr))
-    rm2x = Array{Complex128}(length(Kxr),length(Kyr),length(Kzr))
-    rm2y = Array{Complex128}(length(Kxr),length(Kyr),length(Kzr))
-    rm2z = Array{Complex128}(length(Kxr),length(Kyr),length(Kzr))
+    rm1x = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
+    rm1y = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
+    rm1z = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
+    rm2x = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
+    rm2y = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
+    rm2z = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
 
     dealias = BitArray(Nx,Ny,Nz,3)
     cutoff = (2kx[end]/3)^2
@@ -138,8 +138,8 @@ struct @par(PassiveScalarParameters) <: @par(ScalarParameters)
   α::Float64 #Difusitivity = ν/Pr  
   dρdz::Float64  
   ρrhs::PaddedArray{Float64,3,false}
-  rrm1::Array{Complex128,3}
-  rrm2::Array{Complex128,3}
+  rrm1::Array{Float64,3}
+  rrm2::Array{Float64,3}
 
   @par function @par(PassiveScalarParameters)(u::VectorField, nx::Integer, ny::Integer, nz::Integer, lx::Real, ly::Real, lz::Real, ν::Real, ρ::PaddedArray, α::Real,dρdz::Real) 
     
@@ -154,17 +154,17 @@ struct @par(PassiveScalarParameters) <: @par(ScalarParameters)
     p = plan_rfft!(aux,1:3,flags=FFTW.MEASURE)
     p.pinv = plan_irfft!(aux,1:3,flags=FFTW.MEASURE)
     ip = Base.DFT.ScaledPlan(FFTW.rFFTWPlan{Complex{Float64},FFTW.BACKWARD,false,4}(complex(aux), real(aux), 1:3, FFTW.MEASURE&FFTW.DESTROY_INPUT,FFTW.NO_TIMELIMIT),Base.DFT.normalization(Float64, size(real(aux)), 1:3))
-    rm1x = Array{Complex128}(length(Kxr),length(Kyr),length(Kzr))
-    rm1y = Array{Complex128}(length(Kxr),length(Kyr),length(Kzr))
-    rm1z = Array{Complex128}(length(Kxr),length(Kyr),length(Kzr))
-    rm2x = Array{Complex128}(length(Kxr),length(Kyr),length(Kzr))
-    rm2y = Array{Complex128}(length(Kxr),length(Kyr),length(Kzr))
-    rm2z = Array{Complex128}(length(Kxr),length(Kyr),length(Kzr))
+    rm1x = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
+    rm1y = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
+    rm1z = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
+    rm2x = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
+    rm2y = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
+    rm2z = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
     ρrhs = similar(ρ)
     ps = plan_rfft!(ρrhs,flags=FFTW.MEASURE)
     ps.pinv = plan_irfft!(ρrhs,flags=FFTW.MEASURE)
-    rrm1 = Array{Complex128}(length(Kxr),length(Kyr),length(Kzr))
-    rrm2 = Array{Complex128}(length(Kxr),length(Kyr),length(Kzr))
+    rrm1 = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
+    rrm2 = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
 
     dealias = BitArray(Nx,Ny,Nz,3)
     cutoff = (2kx[end]/3)^2
@@ -208,8 +208,8 @@ struct @par(BoussinesqParameters) <: @par(ScalarParameters)
   dρdz::Float64 #This is actually dρsdz/ρ₀
   g::Float64
   ρrhs::PaddedArray{Float64,3,false}
-  rrm1::Array{Complex128,3}
-  rrm2::Array{Complex128,3}
+  rrm1::Array{Float64,3}
+  rrm2::Array{Float64,3}
 
   @par function @par(BoussinesqParameters)(u::VectorField, nx::Integer, ny::Integer, nz::Integer, lx::Real, ly::Real, lz::Real, ν::Real, ρ::PaddedArray, α::Real, dρdz::Real, g::Real)
     
@@ -224,17 +224,17 @@ struct @par(BoussinesqParameters) <: @par(ScalarParameters)
     p = plan_rfft!(aux,1:3,flags=FFTW.MEASURE)
     p.pinv = plan_irfft!(aux,1:3,flags=FFTW.MEASURE)
     ip = Base.DFT.ScaledPlan(FFTW.rFFTWPlan{Complex{Float64},FFTW.BACKWARD,false,4}(complex(aux), real(aux), 1:3, FFTW.MEASURE&FFTW.DESTROY_INPUT,FFTW.NO_TIMELIMIT),Base.DFT.normalization(Float64, size(real(aux)), 1:3))
-    rm1x = Array{Complex128}(length(Kxr),length(Kyr),length(Kzr))
-    rm1y = Array{Complex128}(length(Kxr),length(Kyr),length(Kzr))
-    rm1z = Array{Complex128}(length(Kxr),length(Kyr),length(Kzr))
-    rm2x = Array{Complex128}(length(Kxr),length(Kyr),length(Kzr))
-    rm2y = Array{Complex128}(length(Kxr),length(Kyr),length(Kzr))
-    rm2z = Array{Complex128}(length(Kxr),length(Kyr),length(Kzr))
+    rm1x = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
+    rm1y = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
+    rm1z = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
+    rm2x = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
+    rm2y = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
+    rm2z = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
     ρrhs = similar(ρ)
     ps = plan_rfft!(ρrhs,flags=FFTW.MEASURE)
     ps.pinv = plan_irfft!(ρrhs,flags=FFTW.MEASURE)
-    rrm1 = Array{Complex128}(length(Kxr),length(Kyr),length(Kzr))
-    rrm2 = Array{Complex128}(length(Kxr),length(Kyr),length(Kzr))
+    rrm1 = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
+    rrm2 = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
 
     dealias = BitArray(Nx,Ny,Nz,3)
     cutoff = (2kx[end]/3)^2
