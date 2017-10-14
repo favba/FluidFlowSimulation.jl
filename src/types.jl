@@ -70,6 +70,7 @@ abstract type @par(AbstractParameters) end
   rm2y::Array{Complex128,3}
   rm2z::Array{Complex128,3}
   dealias::BitArray{4}
+  reduction::Vector{Float64}
 end
 
 struct @par(Parameters) <: @par(AbstractParameters)
@@ -107,8 +108,8 @@ struct @par(Parameters) <: @par(AbstractParameters)
       @. dealias[:,:,:,2] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
       @. dealias[:,:,:,3] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
     end
-
-    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1x,rm1y,rm1z,rm2x,rm2y,rm2z,dealias)
+    reduction = Vector{Float64}(Threads.nthreads())
+    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1x,rm1y,rm1z,rm2x,rm2y,rm2z,dealias,reduction)
   end
 
 end
@@ -177,9 +178,9 @@ struct @par(PassiveScalarParameters) <: @par(ScalarParameters)
       @. dealias[:,:,:,2] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
       @. dealias[:,:,:,3] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
     end
+    reduction = Vector{Float64}(Threads.nthreads())
 
-
-    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1x,rm1y,rm1z,rm2x,rm2y,rm2z,dealias,ρ,ps,α,dρdz, ρrhs, rrm1,rrm2)
+    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1x,rm1y,rm1z,rm2x,rm2y,rm2z,dealias,reduction,ρ,ps,α,dρdz, ρrhs, rrm1,rrm2)
   end
 
 end
@@ -246,8 +247,9 @@ struct @par(BoussinesqParameters) <: @par(ScalarParameters)
       @. dealias[:,:,:,2] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
       @. dealias[:,:,:,3] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
     end
+    reduction = Vector{Float64}(Threads.nthreads())
 
-    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1x,rm1y,rm1z,rm2x,rm2x,rm2z,dealias,ρ,ps,α,dρdz,g, ρrhs, rrm1,rrm2)
+    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1x,rm1y,rm1z,rm2x,rm2x,rm2z,dealias,reduction,ρ,ps,α,dρdz,g, ρrhs, rrm1,rrm2)
   end
 
 end

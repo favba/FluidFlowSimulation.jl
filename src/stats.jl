@@ -28,8 +28,7 @@ function enstrophy(s::AbstractParameters)
   s.p*a
   curl!(rhs,a,s)
   s.p\rhs
-  @. rhs.rx = rhs.rx^2 + rhs.ry^2 + rhs.rz^2
-  ω = tmean(rhs.rx,s)
+  ω = tmean((x,y,z)->(x^2+y^2+z^2),(rhs.rx,rhs.ry,rhs.rz),s)
   return ω
 end
 
@@ -54,7 +53,7 @@ ape(s::ScalarParameters) = tmean(x->x^2,rawreal(s.ρ),s)
 
 @par function tmean(f::Function,x::AbstractArray{T,3},s::@par(AbstractParameters)) where {T<:Number}
 
-  result = zeros(T,Threads.nthreads())
+  result = fill!(s.reduction,0.0)
   Threads.@threads for k in 1:Nz
     for j in 1:Ny
       @simd for i in 1:Nrx
@@ -67,3 +66,23 @@ ape(s::ScalarParameters) = tmean(x->x^2,rawreal(s.ρ),s)
 end
 
 tmean(x::AbstractArray,s::AbstractParameters) = tmean(identity,x,s)
+
+@inline @generated function getind(f::Function,x::NTuple{N,AbstractArray{T,3}},i::Int,j::Int,k::Int) where {T,N}
+  args = Array{Any,1}(N)
+  for l=1:N 
+   args[l] = :(x[$l][i,j,k])
+  end
+  return Expr(:call,:f,args...)
+end
+
+@par function tmean(f::Function,x::NTuple{N,AbstractArray{T,3}},s::@par(AbstractParameters)) where {T,N}
+   result = fill!(s.reduction,0.0)
+   Threads.@threads for k in 1:Nz
+     for j in 1:Ny
+       @simd for i in 1:Nrx
+         @inbounds result[Threads.threadid()] += getind(f,x,i,j,k)::T
+       end
+     end
+   end
+  return sum(result)/(Nrx*Ny*Nz)
+end
