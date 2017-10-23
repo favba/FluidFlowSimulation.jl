@@ -32,10 +32,10 @@ end
 
 function calculate_rhs!(s::A) where {A<:AbstractParameters}
   compute_nonlinear!(s)
-  add_viscosity!(s.rhs,s.u,s.ν,s.kx,s.ky,s.kz,s)
+  add_viscosity!(s.rhs,s.u,s.ν,s)
   A<:BoussinesqParameters && addgravity!(s.rhs.cz,complex(s.ρ),-s.g,s)
-  pressure_projection!(s.rhs.cx,s.rhs.cy,s.rhs.cz,s.kx,s.ky,s.kz,s)
-  A<:ScalarParameters && add_scalar_difusion!(complex(s.ρrhs),complex(s.ρ),s.α,s.kx,s.ky,s.kz,s)
+  pressure_projection!(s.rhs.cx,s.rhs.cy,s.rhs.cz,s)
+  A<:ScalarParameters && add_scalar_difusion!(complex(s.ρrhs),complex(s.ρ),s.α,s)
 end
 
 function compute_nonlinear!(s::A) where {A<:AbstractParameters}
@@ -53,7 +53,7 @@ function compute_nonlinear!(s::A) where {A<:AbstractParameters}
     s.p*s.aux
     dealias!(complex(s.aux),s)
     s.ps*s.ρ
-    div!(complex(s.ρrhs),s.kx,s.ky,s.kz,s.aux.cx,s.aux.cy,s.aux.cz,s.u.cz,-s.dρdz,s)
+    div!(complex(s.ρrhs),s.aux.cx,s.aux.cy,s.aux.cz,s.u.cz,-s.dρdz,s)
   end
   s.p*s.u
   return nothing
@@ -63,13 +63,13 @@ end
  @inbounds rhs[s.dealias] = zero(T)
 end
 
-function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::AbstractParameters)
-  _add_viscosity!(rhs.cx,u.cx,-ν,kx,ky,kz,s)
-  _add_viscosity!(rhs.cy,u.cy,-ν,kx,ky,kz,s)
-  _add_viscosity!(rhs.cz,u.cz,-ν,kx,ky,kz,s)
+function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,s::AbstractParameters)
+  _add_viscosity!(rhs.cx,u.cx,-ν,s)
+  _add_viscosity!(rhs.cy,u.cy,-ν,s)
+  _add_viscosity!(rhs.cz,u.cz,-ν,s)
 end
 
-@par function _add_viscosity!(rhs::AbstractArray,u::AbstractArray,mν::Real,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::@par(AbstractParameters))
+@par function _add_viscosity!(rhs::AbstractArray,u::AbstractArray,mν::Real,s::@par(AbstractParameters))
   Threads.@threads for k in Kzr
     for j in Kyr
       @simd for i in Kxr
@@ -80,11 +80,11 @@ end
   end
 end
 
-function add_scalar_difusion!(rhs::AbstractArray,u::AbstractArray,ν::Real,kx::AbstractArray,ky::AbstractArray,kz::AbstractArray,s::AbstractParameters)
-  _add_viscosity!(rhs,u,-ν,kx,ky,kz,s)
+function add_scalar_difusion!(rhs::AbstractArray,u::AbstractArray,ν::Real,s::AbstractParameters)
+  _add_viscosity!(rhs,u,-ν,s)
 end
 
-@fastmath @par function pressure_projection!(rhsx,rhsy,rhsz,kx,ky,kz,s::@par(AbstractParameters))
+@fastmath @par function pressure_projection!(rhsx,rhsy,rhsz,s::@par(AbstractParameters))
   @inbounds a = (rhsx[1],rhsy[1],rhsz[1])
   Threads.@threads for k in Kzr
     for j in Kyr

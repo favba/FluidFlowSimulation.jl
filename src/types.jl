@@ -58,9 +58,6 @@ abstract type @par(AbstractParameters) end
   ly::Float64
   lz::Float64
   ν::Float64
-  kx::SArray{Tuple{Nx,1,1},Float64,3,Nx}
-  ky::SArray{Tuple{1,Ny,1},Float64,3,Ny}
-  kz::SArray{Tuple{1,1,Nz},Float64,3,Nz}
   p::Base.DFT.FFTW.rFFTWPlan{Float64,-1,true,4}
   ip::Base.DFT.ScaledPlan{Complex{Float64},Base.DFT.FFTW.rFFTWPlan{Complex{Float64},1,false,4},Float64}
   rm1x::Array{Float64,3}
@@ -81,10 +78,6 @@ struct @par(Parameters) <: @par(AbstractParameters)
     rhs = similar(u)
     aux = similar(u)
 
-    kx = SArray{Tuple{Nx,1,1}}(reshape(rfftfreq(nx,lx),(Nx,1,1)))
-    ky = SArray{Tuple{1,Ny,1}}(reshape(fftfreq(ny,ly),(1,Ny,1)))
-    kz = SArray{Tuple{1,1,Nz}}(reshape(fftfreq(nz,lz),(1,1,Nz)))
-    
     aux = VectorField(PaddedArray(nx,ny,nz,3))
     p = plan_rfft!(aux,1:3,flags=FFTW.MEASURE)
     p.pinv = plan_irfft!(aux,1:3,flags=FFTW.MEASURE)
@@ -109,12 +102,12 @@ struct @par(Parameters) <: @par(AbstractParameters)
       @. dealias[:,:,:,3] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
     end
     reduction = Vector{Float64}(Threads.nthreads())
-    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1x,rm1y,rm1z,rm2x,rm2y,rm2z,dealias,reduction)
+    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,p,ip,rm1x,rm1y,rm1z,rm2x,rm2y,rm2z,dealias,reduction)
   end
 
 end
 
-function Parameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,integrator::Symbol,deat::Symbol) 
+function Parameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,integrator::Symbol,deat::Symbol,kx,ky,kz) 
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
@@ -126,7 +119,7 @@ function Parameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,
   kyr = SVector{length(ry),UInt32}(ry)
   rz = vcat(1:(div(nz,3)+1),(nz-div(nz,3)-1):nz)
   kzr = SVector{length(rz),UInt32}(rz)
-  return Parameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,deat,kxr,kyr,kzr}(u,nx,ny,nz,lx,ly,lz,ν)
+  return Parameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,deat,kxr,kyr,kzr,kx,ky,kz}(u,nx,ny,nz,lx,ly,lz,ν)
 end
 
 abstract type @par(ScalarParameters) <: @par(AbstractParameters) end
@@ -146,10 +139,6 @@ struct @par(PassiveScalarParameters) <: @par(ScalarParameters)
     rhs = similar(u)
     aux = similar(u)
 
-    kx = SArray{Tuple{Nx,1,1}}(reshape(rfftfreq(nx,lx),(Nx,1,1)))
-    ky = SArray{Tuple{1,Ny,1}}(reshape(fftfreq(ny,ly),(1,Ny,1)))
-    kz = SArray{Tuple{1,1,Nz}}(reshape(fftfreq(nz,lz),(1,1,Nz)))
-    
     aux = VectorField(PaddedArray(nx,ny,nz,3))
     p = plan_rfft!(aux,1:3,flags=FFTW.MEASURE)
     p.pinv = plan_irfft!(aux,1:3,flags=FFTW.MEASURE)
@@ -180,12 +169,12 @@ struct @par(PassiveScalarParameters) <: @par(ScalarParameters)
     end
     reduction = Vector{Float64}(Threads.nthreads())
 
-    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1x,rm1y,rm1z,rm2x,rm2y,rm2z,dealias,reduction,ρ,ps,α,dρdz, ρrhs, rrm1,rrm2)
+    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,p,ip,rm1x,rm1y,rm1z,rm2x,rm2y,rm2z,dealias,reduction,ρ,ps,α,dρdz, ρrhs, rrm1,rrm2)
   end
 
 end
 
-function PassiveScalarParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, α::Real,dρdz::Real,integrator::Symbol,deat::Symbol) 
+function PassiveScalarParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, α::Real,dρdz::Real,integrator::Symbol,deat::Symbol,kx,ky,kz) 
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
@@ -197,7 +186,7 @@ function PassiveScalarParameters(u::VectorField,nx::Integer,ny::Integer,nz::Inte
   kyr = SVector{length(ry),UInt32}(ry)
   rz = vcat(1:(div(nz,3)+1),(nz-div(nz,3)-1):nz)
   kzr = SVector{length(rz),UInt32}(rz)
-  return PassiveScalarParameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,deat,kxr,kyr,kzr}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz)
+  return PassiveScalarParameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,deat,kxr,kyr,kzr,kx,ky,kz}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz)
 end
 
 struct @par(BoussinesqParameters) <: @par(ScalarParameters)
@@ -216,10 +205,6 @@ struct @par(BoussinesqParameters) <: @par(ScalarParameters)
     rhs = similar(u)
     aux = similar(u)
 
-    kx = SArray{Tuple{Nx,1,1}}(reshape(rfftfreq(nx,lx),(Nx,1,1)))
-    ky = SArray{Tuple{1,Ny,1}}(reshape(fftfreq(ny,ly),(1,Ny,1)))
-    kz = SArray{Tuple{1,1,Nz}}(reshape(fftfreq(nz,lz),(1,1,Nz)))
-    
     aux = VectorField(PaddedArray(nx,ny,nz,3))
     p = plan_rfft!(aux,1:3,flags=FFTW.MEASURE)
     p.pinv = plan_irfft!(aux,1:3,flags=FFTW.MEASURE)
@@ -249,12 +234,12 @@ struct @par(BoussinesqParameters) <: @par(ScalarParameters)
     end
     reduction = Vector{Float64}(Threads.nthreads())
 
-    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,kx,ky,kz,p,ip,rm1x,rm1y,rm1z,rm2x,rm2x,rm2z,dealias,reduction,ρ,ps,α,dρdz,g, ρrhs, rrm1,rrm2)
+    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,p,ip,rm1x,rm1y,rm1z,rm2x,rm2x,rm2z,dealias,reduction,ρ,ps,α,dρdz,g, ρrhs, rrm1,rrm2)
   end
 
 end
 
-function BoussinesqParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, dρdz::Real,α::Real,g::Real,integrator::Symbol,deat::Symbol) 
+function BoussinesqParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, dρdz::Real,α::Real,g::Real,integrator::Symbol,deat::Symbol,kx,ky,kz) 
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
@@ -266,7 +251,7 @@ function BoussinesqParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer
   kyr = SVector{length(ry),UInt32}(ry)
   rz = vcat(1:(div(nz,3)+1),(nz-div(nz,3)-1):nz)
   kzr = SVector{length(rz),UInt32}(rz)
-  return BoussinesqParameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,deat,kxr,kyr,kzr}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz,g)
+  return BoussinesqParameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,deat,kxr,kyr,kzr,kx,ky,kz}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz,g)
 end
 
 function parameters(d::Dict)
@@ -280,6 +265,11 @@ function parameters(d::Dict)
   ν = parse(Float64,d[:kinematicViscosity])
   u = VectorField("u1.0","u2.0","u3.0",nx,ny,nz)
 
+  ncx = div(nx,2)+1
+
+  kx = SArray{Tuple{ncx,1,1}}(reshape(rfftfreq(nx,lx),(ncx,1,1)))
+  ky = SArray{Tuple{1,ny,1}}(reshape(fftfreq(ny,ly),(1,ny,1)))
+  kz = SArray{Tuple{1,1,nz}}(reshape(fftfreq(nz,lz),(1,1,nz)))
 
   FFTW.set_num_threads(Threads.nthreads())
   
@@ -295,17 +285,17 @@ function parameters(d::Dict)
     if model == :PassiveScalar
       α = ν/parse(Float64,d[:Pr])
       dρdz = parse(Float64,d[:densityGradient])/parse(Float64,d[:referenceDensity])
-      s = PassiveScalarParameters(u,nx,ny,nz,lx,ly,lz,ν,PaddedArray(zeros(nx,ny,nz)),α,dρdz,integrator,Dealiastype)
+      s = PassiveScalarParameters(u,nx,ny,nz,lx,ly,lz,ν,PaddedArray(zeros(nx,ny,nz)),α,dρdz,integrator,Dealiastype,kx,ky,kz)
     elseif model == :Boussinesq 
       α = ν/parse(Float64,d[:Pr])
       dρdz = parse(Float64,d[:densityGradient])/parse(Float64,d[:referenceDensity])
       g = parse(Float64,d[:zAcceleration])
-      s = BoussinesqParameters(u,nx,ny,nz,lx,ly,lz,ν,PaddedArray(zeros(nx,ny,nz)),α,dρdz,g,integrator,Dealiastype)
+      s = BoussinesqParameters(u,nx,ny,nz,lx,ly,lz,ν,PaddedArray(zeros(nx,ny,nz)),α,dρdz,g,integrator,Dealiastype,kx,ky,kz)
     else
       error("Unkown Model in global file: $model")
     end
   else
-    s = Parameters(u,nx,ny,nz,lx,ly,lz,ν,integrator,Dealiastype)
+    s = Parameters(u,nx,ny,nz,lx,ly,lz,ν,integrator,Dealiastype,kx,ky,kz)
   end
 
   FFTW.export_wisdom("fftw_wisdom")
@@ -316,3 +306,4 @@ end
 parameters() = parameters(readglobal())
 
 @par sizecomp(s::@par(AbstractParameters)) = (Kxr,Kyr,Kzr)
+@par wavenumber(s::@par(AbstractParameters)) = (kx,ky,kz)

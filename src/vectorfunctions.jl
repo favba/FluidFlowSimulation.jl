@@ -24,13 +24,13 @@ end
   end
 end
 
-@par function crossk!(outx,outy,outz,ux,uy,uz,vx,vy,vz,s::@par(AbstractParameters)) 
+@par function crossk!(outx,outy,outz,vx,vy,vz,s::@par(AbstractParameters)) 
   Threads.@threads for k in Kzr
     for j in Kyr
       @simd for i in Kxr 
-        @inbounds outx[i,j,k] = im*(uy[j]*vz[i,j,k] - uz[k]*vy[i,j,k])
-        @inbounds outy[i,j,k] = im*(uz[k]*vx[i,j,k] - ux[i]*vz[i,j,k])
-        @inbounds outz[i,j,k] = im*(ux[i]*vy[i,j,k] - uy[j]*vx[i,j,k])
+        @inbounds outx[i,j,k] = im*(ky[j]*vz[i,j,k] - kz[k]*vy[i,j,k])
+        @inbounds outy[i,j,k] = im*(kz[k]*vx[i,j,k] - kx[i]*vz[i,j,k])
+        @inbounds outz[i,j,k] = im*(kx[i]*vy[i,j,k] - ky[j]*vx[i,j,k])
       end
     end
   end  
@@ -47,7 +47,7 @@ function ccross!(out::VectorField,u::VectorField,v::VectorField,s::AbstractParam
 end
 
 function curl!(out::VectorField,u::VectorField,s::AbstractParameters)
-  crossk!(out.cx,out.cy,out.cz,s.kx,s.ky,s.kz,u.cx,u.cy,u.cz,s)
+  crossk!(out.cx,out.cy,out.cz,u.cx,u.cy,u.cz,s)
   return out
 end
 
@@ -78,7 +78,7 @@ end
   end
 end
 
-@par function div!(out::AbstractArray{Complex128,3},kx,ky,kz,ux,uy,uz,w,mdρdz::Real, s::@par(ScalarParameters))
+@par function div!(out::AbstractArray{Complex128,3},ux,uy,uz,w,mdρdz::Real, s::@par(ScalarParameters))
     mim::Complex128 = -im
     Threads.@threads for k in Kzr
       for j in Kyr
@@ -90,7 +90,7 @@ end
     end
 end
 
-@par function div!(out::AbstractArray{Complex128,3},kx,ky,kz,ux,uy,uz, s::@par(AbstractParameters))
+@par function div!(out::AbstractArray{Complex128,3},ux,uy,uz, s::@par(AbstractParameters))
   mim::Complex128 = -im
     Threads.@threads for k in Kzr
       for j in Kyr

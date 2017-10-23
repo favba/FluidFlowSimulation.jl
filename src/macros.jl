@@ -16,7 +16,14 @@ macro condthreads(condition,loop) #does not work well because of #15276
   end)
 end
 
-sim_par = (:Nx,:Ny,:Nz,:Lcs,:Lcv,:Nrx,:Lrs,:Lrv,:Integrator,:Dealiastype,:Kxr,:Kyr,:Kzr)
+sim_par = (:Nx,:Ny,:Nz,:Lcs,:Lcv,:Nrx,:Lrs,:Lrv,:Integrator,:Dealiastype,:Kxr,:Kyr,:Kzr,:kx,:ky,:kz)
+# Nx,Ny,Nz size of the grid in Fourier Space
+# Lcs = Nx*Ny*Nz; Lcv = Lcs*3
+# Nrx size of x direction in Real Space skipping padding. The same as :nx in global file
+# Lrs = (Nrx+2)*Ny*Nz; Lrv = 3*Nrx
+# Kxr,Kyr,Kzr vector of places that are not dealiased in Fourier Space, therefore only places that needs computation
+# kx,ky,kz wavenumber vectors.
+
 
 """
     @par(t::Symbol)
