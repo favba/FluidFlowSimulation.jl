@@ -18,6 +18,7 @@ end
 
 macro mthreads(ex)
   return esc(:(Threads.@threads $ex))
+  #return esc(ex)
 end
 
 sim_par = (:Nx,:Ny,:Nz,:Lcs,:Lcv,:Nrx,:Lrs,:Lrv,:Integrator,:Dealiastype,:Kxr,:Kyr,:Kzr,:kx,:ky,:kz)
