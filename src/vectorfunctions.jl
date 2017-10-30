@@ -2,7 +2,7 @@
                   ux::AbstractArray{T},uy::AbstractArray{T},uz::AbstractArray{T},
                   vx::AbstractArray{T},vy::AbstractArray{T},vz::AbstractArray{T},
                   s::@par(AbstractParameters)) where {T<:Real}
-  Threads.@threads for i in 1:Lrs
+  @mthreads for i in 1:Lrs
     @inbounds outx[i] = uy[i]*vz[i] - uz[i]*vy[i]
     @inbounds outy[i] = uz[i]*vx[i] - ux[i]*vz[i]
     @inbounds outz[i] = ux[i]*vy[i] - uy[i]*vx[i]
@@ -13,7 +13,7 @@ end
   ux::AbstractArray{T},uy::AbstractArray{T},uz::AbstractArray{T},
   vx::AbstractArray{T},vy::AbstractArray{T},vz::AbstractArray{T},
   s::@par(AbstractParameters)) where {T<:Complex}
-  Threads.@threads for k in Kzr
+  @mthreads for k in Kzr
     for j in Kyr
       @simd for i in Kxr
         @inbounds outx[i] = uy[i]*vz[i] - uz[i]*vy[i]
@@ -25,7 +25,7 @@ end
 end
 
 @par function crossk!(outx,outy,outz,vx,vy,vz,s::@par(AbstractParameters)) 
-  Threads.@threads for k in Kzr
+  @mthreads for k in Kzr
     for j in Kyr
       @simd for i in Kxr 
         @inbounds outx[i,j,k] = im*(ky[j]*vz[i,j,k] - kz[k]*vy[i,j,k])
@@ -73,14 +73,14 @@ function scalar_advection!(out::VectorField,scalar::AbstractArray,v::VectorField
 end
 
 @par function _scalar_advection!(out::AbstractArray{Float64,3},scalar::AbstractArray{Float64,3},v::AbstractArray{Float64,3},s::@par(ScalarParameters))
-  Threads.@threads for i in 1:Lrs
+  @mthreads for i in 1:Lrs
       @inbounds out[i] = scalar[i]*v[i]
   end
 end
 
 @par function div!(out::AbstractArray{Complex128,3},ux,uy,uz,w,mdρdz::Real, s::@par(ScalarParameters))
     mim::Complex128 = -im
-    Threads.@threads for k in Kzr
+    @mthreads for k in Kzr
       for j in Kyr
         @simd for i in Kxr
          # @inbounds out[i,j,k] = mim*(kx[i]*ux[i,j,k] + ky[j]*uy[i,j,k] + kz[k]*uz[i,j,k]) + mdœÅdz*w[i,j,k]
@@ -92,7 +92,7 @@ end
 
 @par function div!(out::AbstractArray{Complex128,3},ux,uy,uz, s::@par(AbstractParameters))
   mim::Complex128 = -im
-    Threads.@threads for k in Kzr
+    @mthreads for k in Kzr
       for j in Kyr
         @simd for i in Kxr
           #@inbounds out[i,j,k] = -im*(kx[i]*ux[i,j,k] + ky[j]*uy[i,j,k] + kz[k]*uz[i,j,k])

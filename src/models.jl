@@ -70,7 +70,7 @@ function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,s::AbstractPara
 end
 
 @par function _add_viscosity!(rhs::AbstractArray,u::AbstractArray,mν::Real,s::@par(AbstractParameters))
-  Threads.@threads for k in Kzr
+  @mthreads for k in Kzr
     for j in Kyr
       @simd for i in Kxr
         #@inbounds rhs[i,j,k] = (kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])*mŒΩ*u[i,j,k] + rhs[i,j,k]
@@ -86,7 +86,7 @@ end
 
 @fastmath @par function pressure_projection!(rhsx,rhsy,rhsz,s::@par(AbstractParameters))
   @inbounds a = (rhsx[1],rhsy[1],rhsz[1])
-  Threads.@threads for k in Kzr
+  @mthreads for k in Kzr
     for j in Kyr
       for i in Kxr
         #@inbounds p1 = -(kx[i]*rhsx[i,j,k] + ky[j]*rhsy[i,j,k] + kz[k]*rhsz[i,j,k])/(kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])
@@ -101,7 +101,7 @@ end
 end
 
 @par function addgravity!(rhs,ρ,g::Real,s::@par(BoussinesqParameters))
-  Threads.@threads for k in Kzr
+  @mthreads for k in Kzr
     for j in Kyr
       for i in Kxr
         @inbounds rhs[i,j,k] = muladd(ρ[i,j,k],g,rhs[i,j,k])

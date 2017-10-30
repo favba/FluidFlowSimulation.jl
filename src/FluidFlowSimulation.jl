@@ -4,7 +4,6 @@ export run_simulation, advance_in_time!, VectorField, parameters, readglobal
 
 using InplaceRealFFTW
 using StaticArrays
-using MacroTools.prewalk
 
 include("ReadGlobal.jl")
 include("macros.jl")

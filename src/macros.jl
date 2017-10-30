@@ -16,6 +16,10 @@ macro condthreads(condition,loop) #does not work well because of #15276
   end)
 end
 
+macro mthreads(ex)
+  return esc(:(Threads.@threads $ex))
+end
+
 sim_par = (:Nx,:Ny,:Nz,:Lcs,:Lcv,:Nrx,:Lrs,:Lrv,:Integrator,:Dealiastype,:Kxr,:Kyr,:Kzr,:kx,:ky,:kz)
 # Nx,Ny,Nz size of the grid in Fourier Space
 # Lcs = Nx*Ny*Nz; Lcv = Lcs*3
