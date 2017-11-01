@@ -267,9 +267,9 @@ function parameters(d::Dict)
 
   ncx = div(nx,2)+1
 
-  kx = SArray{Tuple{ncx,1,1}}(reshape(rfftfreq(nx,lx),(ncx,1,1)))
-  ky = SArray{Tuple{1,ny,1}}(reshape(fftfreq(ny,ly),(1,ny,1)))
-  kz = SArray{Tuple{1,1,nz}}(reshape(fftfreq(nz,lz),(1,1,nz)))
+  kx = 2π .* SArray{Tuple{ncx,1,1}}(reshape(rfftfreq(nx,lx),(ncx,1,1)))
+  ky = 2π .* SArray{Tuple{1,ny,1}}(reshape(fftfreq(ny,ly),(1,ny,1)))
+  kz = 2π .* SArray{Tuple{1,1,nz}}(reshape(fftfreq(nz,lz),(1,1,nz)))
 
   FFTW.set_num_threads(Threads.nthreads())
   
