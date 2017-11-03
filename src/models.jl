@@ -46,12 +46,12 @@ function compute_nonlinear!(s::A) where {A<:AbstractParameters}
 
   rcross!(s.rhs,s.u,s.aux,s)
   s.p*s.rhs
-  dealias!(complex(s.rhs),s)
+  dealias!(complex(s.rhs),s.dealias,s)
   if A<:ScalarParameters
     s.ps\s.ρ
     scalar_advection!(s.aux,s.ρ,s.u,s)
     s.p*s.aux
-    dealias!(complex(s.aux),s)
+    dealias!(complex(s.aux),s.dealias,s)
     s.ps*s.ρ
     div!(complex(s.ρrhs),s.aux.cx,s.aux.cy,s.aux.cz,s.u.cz,-s.dρdz,s)
   end
@@ -59,8 +59,10 @@ function compute_nonlinear!(s::A) where {A<:AbstractParameters}
   return nothing
 end
 
-@inline @par function dealias!(rhs::AbstractArray{T,4},s::@par(AbstractParameters)) where {T<:Complex}
- @inbounds rhs[s.dealias] = zero(T)
+@inline @par function dealias!(rhs::AbstractArray{T,4},d,s::@par(AbstractParameters)) where {T<:Complex}
+ Threads.@threads for i in 1:Lcv
+  d[i] && (@inbounds rhs[i] = zero(T))
+ end
 end
 
 function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,s::AbstractParameters)
