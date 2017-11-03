@@ -60,7 +60,7 @@ function compute_nonlinear!(s::A) where {A<:AbstractParameters}
 end
 
 @inline @par function dealias!(rhs::AbstractArray{T,4},d,s::@par(AbstractParameters)) where {T<:Complex}
- Threads.@threads for i in 1:Lcv
+ @mthreads for i in 1:Lcv
   d[i] && (@inbounds rhs[i] = zero(T))
  end
 end
@@ -122,7 +122,8 @@ end
 end
 
 @par function mycopy!(rm::AbstractArray{T,3},rhs::AbstractArray{T,3},s::@par(AbstractParameters)) where T<:Complex
-  for (kk,k) in enumerate(Kzr)
+  @mthreads for kk in 1:length(Kzr)
+    k = Kzr[kk]
     for (jj,j) in enumerate(Kyr)
       for i in Kxr
         @inbounds rm[i,jj,kk] = rhs[i,j,k]
@@ -132,7 +133,8 @@ end
 end
 
 @par function mycopy!(rm::AbstractArray{T,3},rhs::AbstractArray{T,3},s::@par(AbstractParameters)) where T<:Real
-  for (kk,k) in enumerate(Kzr)
+  @mthreads for kk in 1:length(Kzr)
+    k = Kzr[kk]
     for (jj,j) in enumerate(Kyr)
       for i in 1:(2length(Kxr))
         @inbounds rm[i,jj,kk] = rhs[i,j,k]

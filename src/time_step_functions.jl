@@ -1,5 +1,5 @@
 @par function Euller!(u::AbstractArray{Float64,N},rhs::AbstractArray,dt::Real,s::@par(AbstractParameters)) where {N}
-  Threads.@threads for i in 1:(N==3 ? Lrs : Lrv)
+  @mthreads for i in 1:(N==3 ? Lrs : Lrv)
     #@inbounds u[i] += dt*rhs[i]
     @inbounds u[i] = muladd(dt,rhs[i],u[i])
   end
@@ -30,7 +30,7 @@ end
 end
 
 @par function _tAdams_Bashforth3rdO!(u::AbstractArray{Complex128,3}, rhs::AbstractArray, dt12::Real, rm1::AbstractArray, rm2::AbstractArray, s::@par(AbstractParameters)) 
-    Threads.@threads for kk in 1:length(Kzr)
+    @mthreads for kk in 1:length(Kzr)
       k = Kzr[kk]
       for (jj,j) in enumerate(Kyr)
         for i in Kxr
@@ -42,7 +42,7 @@ end
 end
 
 @par function _tAdams_Bashforth3rdO!(u::AbstractArray{Float64,3}, rhs::AbstractArray, dt12::Real, rm1::AbstractArray, rm2::AbstractArray, s::@par(AbstractParameters)) 
-    Threads.@threads for kk in 1:length(Kzr)
+    @mthreads for kk in 1:length(Kzr)
       k = Kzr[kk]
       for (jj,j) in enumerate(Kyr)
         for i in 1:(2length(Kxr))
