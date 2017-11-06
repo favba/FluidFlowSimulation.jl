@@ -1,0 +1,26 @@
+// Set physical parameters
+zAcceleration 1.0
+referenceDensity 1.0
+densityGradient 0.0
+kinematicViscosity 0.03333333
+Pr Inf
+
+// Set domain parameters
+xDomainSize 1.0
+yDomainSize 1.0
+zDomainSize 1.0
+nx 128
+ny 128
+nz 128
+
+// Set simulation control variables
+model PassiveScalar
+dtStat 250
+nt 500
+dt 0.002
+timeIntegrator Adams_Bashforth3rdO
+dealias sphere
+threaded true
+
+// Times to write output files
+writeTime 250
