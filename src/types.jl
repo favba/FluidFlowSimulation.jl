@@ -285,12 +285,14 @@ function parameters(d::Dict)
     if model == :PassiveScalar
       α = ν/parse(Float64,d[:Pr])
       dρdz = parse(Float64,d[:densityGradient])/parse(Float64,d[:referenceDensity])
-      s = PassiveScalarParameters(u,nx,ny,nz,lx,ly,lz,ν,PaddedArray(zeros(nx,ny,nz)),α,dρdz,integrator,Dealiastype,kx,ky,kz)
+      rho = isfile("rho.0") ? PaddedArray("rho.0",(nx,ny,nz),padded=true) : PaddedArray(zeros(nx,ny,nz)) 
+      s = PassiveScalarParameters(u,nx,ny,nz,lx,ly,lz,ν,rho,α,dρdz,integrator,Dealiastype,kx,ky,kz)
     elseif model == :Boussinesq 
       α = ν/parse(Float64,d[:Pr])
       dρdz = parse(Float64,d[:densityGradient])/parse(Float64,d[:referenceDensity])
       g = parse(Float64,d[:zAcceleration])
-      s = BoussinesqParameters(u,nx,ny,nz,lx,ly,lz,ν,PaddedArray(zeros(nx,ny,nz)),α,dρdz,g,integrator,Dealiastype,kx,ky,kz)
+      rho = isfile("rho.0") ? PaddedArray("rho.0",(nx,ny,nz),padded=true) : PaddedArray(zeros(nx,ny,nz)) 
+      s = BoussinesqParameters(u,nx,ny,nz,lx,ly,lz,ν,rho,α,dρdz,g,integrator,Dealiastype,kx,ky,kz)
     else
       error("Unkown Model in global file: $model")
     end
