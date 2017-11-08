@@ -67,12 +67,13 @@ abstract type @par(AbstractParameters) end
   rm2y::Array{Float64,3}
   rm2z::Array{Float64,3}
   reduction::Vector{Float64}
+  dealias::BitArray{3}
 end
 
 struct @par(Parameters) <: @par(AbstractParameters)
   @GenericParameters
   
-  @par function @par(Parameters)(u::VectorField{PaddedArray{Float64,4,false}},nx::Int64,ny::Int64,nz::Int64,lx::Float64,ly::Float64,lz::Float64,ν::Float64) 
+  @par function @par(Parameters)(u::VectorField{PaddedArray{Float64,4,false}},nx::Int64,ny::Int64,nz::Int64,lx::Float64,ly::Float64,lz::Float64,ν::Float64,dealias) 
     
     rhs = similar(u)
     aux = similar(u)
@@ -89,7 +90,7 @@ struct @par(Parameters) <: @par(AbstractParameters)
     rm2z = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
 
     reduction = Vector{Float64}(Threads.nthreads())
-    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,p,ip,rm1x,rm1y,rm1z,rm2x,rm2y,rm2z,reduction)
+    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,p,ip,rm1x,rm1y,rm1z,rm2x,rm2y,rm2z,reduction,dealias)
   end
 
 end
@@ -106,7 +107,7 @@ function Parameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,
   kyr = (ry...)
   rz = vcat(1:(div(nz,3)+1),(nz-div(nz,3)-1):nz)
   kzr = (rz...)
-  return Parameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,deat,kxr,kyr,kzr,kx,ky,kz}(u,nx,ny,nz,lx,ly,lz,ν)
+  return Parameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,kxr,kyr,kzr,kx,ky,kz}(u,nx,ny,nz,lx,ly,lz,ν,deat)
 end
 
 abstract type @par(ScalarParameters) <: @par(AbstractParameters) end
@@ -121,7 +122,7 @@ struct @par(PassiveScalarParameters) <: @par(ScalarParameters)
   rrm1::Array{Float64,3}
   rrm2::Array{Float64,3}
 
-  @par function @par(PassiveScalarParameters)(u::VectorField, nx::Integer, ny::Integer, nz::Integer, lx::Real, ly::Real, lz::Real, ν::Real, ρ::PaddedArray, α::Real,dρdz::Real) 
+  @par function @par(PassiveScalarParameters)(u::VectorField, nx::Integer, ny::Integer, nz::Integer, lx::Real, ly::Real, lz::Real, ν::Real, ρ::PaddedArray, α::Real,dρdz::Real,dealias) 
     
     rhs = similar(u)
     aux = similar(u)
@@ -144,7 +145,7 @@ struct @par(PassiveScalarParameters) <: @par(ScalarParameters)
 
     reduction = Vector{Float64}(Threads.nthreads())
 
-    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,p,ip,rm1x,rm1y,rm1z,rm2x,rm2y,rm2z,reduction,ρ,ps,α,dρdz, ρrhs, rrm1,rrm2)
+    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,p,ip,rm1x,rm1y,rm1z,rm2x,rm2y,rm2z,reduction,dealias,ρ,ps,α,dρdz, ρrhs, rrm1,rrm2)
   end
 
 end
@@ -161,7 +162,7 @@ function PassiveScalarParameters(u::VectorField,nx::Integer,ny::Integer,nz::Inte
   kyr = (ry...)
   rz = vcat(1:(div(nz,3)+1),(nz-div(nz,3)-1):nz)
   kzr = (rz...)
-  return PassiveScalarParameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,deat,kxr,kyr,kzr,kx,ky,kz}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz)
+  return PassiveScalarParameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,kxr,kyr,kzr,kx,ky,kz}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz,deat)
 end
 
 struct @par(BoussinesqParameters) <: @par(ScalarParameters)
@@ -175,7 +176,7 @@ struct @par(BoussinesqParameters) <: @par(ScalarParameters)
   rrm1::Array{Float64,3}
   rrm2::Array{Float64,3}
 
-  @par function @par(BoussinesqParameters)(u::VectorField, nx::Integer, ny::Integer, nz::Integer, lx::Real, ly::Real, lz::Real, ν::Real, ρ::PaddedArray, α::Real, dρdz::Real, g::Real)
+  @par function @par(BoussinesqParameters)(u::VectorField, nx::Integer, ny::Integer, nz::Integer, lx::Real, ly::Real, lz::Real, ν::Real, ρ::PaddedArray, α::Real, dρdz::Real, g::Real,dealias)
     
     rhs = similar(u)
     aux = similar(u)
@@ -198,7 +199,7 @@ struct @par(BoussinesqParameters) <: @par(ScalarParameters)
 
     reduction = Vector{Float64}(Threads.nthreads())
 
-    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,p,ip,rm1x,rm1y,rm1z,rm2x,rm2x,rm2z,reduction,ρ,ps,α,dρdz,g, ρrhs, rrm1,rrm2)
+    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,p,ip,rm1x,rm1y,rm1z,rm2x,rm2x,rm2z,reduction,dealias,ρ,ps,α,dρdz,g, ρrhs, rrm1,rrm2)
   end
 
 end
@@ -215,7 +216,7 @@ function BoussinesqParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer
   kyr = (ry...)
   rz = vcat(1:(div(nz,3)+1),(nz-div(nz,3)-1):nz)
   kzr = (rz...)
-  return BoussinesqParameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,deat,kxr,kyr,kzr,kx,ky,kz}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz,g)
+  return BoussinesqParameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,kxr,kyr,kzr,kx,ky,kz}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz,g,deat)
 end
 
 function parameters(d::Dict)
@@ -244,13 +245,13 @@ function parameters(d::Dict)
 
   cutoff = (2kxp[end]/3)^2
 
-  dealiasp = BitArray(ncx,ny,nz)
+  dealias = BitArray(ncx,ny,nz)
   if Dealiastype == :sphere
-    @. dealiasp = (kxp^2 + kyp^2 + kzp^2) > cutoff
+    @. dealias = (kxp^2 + kyp^2 + kzp^2) > cutoff
   elseif Dealiastype == :cube
-    @. dealiasp = (kxp^2 > cutoff) | (kyp^2 > cutoff) | (kzp^2 > cutoff)
+    @. dealias = (kxp^2 > cutoff) | (kyp^2 > cutoff) | (kzp^2 > cutoff)
   end
-  dealias = (dealiasp...)
+
   kx = (kxp...)
   ky = (kyp...)
   kz = (kzp...)

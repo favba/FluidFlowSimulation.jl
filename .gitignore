@@ -2,3 +2,6 @@
 *.jl.*.cov
 *.jl.mem
 .vscode
+test/Scalar_Advection/fftw_wisdom
+test/Scalar_Advection/Scalar_advection.ipynb
+test/Scalar_Advection/Stats.txt

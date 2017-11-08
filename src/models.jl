@@ -60,14 +60,16 @@ function compute_nonlinear!(s::A) where {A<:AbstractParameters}
 end
 
 @inline @par function dealias!(rhs::VectorField,s::@par(AbstractParameters))
-  dealias!(rhs.cx,s)
-  dealias!(rhs.cy,s)
-  dealias!(rhs.cz,s)
+  dealias!(rhs.cx,s.dealias,s)
+  dealias!(rhs.cy,s.dealias,s)
+  dealias!(rhs.cz,s.dealias,s)
 end
 
-@inline @par function dealias!(rhs::AbstractArray{T,3},s::@par(AbstractParameters)) where {T<:Complex}
- @mthreads for i in 1:Lcs
-  Dealias[i] && (@inbounds rhs[i] = zero(T))
+@inline @par function dealias!(rhs::AbstractArray{T,3},dealias,s::@par(AbstractParameters)) where {T<:Complex}
+ @mthreads for i = 1:Lcs
+  @inbounds begin
+    dealias[i] && (rhs[i] = zero(T))
+  end
  end
 end
 
