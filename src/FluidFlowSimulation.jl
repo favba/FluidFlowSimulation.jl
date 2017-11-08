@@ -3,7 +3,11 @@ module FluidFlowSimulation
 export run_simulation, advance_in_time!, VectorField, parameters, readglobal
 
 using InplaceRealFFTW
-using StaticArrays
+function Base.unsafe_getindex(A::Tuple, I)
+  Base.@_inline_meta
+  @inbounds r = getindex(A, I)
+  r
+end
 
 include("ReadGlobal.jl")
 include("macros.jl")

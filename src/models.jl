@@ -46,12 +46,12 @@ function compute_nonlinear!(s::A) where {A<:AbstractParameters}
 
   rcross!(s.rhs,s.u,s.aux,s)
   s.p*s.rhs
-  dealias!(complex(s.rhs),s.dealias,s)
+  dealias!(s.rhs,s)
   if A<:ScalarParameters
     s.ps\s.ρ
     scalar_advection!(s.aux,s.ρ,s.u,s)
     s.p*s.aux
-    dealias!(complex(s.aux),s.dealias,s)
+    dealias!(s.aux,s)
     s.ps*s.ρ
     div!(complex(s.ρrhs),s.aux.cx,s.aux.cy,s.aux.cz,s.u.cz,-s.dρdz,s)
   end
@@ -59,9 +59,15 @@ function compute_nonlinear!(s::A) where {A<:AbstractParameters}
   return nothing
 end
 
-@inline @par function dealias!(rhs::AbstractArray{T,4},d,s::@par(AbstractParameters)) where {T<:Complex}
- @mthreads for i in 1:Lcv
-  d[i] && (@inbounds rhs[i] = zero(T))
+@inline @par function dealias!(rhs::VectorField,s::@par(AbstractParameters))
+  dealias!(rhs.cx,s)
+  dealias!(rhs.cy,s)
+  dealias!(rhs.cz,s)
+end
+
+@inline @par function dealias!(rhs::AbstractArray{T,3},s::@par(AbstractParameters)) where {T<:Complex}
+ @mthreads for i in 1:Lcs
+  Dealias[i] && (@inbounds rhs[i] = zero(T))
  end
 end
 

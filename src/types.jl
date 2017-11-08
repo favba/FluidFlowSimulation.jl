@@ -66,7 +66,6 @@ abstract type @par(AbstractParameters) end
   rm2x::Array{Float64,3}
   rm2y::Array{Float64,3}
   rm2z::Array{Float64,3}
-  dealias::BitArray{4}
   reduction::Vector{Float64}
 end
 
@@ -89,36 +88,24 @@ struct @par(Parameters) <: @par(AbstractParameters)
     rm2y = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
     rm2z = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
 
-    dealias = BitArray(Nx,Ny,Nz,3)
-    cutoff = (2kx[end]/3)^2
-
-    if Dealiastype == :sphere
-      @. dealias[:,:,:,1] = (kx^2 + ky^2 + kz^2) > cutoff
-      @. dealias[:,:,:,2] = (kx^2 + ky^2 + kz^2) > cutoff
-      @. dealias[:,:,:,3] = (kx^2 + ky^2 + kz^2) > cutoff
-    elseif Dealiastype == :cube
-      @. dealias[:,:,:,1] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
-      @. dealias[:,:,:,2] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
-      @. dealias[:,:,:,3] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
-    end
     reduction = Vector{Float64}(Threads.nthreads())
-    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,p,ip,rm1x,rm1y,rm1z,rm2x,rm2y,rm2z,dealias,reduction)
+    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,p,ip,rm1x,rm1y,rm1z,rm2x,rm2y,rm2z,reduction)
   end
 
 end
 
-function Parameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,integrator::Symbol,deat::Symbol,kx,ky,kz) 
+function Parameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,integrator::Symbol,deat,kx,ky,kz) 
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
   lrs = 2*lcs
   lrv = 2*lcv
   rx = 1:div(2ncx,3)
-  kxr = SVector{length(rx),UInt32}(rx)
+  kxr = ((UInt32.(rx))...)
   ry = vcat(UInt32(1):(UInt32(div(ny,3))+1),UInt32(ny-div(ny,3)-1):UInt32(ny))
-  kyr = SVector{length(ry),UInt32}(ry)
+  kyr = (ry...)
   rz = vcat(1:(div(nz,3)+1),(nz-div(nz,3)-1):nz)
-  kzr = SVector{length(rz),UInt32}(rz)
+  kzr = (rz...)
   return Parameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,deat,kxr,kyr,kzr,kx,ky,kz}(u,nx,ny,nz,lx,ly,lz,ν)
 end
 
@@ -155,37 +142,25 @@ struct @par(PassiveScalarParameters) <: @par(ScalarParameters)
     rrm1 = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
     rrm2 = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
 
-    dealias = BitArray(Nx,Ny,Nz,3)
-    cutoff = (2kx[end]/3)^2
-
-    if Dealiastype == :sphere
-      @. dealias[:,:,:,1] = (kx^2 + ky^2 + kz^2) > cutoff
-      @. dealias[:,:,:,2] = (kx^2 + ky^2 + kz^2) > cutoff
-      @. dealias[:,:,:,3] = (kx^2 + ky^2 + kz^2) > cutoff
-    elseif Dealiastype == :cube
-      @. dealias[:,:,:,1] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
-      @. dealias[:,:,:,2] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
-      @. dealias[:,:,:,3] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
-    end
     reduction = Vector{Float64}(Threads.nthreads())
 
-    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,p,ip,rm1x,rm1y,rm1z,rm2x,rm2y,rm2z,dealias,reduction,ρ,ps,α,dρdz, ρrhs, rrm1,rrm2)
+    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,p,ip,rm1x,rm1y,rm1z,rm2x,rm2y,rm2z,reduction,ρ,ps,α,dρdz, ρrhs, rrm1,rrm2)
   end
 
 end
 
-function PassiveScalarParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, α::Real,dρdz::Real,integrator::Symbol,deat::Symbol,kx,ky,kz) 
+function PassiveScalarParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, α::Real,dρdz::Real,integrator::Symbol,deat,kx,ky,kz) 
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
   lrs = 2*lcs
   lrv = 2*lcv
   rx = 1:div(2ncx,3)
-  kxr = SVector{length(rx),UInt32}(rx)
+  kxr = ((UInt32.(rx))...)
   ry = vcat(UInt32(1):(UInt32(div(ny,3))+1),UInt32(ny-div(ny,3)-1):UInt32(ny))
-  kyr = SVector{length(ry),UInt32}(ry)
+  kyr = (ry...)
   rz = vcat(1:(div(nz,3)+1),(nz-div(nz,3)-1):nz)
-  kzr = SVector{length(rz),UInt32}(rz)
+  kzr = (rz...)
   return PassiveScalarParameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,deat,kxr,kyr,kzr,kx,ky,kz}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz)
 end
 
@@ -221,36 +196,25 @@ struct @par(BoussinesqParameters) <: @par(ScalarParameters)
     rrm1 = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
     rrm2 = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
 
-    dealias = BitArray(Nx,Ny,Nz,3)
-    cutoff = (2kx[end]/3)^2
-    if Dealiastype == :sphere
-      @. dealias[:,:,:,1] = (kx^2 + ky^2 + kz^2) > cutoff
-      @. dealias[:,:,:,2] = (kx^2 + ky^2 + kz^2) > cutoff
-      @. dealias[:,:,:,3] = (kx^2 + ky^2 + kz^2) > cutoff
-    elseif Dealiastype == :cube
-      @. dealias[:,:,:,1] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
-      @. dealias[:,:,:,2] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
-      @. dealias[:,:,:,3] = (kx^2 > cutoff) | (ky^2 > cutoff) | (kz^2 > cutoff)
-    end
     reduction = Vector{Float64}(Threads.nthreads())
 
-    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,p,ip,rm1x,rm1y,rm1z,rm2x,rm2x,rm2z,dealias,reduction,ρ,ps,α,dρdz,g, ρrhs, rrm1,rrm2)
+    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,p,ip,rm1x,rm1y,rm1z,rm2x,rm2x,rm2z,reduction,ρ,ps,α,dρdz,g, ρrhs, rrm1,rrm2)
   end
 
 end
 
-function BoussinesqParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, dρdz::Real,α::Real,g::Real,integrator::Symbol,deat::Symbol,kx,ky,kz) 
+function BoussinesqParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, dρdz::Real,α::Real,g::Real,integrator::Symbol,deat,kx,ky,kz) 
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
   lrs = 2*lcs
   lrv = 2*lcv
   rx = 1:div(2ncx,3)
-  kxr = SVector{length(rx),UInt32}(rx)
+  kxr = ((UInt32.(rx))...)
   ry = vcat(UInt32(1):(UInt32(div(ny,3))+1),UInt32(ny-div(ny,3)-1):UInt32(ny))
-  kyr = SVector{length(ry),UInt32}(ry)
+  kyr = (ry...)
   rz = vcat(1:(div(nz,3)+1),(nz-div(nz,3)-1):nz)
-  kzr = SVector{length(rz),UInt32}(rz)
+  kzr = (rz...)
   return BoussinesqParameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,deat,kxr,kyr,kzr,kx,ky,kz}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz,g)
 end
 
@@ -267,9 +231,9 @@ function parameters(d::Dict)
 
   ncx = div(nx,2)+1
 
-  kx = 2π .* SArray{Tuple{ncx,1,1}}(reshape(rfftfreq(nx,lx),(ncx,1,1)))
-  ky = 2π .* SArray{Tuple{1,ny,1}}(reshape(fftfreq(ny,ly),(1,ny,1)))
-  kz = 2π .* SArray{Tuple{1,1,nz}}(reshape(fftfreq(nz,lz),(1,1,nz)))
+  kxp = 2π .* reshape(rfftfreq(nx,lx),(ncx,1,1))
+  kyp = 2π .* reshape(fftfreq(ny,ly),(1,ny,1))
+  kzp = 2π .* reshape(fftfreq(nz,lz),(1,1,nz))
 
   FFTW.set_num_threads(Threads.nthreads())
   
@@ -277,6 +241,19 @@ function parameters(d::Dict)
   integrator in (:Euller,:Adams_Bashforth3rdO) || error("Unkown time integration method in global file: $integrator")
 
   haskey(d,:dealias) ? (Dealiastype = Symbol(d[:dealias])) : (Dealiastype = :sphere)
+
+  cutoff = (2kxp[end]/3)^2
+
+  dealiasp = BitArray(ncx,ny,nz)
+  if Dealiastype == :sphere
+    @. dealiasp = (kxp^2 + kyp^2 + kzp^2) > cutoff
+  elseif Dealiastype == :cube
+    @. dealiasp = (kxp^2 > cutoff) | (kyp^2 > cutoff) | (kzp^2 > cutoff)
+  end
+  dealias = (dealiasp...)
+  kx = (kxp...)
+  ky = (kyp...)
+  kz = (kzp...)
 
   isfile("fftw_wisdom") && FFTW.import_wisdom("fftw_wisdom")
 
@@ -286,18 +263,18 @@ function parameters(d::Dict)
       α = ν/parse(Float64,d[:Pr])
       dρdz = parse(Float64,d[:densityGradient])/parse(Float64,d[:referenceDensity])
       rho = isfile("rho.0") ? PaddedArray("rho.0",(nx,ny,nz),padded=true) : PaddedArray(zeros(nx,ny,nz)) 
-      s = PassiveScalarParameters(u,nx,ny,nz,lx,ly,lz,ν,rho,α,dρdz,integrator,Dealiastype,kx,ky,kz)
+      s = PassiveScalarParameters(u,nx,ny,nz,lx,ly,lz,ν,rho,α,dρdz,integrator,dealias,kx,ky,kz)
     elseif model == :Boussinesq 
       α = ν/parse(Float64,d[:Pr])
       dρdz = parse(Float64,d[:densityGradient])/parse(Float64,d[:referenceDensity])
       g = parse(Float64,d[:zAcceleration])
       rho = isfile("rho.0") ? PaddedArray("rho.0",(nx,ny,nz),padded=true) : PaddedArray(zeros(nx,ny,nz)) 
-      s = BoussinesqParameters(u,nx,ny,nz,lx,ly,lz,ν,rho,α,dρdz,g,integrator,Dealiastype,kx,ky,kz)
+      s = BoussinesqParameters(u,nx,ny,nz,lx,ly,lz,ν,rho,α,dρdz,g,integrator,dealias,kx,ky,kz)
     else
       error("Unkown Model in global file: $model")
     end
   else
-    s = Parameters(u,nx,ny,nz,lx,ly,lz,ν,integrator,Dealiastype,kx,ky,kz)
+    s = Parameters(u,nx,ny,nz,lx,ly,lz,ν,integrator,dealias,kx,ky,kz)
   end
 
   FFTW.export_wisdom("fftw_wisdom")
