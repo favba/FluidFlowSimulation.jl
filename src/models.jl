@@ -1,33 +1,13 @@
-@par function advance_in_time!(s::A,init::Int64,Nsteps::Int64,dt::Float64) where {A<:@par(AbstractParameters)}
-
-  s.p*s.u
-  A <: ScalarParameters && s.ps*s.ρ
-
-  if Integrator !== :Euller
-    if init==0
-      calculate_rhs!(s)
-      mycopy!(s.rm2x,s.rhs.rx,s)
-      copy!(s.rm1x,s.rm2x)
-      mycopy!(s.rm2y,s.rhs.ry,s)
-      copy!(s.rm1y,s.rm2y)
-      mycopy!(s.rm2z,s.rhs.rz,s)
-      copy!(s.rm1z,s.rm2z)
-      if A <: ScalarParameters
-        mycopy!(s.rrm1,rawreal(s.ρrhs),s)
-        copy!(s.rrm2,s.rrm1)
-      end
-    end
-  end
+@par function advance_in_time!(s::A,init::Int64,Nsteps::Int64,dt::Real,time::Real) where {A<:@par(AbstractParameters)}
 
   for t=1:Nsteps
     init += 1
     calculate_rhs!(s)
     time_step!(s,dt)
+    time += dt
   end
 
-  s.p\s.u
-  A <: ScalarParameters && s.ps\s.ρ
-  return init
+  return init, dt, time
 end
 
 function calculate_rhs!(s::A) where {A<:AbstractParameters}
@@ -42,7 +22,7 @@ function compute_nonlinear!(s::A) where {A<:AbstractParameters}
   curl!(s.rhs,s.u,s)
   s.p\s.u
 
-  A_mul_B!(real(s.aux),s.ip,complex(s.rhs))
+  out_transform!(s.aux,s.rhs,s)
 
   rcross!(s.rhs,s.u,s.aux,s)
   s.p*s.rhs
@@ -59,11 +39,15 @@ function compute_nonlinear!(s::A) where {A<:AbstractParameters}
   return nothing
 end
 
+out_transform!(out::VectorField,in::VectorField,s::AbstractParameters) = A_mul_B!(real(out),s.ip,complex(in))
+
 @inline @par function dealias!(rhs::VectorField,s::@par(AbstractParameters))
   dealias!(rhs.cx,s.dealias,s)
   dealias!(rhs.cy,s.dealias,s)
   dealias!(rhs.cz,s.dealias,s)
 end
+
+dealias!(rhs::AbstractArray{<:Complex,3},s::AbstractParameters) = dealias!(rhs,s.dealias,s)
 
 @inline @par function dealias!(rhs::AbstractArray{T,3},dealias,s::@par(AbstractParameters)) where {T<:Complex}
  @mthreads for i = 1:Lcs
@@ -82,9 +66,9 @@ end
 @par function _add_viscosity!(rhs::AbstractArray,u::AbstractArray,mν::Real,s::@par(AbstractParameters))
   @mthreads for k in Kzr
     for j in Kyr
-      @simd for i in Kxr
-        #@inbounds rhs[i,j,k] = (kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])*mŒΩ*u[i,j,k] + rhs[i,j,k]
-        @inbounds rhs[i,j,k] = muladd(muladd(kx[i], kx[i], muladd(ky[j], ky[j], kz[k]*kz[k])), mν*u[i,j,k], rhs[i,j,k])
+      @fastmath @inbounds @msimd for i in Kxr
+        #rhs[i,j,k] = (kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])*mŒΩ*u[i,j,k] + rhs[i,j,k]
+        rhs[i,j,k] = muladd(muladd(kx[i], kx[i], muladd(ky[j], ky[j], kz[k]*kz[k])), mν*u[i,j,k], rhs[i,j,k])
       end
     end
   end
@@ -94,16 +78,16 @@ function add_scalar_difusion!(rhs::AbstractArray,u::AbstractArray,ν::Real,s::Ab
   _add_viscosity!(rhs,u,-ν,s)
 end
 
-@fastmath @par function pressure_projection!(rhsx,rhsy,rhsz,s::@par(AbstractParameters))
+ @par function pressure_projection!(rhsx,rhsy,rhsz,s::@par(AbstractParameters))
   @inbounds a = (rhsx[1],rhsy[1],rhsz[1])
   @mthreads for k in Kzr
     for j in Kyr
-      for i in Kxr
-        #@inbounds p1 = -(kx[i]*rhsx[i,j,k] + ky[j]*rhsy[i,j,k] + kz[k]*rhsz[i,j,k])/(kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])
-        @inbounds p1 = -muladd(kx[i], rhsx[i,j,k], muladd(ky[j], rhsy[i,j,k], kz[k]*rhsz[i,j,k]))/muladd(kx[i], kx[i], muladd(ky[j], ky[j],  kz[k]*kz[k]))
-        @inbounds rhsx[i,j,k] = muladd(kx[i],p1,rhsx[i,j,k])
-        @inbounds rhsy[i,j,k] = muladd(ky[j],p1,rhsy[i,j,k])
-        @inbounds rhsz[i,j,k] = muladd(kz[k],p1,rhsz[i,j,k])
+      @fastmath @inbounds @msimd for i in Kxr
+        #p1 = -(kx[i]*rhsx[i,j,k] + ky[j]*rhsy[i,j,k] + kz[k]*rhsz[i,j,k])/(kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])
+        p1 = -muladd(kx[i], rhsx[i,j,k], muladd(ky[j], rhsy[i,j,k], kz[k]*rhsz[i,j,k]))/muladd(kx[i], kx[i], muladd(ky[j], ky[j],  kz[k]*kz[k]))
+        rhsx[i,j,k] = muladd(kx[i],p1,rhsx[i,j,k])
+        rhsy[i,j,k] = muladd(ky[j],p1,rhsy[i,j,k])
+        rhsz[i,j,k] = muladd(kz[k],p1,rhsz[i,j,k])
       end
     end
   end
@@ -113,8 +97,8 @@ end
 @par function addgravity!(rhs,ρ,g::Real,s::@par(BoussinesqParameters))
   @mthreads for k in Kzr
     for j in Kyr
-      for i in Kxr
-        @inbounds rhs[i,j,k] = muladd(ρ[i,j,k],g,rhs[i,j,k])
+      @fastmath @inbounds @msimd for i in Kxr
+        rhs[i,j,k] = muladd(ρ[i,j,k],g,rhs[i,j,k])
       end
     end
   end

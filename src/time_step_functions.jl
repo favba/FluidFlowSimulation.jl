@@ -1,7 +1,7 @@
 @par function Euller!(u::AbstractArray{Float64,N},rhs::AbstractArray,dt::Real,s::@par(AbstractParameters)) where {N}
   @mthreads for i in 1:(N==3 ? Lrs : Lrv)
     #@inbounds u[i] += dt*rhs[i]
-    @inbounds u[i] = muladd(dt,rhs[i],u[i])
+    @fastmath @inbounds u[i] = muladd(dt,rhs[i],u[i])
   end
   return nothing
 end
@@ -33,9 +33,9 @@ end
     @mthreads for kk in 1:length(Kzr)
       k = Kzr[kk]
       for (jj,j) in enumerate(Kyr)
-        for i in Kxr
-          #@inbounds u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
-          @inbounds u[i,j,k] = muladd(muladd(23, rhs[i,j,k], muladd(-16, rm1[i,jj,kk], 5rm2[i,jj,kk])), dt12, u[i,j,k])
+        @fastmath @inbounds @msimd for i in Kxr
+          #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
+          u[i,j,k] = muladd(muladd(23, rhs[i,j,k], muladd(-16, rm1[i,jj,kk], 5rm2[i,jj,kk])), dt12, u[i,j,k])
         end
       end
     end
@@ -45,9 +45,9 @@ end
     @mthreads for kk in 1:length(Kzr)
       k = Kzr[kk]
       for (jj,j) in enumerate(Kyr)
-        for i in 1:(2length(Kxr))
-          #@inbounds u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
-          @inbounds u[i,j,k] = muladd(muladd(23, rhs[i,j,k], muladd(-16, rm1[i,jj,kk], 5rm2[i,jj,kk])), dt12, u[i,j,k])
+        @fastmath @inbounds @msimd for i in 1:(2length(Kxr))
+          #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
+          u[i,j,k] = muladd(muladd(23, rhs[i,j,k], muladd(-16, rm1[i,jj,kk], 5rm2[i,jj,kk])), dt12, u[i,j,k])
         end
       end
     end

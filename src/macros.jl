@@ -21,6 +21,11 @@ macro mthreads(ex)
   #return esc(ex)
 end
 
+macro msimd(ex)
+  #return esc(ex)
+  return esc(:(@simd $ex))
+end
+
 macro gen(ex)
   ex2 = macroexpand(ex)
   return esc(:(@generated $ex2))

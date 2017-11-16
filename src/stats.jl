@@ -1,52 +1,78 @@
 function writeheader(s::AbstractParameters)
   open("Stats.txt","w") do f
-    write(f,"iteration  time  u12  u22  u32  k  enstrophy \n")
+    write(f,"iteration  time  u1  u2  u3  u1^2  u2^2  u3^2  du1dx1^2  du1dx2^2  du1dx3^2 du2dx1^2  du2dx2^2  du2dx3^2 du3dx1^2  du3dx2^2  du3dx3^2 \n")
   end
 end
 
-function stats(s::AbstractParameters,init::Integer,dt::Real)
-  u2,v2,w2 = kinetic_energy(s)
-  k = (u2+v2+w2)/2
-  ω = enstrophy(s)
+function stats(s::AbstractParameters,init::Integer,time::Real)
+  results = velocity_stats(s)
   open("Stats.txt","a+") do file 
-    join(file,(init, init*dt, u2, v2, w2, k, ω, "\n"), "  ")
+    join(file,(init, time, results..., "\n"), "  ")
   end
 end
 
-function kinetic_energy(s::AbstractParameters)
-  u2 = tmean(x->x^2,s.u.rx,s)
-  v2 = tmean(x->x^2,s.u.ry,s)
-  w2 = tmean(x->x^2,s.u.rz,s)
-  return u2,v2,w2
-end
+@par function velocity_stats(s::@par(AbstractParameters))
+  u1 = real(s.u.cx[1,1,1])/(Nrx*Ny*Nz)
+  u2 = real(s.u.cy[1,1,1])/(Nrx*Ny*Nz)
+  u3 = real(s.u.cz[1,1,1])/(Nrx*Ny*Nz)
 
-function enstrophy(s::AbstractParameters)
-  a = s.aux
-  u = s.u
-  rhs = s.rhs
-  copy!(real(a),real(u))
-  s.p*a
-  curl!(rhs,a,s)
-  s.p\rhs
-  ω = tmean((x,y,z)->(x^2+y^2+z^2),(rhs.rx,rhs.ry,rhs.rz),s)
-  return ω
+  copy!(rawreal(s.rhs),rawreal(s.u))
+  #dealias!(s.rhs,s)
+  out_transform!(s.aux,s.rhs,s)
+  u12 = tmean(x->x^2,s.aux.rx,s)
+  u22 = tmean(x->x^2,s.aux.ry,s)
+  u32 = tmean(x->x^2,s.aux.rz,s)
+
+  grad!(s.rhs,s.u.cx,s)
+  out_transform!(s.aux,s.rhs,s)
+  d1d1 = tmean(x->x^2,s.aux.rx,s)
+  d1d2 = tmean(x->x^2,s.aux.ry,s)
+  d1d3 = tmean(x->x^2,s.aux.rz,s)
+
+  grad!(s.rhs,s.u.cy,s)
+  out_transform!(s.aux,s.rhs,s)
+  d2d1 = tmean(x->x^2,s.aux.rx,s)
+  d2d2 = tmean(x->x^2,s.aux.ry,s)
+  d2d3 = tmean(x->x^2,s.aux.rz,s)
+
+  grad!(s.rhs,s.u.cz,s)
+  out_transform!(s.aux,s.rhs,s)
+  d3d1 = tmean(x->x^2,s.aux.rx,s)
+  d3d2 = tmean(x->x^2,s.aux.ry,s)
+  d3d3 = tmean(x->x^2,s.aux.rz,s)
+
+  return u1, u2, u3, u12, u22, u32, d1d1, d1d2, d1d3, d2d1, d2d2, d2d3, d3d1, d3d2, d3d3
 end
 
 function writeheader(s::ScalarParameters)
   open("Stats.txt","w") do f
-    write(f,"iteration  time  u12  u22  u32  k  enstrophy rho2 \n")
+    write(f,"iteration  time  u1  u2  u3  u1^2  u2^2  u3^2  du1dx1^2  du1dx2^2  du1dx3^2 du2dx1^2  du2dx2^2  du2dx3^2 du3dx1^2  du3dx2^2  du3dx3^2 rho rho^2 drhodx^2 drhody^3 drhodz^2\n")
   end
 end
 
 
-function stats(s::ScalarParameters,init::Integer,dt::Real)
-  u2,v2,w2 = kinetic_energy(s)
-  k = (u2+v2+w2)/2
-  ω = enstrophy(s)
-  ρ2 = ape(s)
+function stats(s::ScalarParameters,init::Integer,time::Real)
+  results = velocity_stats(s)
+  results2 = scalar_stats(s)  
   open("Stats.txt","a+") do file 
-    join(file,(init, init*dt, u2, v2, w2, k, ω, ρ2, "\n"), "  ")
+    join(file,(init, time, results..., results2..., "\n"), "  ")
   end
+end
+
+@par function scalar_stats(s::@par(ScalarParameters))
+  rho = real(s.ρ[1,1,1])/(Nrx*Ny*Nz)  
+  copy!(s.ρrhs,s.ρ)
+  #dealias!(s.ρrhs,s)
+  s.ps\s.ρrhs
+  rho2 = tmean(x->x^2,rawreal(s.ρrhs),s)
+
+  grad!(s.rhs,complex(s.ρ),s)
+  out_transform!(s.aux,s.rhs,s)
+  drd1 = tmean(x->x^2,s.aux.rx,s)
+  drd2 = tmean(x->x^2,s.aux.ry,s)
+  drd3 = tmean(x->x^2,s.aux.rz,s)
+
+  return rho, rho2, drd1, drd2, drd3
 end
 
 ape(s::ScalarParameters) = tmean(x->x^2,rawreal(s.ρ),s)
@@ -56,8 +82,8 @@ ape(s::ScalarParameters) = tmean(x->x^2,rawreal(s.ρ),s)
   result = fill!(s.reduction,0.0)
   Threads.@threads for k in 1:Nz
     for j in 1:Ny
-      @simd for i in 1:Nrx
-        @inbounds result[Threads.threadid()] += f(x[i,j,k])::T
+      @fastmath @inbounds @msimd for i in 1:Nrx
+        result[Threads.threadid()] += f(x[i,j,k])::T
       end
     end
   end
@@ -79,8 +105,8 @@ end
    result = fill!(s.reduction,0.0)
    Threads.@threads for k in 1:Nz
      for j in 1:Ny
-       @simd for i in 1:Nrx
-         @inbounds result[Threads.threadid()] += getind(f,x,i,j,k)::T
+       @fastmath @inbounds @msimd for i in 1:Nrx
+         result[Threads.threadid()] += getind(f,x,i,j,k)::T
        end
      end
    end

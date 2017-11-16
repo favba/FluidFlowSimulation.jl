@@ -26,16 +26,34 @@ function run_simulation()
   run_simulation(s,parse(Int,par[:dtStat]),parse(Int,par[:writeTime]),parse(Int,par[:nt]),parse(Float64,par[:dt]))
 end
 
-function run_simulation(s::AbstractParameters,dtStats::Integer,dtOutput::Integer,totalnsteps::Integer,dt::Real)
+@par function run_simulation(s::@par(AbstractParameters),dtStats::Integer,dtOutput::Integer,totalnsteps::Integer,dt::Real)
   init=0
+  time=0.
   writeheader(s)
-  stats(s,init,dt)
+  s.p*s.u
+  typeof(s)<:ScalarParameters && s.ps*s.ρ
+  
+  if Integrator !== :Euller
+    calculate_rhs!(s)
+    mycopy!(s.rm2x,s.rhs.rx,s)
+    copy!(s.rm1x,s.rm2x)
+    mycopy!(s.rm2y,s.rhs.ry,s)
+    copy!(s.rm1y,s.rm2y)
+    mycopy!(s.rm2z,s.rhs.rz,s)
+    copy!(s.rm1z,s.rm2z)
+    if typeof(s) <: ScalarParameters
+      mycopy!(s.rrm1,rawreal(s.ρrhs),s)
+      copy!(s.rrm2,s.rrm1)
+    end
+  end
+
+  stats(s,init,time)
 
   @assert totalnsteps >= dtOutput >= dtStats
   for i = 1:(totalnsteps ÷ dtOutput)
     for j = 1:(dtOutput ÷ dtStats)
-      init = advance_in_time!(s,init,dtStats,dt)
-      stats(s,init,dt)
+      init, dt, time = advance_in_time!(s,init,dtStats,dt,time)
+      stats(s,init,time)
     end
     writeoutput(s,init)
   end
