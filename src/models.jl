@@ -184,7 +184,7 @@ end
 # end
 
 @par function newdealias2!(out,s::@par(AbstractParameters))
-  @mthreads for r in Dealias
+  @mthreads for r in s.ranges
     @simd for i in r
       @inbounds out[i] = 0
     end
