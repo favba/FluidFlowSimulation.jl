@@ -255,6 +255,8 @@ function parameters(d::Dict)
   kx = (kxp...)
   ky = (kyp...)
   kz = (kzp...)
+ 
+  Dealias = (ranges_where_true(dealias)...)
 
   isfile("fftw_wisdom") && FFTW.import_wisdom("fftw_wisdom")
 

@@ -153,32 +153,40 @@ function ranges_where_true(a)
   return result
 end
 
-@gen @par function newdealias!(out,s::@par(AbstractParameters))
-  println("step 1")
-  dealias = BitArray(Nx,Ny,Nz)
-  cutoff = (2kx[end]/3)^2
-  println("step 2")
-  if Dealias == :sphere
-    for k in 1:Nz
-      for j in 1:Ny
-        for i in 1:Nx
-          dealias[i,j,k] = (kx[i]^2 + ky[j]^2 + kz[k]^2) > cutoff
-        end
-      end
+# @gen @par function newdealias!(out,s::@par(AbstractParameters))
+#   println("step 1")
+#   dealias = BitArray(Nx,Ny,Nz)
+#   cutoff = (2kx[end]/3)^2
+#   println("step 2")
+#   if Dealias == :sphere
+#     for k in 1:Nz
+#       for j in 1:Ny
+#         for i in 1:Nx
+#           dealias[i,j,k] = (kx[i]^2 + ky[j]^2 + kz[k]^2) > cutoff
+#         end
+#       end
+#     end
+#   elseif Dealias == :cube
+#     for k in 1:Nz
+#       for j in 1:Ny
+#         for i in 1:Nx
+#           dealias[i,j,k] = (kx[i]^2 > cutoff) | (ky[j]^2 > cutoff) | (kz[k]^2 > cutoff)
+#         end
+#       end
+#     end
+#   end 
+#   println("step 3")
+#   ran = ranges_where_true(dealias)
+#   println("step 4")
+#   blk = :(for x in $ran; @simd for i in x; @inbounds out[i] = 0;end;end)
+#   println("step 5")
+#   return blk
+# end
+
+@par function newdealias2!(out,s::@par(AbstractParameters))
+  @mthreads for r in Dealias
+    @simd for i in r
+      @inbounds out[i] = 0
     end
-  elseif Dealias == :cube
-    for k in 1:Nz
-      for j in 1:Ny
-        for i in 1:Nx
-          dealias[i,j,k] = (kx[i]^2 > cutoff) | (ky[j]^2 > cutoff) | (kz[k]^2 > cutoff)
-        end
-      end
-    end
-  end 
-  println("step 3")
-  ran = ranges_where_true(dealias)
-  println("step 4")
-  blk = :(for x in $ran; @simd for i in x; @inbounds out[i] = 0;end;end)
-  println("step 5")
-  return blk
+  end
 end
