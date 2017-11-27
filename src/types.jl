@@ -112,7 +112,6 @@ Time Step method: $Integrator
 Dealias type: $Dealias
 """
 print(io,msg)
-return nothing
 end
 
 function Parameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,integrator::Symbol,Deal::Symbol,deat,kx,ky,kz) 
@@ -189,7 +188,6 @@ end
   Dealias type: $Dealias
   """
   print(io,msg)
-  return nothing
 end
 
 function PassiveScalarParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, α::Real,dρdz::Real,integrator::Symbol,Deal::Symbol,deat,kx,ky,kz) 
@@ -244,6 +242,28 @@ struct @par(BoussinesqParameters) <: @par(ScalarParameters)
     return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,p,ip,rm1x,rm1y,rm1z,rm2x,rm2x,rm2z,reduction,dealias,ρ,ps,α,dρdz,g, ρrhs, rrm1,rrm2)
   end
 
+end
+
+@par function Base.show(io::IO,s::@par(BoussinesqParameters))
+  msg = """
+  Boussinesq Fluid Flow Simulation
+  
+  nx: $(Nrx)
+  ny: $Ny
+  nz: $Nz
+  x domain size: $(s.lx)*2π
+  y domain size: $(s.ly)*2π
+  z domain size: $(s.lz)*2π
+  
+  Viscosity: $(s.ν)
+  Density Difusivity: $(s.α)
+  Density mean gradient / reference density: $(s.dρdz)
+  Gravity acceleration: $(s.g)
+  
+  Time Step method: $Integrator
+  Dealias type: $Dealias
+  """
+  print(io,msg)
 end
 
 function BoussinesqParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, dρdz::Real,α::Real,g::Real,integrator::Symbol,Deal::Symbol,deat,kx,ky,kz) 
