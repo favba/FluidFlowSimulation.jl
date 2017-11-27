@@ -181,7 +181,7 @@ end
   z domain size: $(s.lz)*2π
   
   Viscosity: $(s.ν)
-  Scalar Difusivity: $(s.α)
+  Scalar Diffusivity: $(s.α)
   Scalar mean gradient: $(s.dρdz)
   
   Time Step method: $Integrator
@@ -256,7 +256,7 @@ end
   z domain size: $(s.lz)*2π
   
   Viscosity: $(s.ν)
-  Density Difusivity: $(s.α)
+  Density Diffusivity: $(s.α)
   Density mean gradient / reference density: $(s.dρdz)
   Gravity acceleration: $(s.g)
   
