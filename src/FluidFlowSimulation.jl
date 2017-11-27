@@ -27,6 +27,7 @@ function run_simulation()
 end
 
 @par function run_simulation(s::@par(AbstractParameters),dtStats::Integer,dtOutput::Integer,totalnsteps::Integer,dt::Real)
+  info("Simulation started.")
   init=0
   time=0.
   writeheader(s)
