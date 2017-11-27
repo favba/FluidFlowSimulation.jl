@@ -95,6 +95,26 @@ struct @par(Parameters) <: @par(AbstractParameters)
 
 end
 
+@par function Base.show(io::IO,s::@par(Parameters))
+msg = """
+Fluid Flow Simulation
+
+nx: $(Nrx)
+ny: $Ny
+nz: $Nz
+x domain size: $(s.lx)*2π
+y domain size: $(s.ly)*2π
+z domain size: $(s.lz)*2π
+
+Viscosity: $(s.ν)
+
+Time Step method: $Integrator
+Dealias type: $Dealias
+"""
+print(io,msg)
+return nothing
+end
+
 function Parameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,integrator::Symbol,Deal::Symbol,deat,kx,ky,kz) 
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
