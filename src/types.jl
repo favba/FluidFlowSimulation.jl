@@ -170,6 +170,28 @@ struct @par(PassiveScalarParameters) <: @par(ScalarParameters)
 
 end
 
+@par function Base.show(io::IO,s::@par(PassiveScalarParameters))
+  msg = """
+  Fluid Flow Simulation with Passive Scalar
+  
+  nx: $(Nrx)
+  ny: $Ny
+  nz: $Nz
+  x domain size: $(s.lx)*2π
+  y domain size: $(s.ly)*2π
+  z domain size: $(s.lz)*2π
+  
+  Viscosity: $(s.ν)
+  Scalar Difusivity: $(s.α)
+  Scalar mean gradient: $(s.dρdz)
+  
+  Time Step method: $Integrator
+  Dealias type: $Dealias
+  """
+  print(io,msg)
+  return nothing
+end
+
 function PassiveScalarParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, α::Real,dρdz::Real,integrator::Symbol,Deal::Symbol,deat,kx,ky,kz) 
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
