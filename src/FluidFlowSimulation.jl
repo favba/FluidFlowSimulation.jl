@@ -29,7 +29,7 @@ end
 @par function run_simulation(s::@par(AbstractParameters),dtStats::Integer,dtOutput::Integer,totalnsteps::Integer,dt::Real)
   info("Simulation started.")
   init=0
-  time=0.
+  ttime=0.
   writeheader(s)
   s.p*s.u
   typeof(s)<:ScalarParameters && s.ps*s.ρ
@@ -48,13 +48,13 @@ end
     end
   end
 
-  stats(s,init,time)
+  stats(s,init,ttime)
 
   @assert totalnsteps >= dtOutput >= dtStats
   for i = 1:(totalnsteps ÷ dtOutput)
     for j = 1:(dtOutput ÷ dtStats)
-      init, dt, time = advance_in_time!(s,init,dtStats,dt,time)
-      stats(s,init,time)
+      init, dt, ttime = advance_in_time!(s,init,dtStats,dt,ttime)
+      stats(s,init,ttime)
     end
     writeoutput(s,init)
   end
