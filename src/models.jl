@@ -10,7 +10,7 @@
   return init, dt, ttime
 end
 
-function calculate_rhs!(s::A) where {A<:AbstractParameters}
+@par function calculate_rhs!(s::A) where {A<:@par(AbstractParameters)}
   compute_nonlinear!(s)
   add_viscosity!(s.rhs,s.u,s.ν,s)
   if A<:BoussinesqParameters
@@ -21,7 +21,7 @@ function calculate_rhs!(s::A) where {A<:AbstractParameters}
   A<:ScalarParameters && add_scalar_difusion!(complex(s.ρrhs),complex(s.ρ),s.α,s)
 end
 
-function compute_nonlinear!(s::A) where {A<:AbstractParameters}
+@par function compute_nonlinear!(s::A) where {A<:@par(AbstractParameters)}
   curl!(s.rhs, s.u, s)
   s.p\s.u
 
