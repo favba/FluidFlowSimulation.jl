@@ -357,7 +357,7 @@ function parameters(d::Dict)
   end
 
   FFTW.export_wisdom("fftw_wisdom")
-
+  info(s)
   return s
 end
 
