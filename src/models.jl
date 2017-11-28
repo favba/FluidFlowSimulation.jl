@@ -13,27 +13,31 @@ end
 function calculate_rhs!(s::A) where {A<:AbstractParameters}
   compute_nonlinear!(s)
   add_viscosity!(s.rhs,s.u,s.ν,s)
-  A<:BoussinesqParameters && addgravity!(s.rhs.cz,complex(s.ρ),-s.g,s)
+  if A<:BoussinesqParameters
+    gdir = GDirec == :x ? s.rhs.cx : GDirec == :y ? s.rhs.cy : s.rhs.cz 
+    addgravity!(gdir, complex(s.ρ), -s.g, s)
+  end
   pressure_projection!(s.rhs.cx,s.rhs.cy,s.rhs.cz,s)
   A<:ScalarParameters && add_scalar_difusion!(complex(s.ρrhs),complex(s.ρ),s.α,s)
 end
 
 function compute_nonlinear!(s::A) where {A<:AbstractParameters}
-  curl!(s.rhs,s.u,s)
+  curl!(s.rhs, s.u, s)
   s.p\s.u
 
-  out_transform!(s.aux,s.rhs,s)
+  out_transform!(s.aux, s.rhs, s)
 
-  rcross!(s.rhs,s.u,s.aux,s)
+  rcross!(s.rhs, s.u, s.aux, s)
   s.p*s.rhs
-  dealias!(s.rhs,s)
+  dealias!(s.rhs, s)
   if A<:ScalarParameters
     s.ps\s.ρ
-    scalar_advection!(s.aux,s.ρ,s.u,s)
+    scalar_advection!(s.aux, s.ρ, s.u, s)
     s.p*s.aux
-    dealias!(s.aux,s)
+    dealias!(s.aux, s)
     s.ps*s.ρ
-    div!(complex(s.ρrhs),s.aux.cx,s.aux.cy,s.aux.cz,s.u.cz,-s.dρdz,s)
+    gdir = GDirec == :x ? s.u.cx : GDirec == :y ? s.u.cy : s.u.cz 
+    div!(complex(s.ρrhs), s.aux.cx, s.aux.cy, s.aux.cz, gdir, -s.dρdz, s)
   end
   s.p*s.u
   return nothing
