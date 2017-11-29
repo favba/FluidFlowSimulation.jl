@@ -59,7 +59,6 @@ abstract type @par(AbstractParameters) end
   lz::Float64
   ν::Float64
   p::Base.DFT.FFTW.rFFTWPlan{Float64,-1,true,4}
-  ip::Base.DFT.ScaledPlan{Complex{Float64},Base.DFT.FFTW.rFFTWPlan{Complex{Float64},1,false,4},Float64}
   rm1x::Array{Float64,3}
   rm1y::Array{Float64,3}
   rm1z::Array{Float64,3}
@@ -83,8 +82,6 @@ struct @par(Parameters) <: @par(AbstractParameters)
     p = plan_rfft!(aux,1:3,flags=FFTW.MEASURE)
     info("Calculating FFTW in-place backward plan for velocity field")
     p.pinv = plan_irfft!(aux,1:3,flags=FFTW.MEASURE)
-    info("Calculating FFTW out-of-place backward plan for velocity field")
-    ip = Base.DFT.ScaledPlan(FFTW.rFFTWPlan{Complex{Float64},FFTW.BACKWARD,false,4}(complex(aux), real(aux), 1:3, FFTW.MEASURE&FFTW.DESTROY_INPUT,FFTW.NO_TIMELIMIT),Base.DFT.normalization(Float64, size(real(aux)), 1:3))
     rm1x = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
     rm1y = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
     rm1z = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
@@ -93,7 +90,7 @@ struct @par(Parameters) <: @par(AbstractParameters)
     rm2z = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
 
     reduction = Vector{Float64}(Threads.nthreads())
-    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,p,ip,rm1x,rm1y,rm1z,rm2x,rm2y,rm2z,reduction,dealias)
+    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,p,rm1x,rm1y,rm1z,rm2x,rm2y,rm2z,reduction,dealias)
   end
 
 end
@@ -154,8 +151,6 @@ struct @par(PassiveScalarParameters) <: @par(ScalarParameters)
     p = plan_rfft!(aux,1:3,flags=FFTW.MEASURE)
     info("Calculating FFTW in-place backward plan for velocity field")
     p.pinv = plan_irfft!(aux,1:3,flags=FFTW.MEASURE)
-    info("Calculating FFTW out-of-place backward plan for velocity field")
-    ip = Base.DFT.ScaledPlan(FFTW.rFFTWPlan{Complex{Float64},FFTW.BACKWARD,false,4}(complex(aux), real(aux), 1:3, FFTW.MEASURE&FFTW.DESTROY_INPUT,FFTW.NO_TIMELIMIT),Base.DFT.normalization(Float64, size(real(aux)), 1:3))
     rm1x = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
     rm1y = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
     rm1z = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
@@ -172,7 +167,7 @@ struct @par(PassiveScalarParameters) <: @par(ScalarParameters)
 
     reduction = Vector{Float64}(Threads.nthreads())
 
-    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,p,ip,rm1x,rm1y,rm1z,rm2x,rm2y,rm2z,reduction,dealias,ρ,ps,α,dρdz, ρrhs, rrm1,rrm2)
+    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,p,rm1x,rm1y,rm1z,rm2x,rm2y,rm2z,reduction,dealias,ρ,ps,α,dρdz, ρrhs, rrm1,rrm2)
   end
 
 end
@@ -235,8 +230,6 @@ struct @par(BoussinesqParameters) <: @par(ScalarParameters)
     p = plan_rfft!(aux,1:3,flags=FFTW.MEASURE)
     info("Calculating FFTW in-place backward plan for velocity field")
     p.pinv = plan_irfft!(aux,1:3,flags=FFTW.MEASURE)
-    info("Calculating FFTW out-of-place backward plan for velocity field")
-    ip = Base.DFT.ScaledPlan(FFTW.rFFTWPlan{Complex{Float64},FFTW.BACKWARD,false,4}(complex(aux), real(aux), 1:3, FFTW.MEASURE&FFTW.DESTROY_INPUT,FFTW.NO_TIMELIMIT),Base.DFT.normalization(Float64, size(real(aux)), 1:3))
     rm1x = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
     rm1y = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
     rm1z = Array{Float64}(2length(Kxr),length(Kyr),length(Kzr))
@@ -253,7 +246,7 @@ struct @par(BoussinesqParameters) <: @par(ScalarParameters)
 
     reduction = Vector{Float64}(Threads.nthreads())
 
-    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,p,ip,rm1x,rm1y,rm1z,rm2x,rm2x,rm2z,reduction,dealias,ρ,ps,α,dρdz,g, ρrhs, rrm1,rrm2)
+    return @par(new)(u,rhs,aux,nx,ny,nz,lx,ly,lz,ν,p,rm1x,rm1y,rm1z,rm2x,rm2x,rm2z,reduction,dealias,ρ,ps,α,dρdz,g, ρrhs, rrm1,rrm2)
   end
 
 end
@@ -361,7 +354,7 @@ function parameters(d::Dict)
   end
 
   FFTW.export_wisdom("fftw_wisdom")
-
+  info(s)
   return s
 end
 

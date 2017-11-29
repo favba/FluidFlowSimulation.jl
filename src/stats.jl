@@ -16,27 +16,26 @@ end
   u2 = real(s.u.cy[1,1,1])/(Nrx*Ny*Nz)
   u3 = real(s.u.cz[1,1,1])/(Nrx*Ny*Nz)
 
-  copy!(rawreal(s.rhs),rawreal(s.u))
-  #dealias!(s.rhs,s)
-  out_transform!(s.aux,s.rhs,s)
+  mycopy!(s.aux,s.u,s)
+  s.p\s.aux
   u12 = tmean(x->x^2,s.aux.rx,s)
   u22 = tmean(x->x^2,s.aux.ry,s)
   u32 = tmean(x->x^2,s.aux.rz,s)
 
-  grad!(s.rhs,s.u.cx,s)
-  out_transform!(s.aux,s.rhs,s)
+  grad!(s.aux,s.u.cx,s)
+  s.p\s.aux
   d1d1 = tmean(x->x^2,s.aux.rx,s)
   d1d2 = tmean(x->x^2,s.aux.ry,s)
   d1d3 = tmean(x->x^2,s.aux.rz,s)
 
-  grad!(s.rhs,s.u.cy,s)
-  out_transform!(s.aux,s.rhs,s)
+  grad!(s.aux,s.u.cy,s)
+  s.p\s.aux
   d2d1 = tmean(x->x^2,s.aux.rx,s)
   d2d2 = tmean(x->x^2,s.aux.ry,s)
   d2d3 = tmean(x->x^2,s.aux.rz,s)
 
-  grad!(s.rhs,s.u.cz,s)
-  out_transform!(s.aux,s.rhs,s)
+  grad!(s.aux,s.u.cz,s)
+  s.p\s.aux
   d3d1 = tmean(x->x^2,s.aux.rx,s)
   d3d2 = tmean(x->x^2,s.aux.ry,s)
   d3d3 = tmean(x->x^2,s.aux.rz,s)
@@ -61,13 +60,13 @@ end
 
 @par function scalar_stats(s::@par(ScalarParameters))
   rho = real(s.ρ[1,1,1])/(Nrx*Ny*Nz)  
-  copy!(s.ρrhs,s.ρ)
-  #dealias!(s.ρrhs,s)
+  _mycopy!(complex(s.ρrhs),complex(s.ρ),s)
   s.ps\s.ρrhs
   rho2 = tmean(x->x^2,rawreal(s.ρrhs),s)
+  dealias!(s.ρrhs,s)
 
-  grad!(s.rhs,complex(s.ρ),s)
-  out_transform!(s.aux,s.rhs,s)
+  grad!(s.aux,complex(s.ρ),s)
+  s.p\s.aux
   drd1 = tmean(x->x^2,s.aux.rx,s)
   drd2 = tmean(x->x^2,s.aux.ry,s)
   drd3 = tmean(x->x^2,s.aux.rz,s)

@@ -22,10 +22,9 @@ end
 end
 
 @par function compute_nonlinear!(s::A) where {A<:@par(AbstractParameters)}
-  curl!(s.rhs, s.u, s)
+  curl!(s.aux,s.u,s)
   s.p\s.u
-
-  out_transform!(s.aux, s.rhs, s)
+  s.p\s.aux
 
   rcross!(s.rhs, s.u, s.aux, s)
   s.p*s.rhs
@@ -38,12 +37,13 @@ end
     s.ps*s.ρ
     gdir = GDirec == :x ? s.u.cx : GDirec == :y ? s.u.cy : s.u.cz 
     div!(complex(s.ρrhs), s.aux.cx, s.aux.cy, s.aux.cz, gdir, -s.dρdz, s)
+  else
+    dealias!(s.aux,s)
   end
   s.p*s.u
   return nothing
 end
 
-out_transform!(out::VectorField,in::VectorField,s::AbstractParameters) = A_mul_B!(real(out),s.ip,complex(in))
 
 @inline @par function dealias!(rhs::VectorField,s::@par(AbstractParameters))
   dealias!(rhs.cx,s.dealias,s)
@@ -134,6 +134,22 @@ end
     for (jj,j) in enumerate(Kyr)
       for i in 1:(2length(Kxr))
         @inbounds rm[i,jj,kk] = rhs[i,j,k]
+      end
+    end
+  end
+end
+
+@par function mycopy!(out::VectorField,inp::VectorField,s::@par(AbstractParameters))
+  _mycopy!(out.cx,inp.cx,s)
+  _mycopy!(out.cy,inp.cy,s)
+  _mycopy!(out.cz,inp.cz,s)
+end
+
+@par function _mycopy!(out::Array{Complex128,3},inp::Array{Complex128,3},s::@par(AbstractParameters))
+  @mthreads for k in Kzr
+    for j in Kyr
+      for i in Kxr
+        @inbounds out[i,j,k] = inp[i,j,k]
       end
     end
   end
