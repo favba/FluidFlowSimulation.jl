@@ -274,7 +274,7 @@ end
   print(io,msg)
 end
 
-function BoussinesqParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, dρdz::Real,α::Real,g::Real,integrator::Symbol,Deal::Symbol,deat,kx,ky,kz,gdir) 
+function BoussinesqParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray,α::Real, dρdz::Real,g::Real,integrator::Symbol,Deal::Symbol,deat,kx,ky,kz,gdir) 
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
