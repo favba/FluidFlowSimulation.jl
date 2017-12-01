@@ -79,7 +79,7 @@ ape(s::ScalarParameters) = tmean(x->x^2,rawreal(s.ρ),s)
 @par function tmean(f::Function,x::AbstractArray{T,3},s::@par(AbstractParameters)) where {T<:Number}
 
   result = fill!(s.reduction,0.0)
-  Threads.@threads for k in 1:Nz
+  @mthreads for k in 1:Nz
     for j in 1:Ny
       @fastmath @inbounds @msimd for i in 1:Nrx
         result[Threads.threadid()] += f(x[i,j,k])::T
@@ -102,7 +102,7 @@ end
 
 @par function tmean(f::Function,x::NTuple{N,AbstractArray{T,3}},s::@par(AbstractParameters)) where {T,N}
    result = fill!(s.reduction,0.0)
-   Threads.@threads for k in 1:Nz
+   @mthreads for k in 1:Nz
      for j in 1:Ny
        @fastmath @inbounds @msimd for i in 1:Nrx
          result[Threads.threadid()] += getind(f,x,i,j,k)::T
