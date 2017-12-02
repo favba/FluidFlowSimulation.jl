@@ -63,7 +63,7 @@ end
 @par function dx!(out::AbstractArray{<:Complex,3},f::AbstractArray{<:Complex,3},s::@par(AbstractParameters)) 
   @mthreads for k in Kzr
     for j in Kyr
-      @fastmath @inbounds @msimd for i in Kxr
+      @inbounds @msimd for i in Kxr
         out[i,j,k] = f[i,j,k]*im*kx[i]
       end
     end
@@ -73,7 +73,7 @@ end
 @par function dy!(out::AbstractArray{<:Complex,3},f::AbstractArray{<:Complex,3},s::@par(AbstractParameters)) 
   @mthreads for k in Kzr
     for j in Kyr
-      @fastmath @inbounds @msimd for i in Kxr
+      @inbounds @msimd for i in Kxr
         out[i,j,k] = f[i,j,k]*im*ky[j]
       end
     end
@@ -83,7 +83,7 @@ end
 @par function dz!(out::AbstractArray{<:Complex,3},f::AbstractArray{<:Complex,3},s::@par(AbstractParameters)) 
   @mthreads for k in Kzr
     for j in Kyr
-      @fastmath @inbounds @msimd for i in Kxr
+      @inbounds @msimd for i in Kxr
         out[i,j,k] = f[i,j,k]*im*kz[k]
       end
     end
