@@ -114,18 +114,12 @@ Dealias type: $Dealias
 print(io,msg)
 end
 
-function Parameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,integrator::Symbol,Deal::Symbol,deat,kx,ky,kz) 
+function Parameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,integrator::Symbol,Deal::Symbol,deat,kx,ky,kz,kxr,kyr,kzr) 
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
   lrs = 2*lcs
   lrv = 2*lcv
-  rx = 1:div(2ncx,3)
-  kxr = ((UInt32.(rx))...)
-  ry = vcat(UInt32(1):(UInt32(div(ny,3))+1),UInt32(ny-div(ny,3)-1):UInt32(ny))
-  kyr = (ry...)
-  rz = vcat(1:(div(nz,3)+1),(nz-div(nz,3)-1):nz)
-  kzr = (rz...)
   return Parameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,Deal,kxr,kyr,kzr,kx,ky,kz,:z}(u,nx,ny,nz,lx,ly,lz,ν,deat)
 end
 
@@ -194,18 +188,12 @@ end
   print(io,msg)
 end
 
-function PassiveScalarParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, α::Real,dρdz::Real,integrator::Symbol,Deal::Symbol,deat,kx,ky,kz,gdir::Symbol) 
+function PassiveScalarParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, α::Real,dρdz::Real,integrator::Symbol,Deal::Symbol,deat,kx,ky,kz,gdir::Symbol,kxr,kyr,kzr) 
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
   lrs = 2*lcs
   lrv = 2*lcv
-  rx = 1:div(2ncx,3)
-  kxr = ((UInt32.(rx))...)
-  ry = vcat(UInt32(1):(UInt32(div(ny,3))+1),UInt32(ny-div(ny,3)-1):UInt32(ny))
-  kyr = (ry...)
-  rz = vcat(1:(div(nz,3)+1),(nz-div(nz,3)-1):nz)
-  kzr = (rz...)
   return PassiveScalarParameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,Deal,kxr,kyr,kzr,kx,ky,kz,gdir}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz,deat)
 end
 
@@ -274,18 +262,12 @@ end
   print(io,msg)
 end
 
-function BoussinesqParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray,α::Real, dρdz::Real,g::Real,integrator::Symbol,Deal::Symbol,deat,kx,ky,kz,gdir) 
+function BoussinesqParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray,α::Real, dρdz::Real,g::Real,integrator::Symbol,Deal::Symbol,deat,kx,ky,kz,gdir,kxr,kyr,kzr) 
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
   lrs = 2*lcs
   lrv = 2*lcv
-  rx = 1:div(2ncx,3)
-  kxr = ((UInt32.(rx))...)
-  ry = vcat(UInt32(1):(UInt32(div(ny,3))+1),UInt32(ny-div(ny,3)-1):UInt32(ny))
-  kyr = (ry...)
-  rz = vcat(1:(div(nz,3)+1),(nz-div(nz,3)-1):nz)
-  kzr = (rz...)
   return BoussinesqParameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,Deal,kxr,kyr,kzr,kx,ky,kz,gdir}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz,g,deat)
 end
 
@@ -328,7 +310,13 @@ function parameters(d::Dict)
   kx = (kxp...)
   ky = (kyp...)
   kz = (kzp...)
- 
+
+  kxr = 1:div(2ncx,3)
+  ry = vcat(UInt32(1):(UInt32(div(ny,3))+1),UInt32(ny-div(ny,3)-1):UInt32(ny))
+  kyr = (ry...)
+  rz = vcat(1:(div(nz,3)+1),(nz-div(nz,3)-1):nz)
+  kzr = (rz...)
+  
   isfile("fftw_wisdom") && FFTW.import_wisdom("fftw_wisdom")
 
   if haskey(d,:model)
@@ -338,19 +326,19 @@ function parameters(d::Dict)
       dρdz = parse(Float64,d[:densityGradient])/parse(Float64,d[:referenceDensity])
       info("Reading initial scalar field")
       rho = isfile("rho.0") ? PaddedArray("rho.0",(nx,ny,nz),padded=true) : PaddedArray(zeros(nx,ny,nz)) 
-      s = PassiveScalarParameters(u,nx,ny,nz,lx,ly,lz,ν,rho,α,dρdz,integrator,Dealiastype,dealias,kx,ky,kz,gdir)
+      s = PassiveScalarParameters(u,nx,ny,nz,lx,ly,lz,ν,rho,α,dρdz,integrator,Dealiastype,dealias,kx,ky,kz,gdir,kxr,kyr,kzr)
     elseif model == :Boussinesq 
       α = ν/parse(Float64,d[:Pr])
       dρdz = parse(Float64,d[:densityGradient])/parse(Float64,d[:referenceDensity])
       g = parse(Float64,d[:zAcceleration])
       info("Reading initial density field")
       rho = isfile("rho.0") ? PaddedArray("rho.0",(nx,ny,nz),padded=true) : PaddedArray(zeros(nx,ny,nz)) 
-      s = BoussinesqParameters(u,nx,ny,nz,lx,ly,lz,ν,rho,α,dρdz,g,integrator,Dealiastype,dealias,kx,ky,kz,gdir)
+      s = BoussinesqParameters(u,nx,ny,nz,lx,ly,lz,ν,rho,α,dρdz,g,integrator,Dealiastype,dealias,kx,ky,kz,gdir,kxr,kyr,kzr)
     else
       error("Unkown Model in global file: $model")
     end
   else
-    s = Parameters(u,nx,ny,nz,lx,ly,lz,ν,integrator,Dealiastype,dealias,kx,ky,kz)
+    s = Parameters(u,nx,ny,nz,lx,ly,lz,ν,integrator,Dealiastype,dealias,kx,ky,kz,kxr,kyr,kzr)
   end
 
   FFTW.export_wisdom("fftw_wisdom")
