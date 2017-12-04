@@ -30,25 +30,29 @@ end
 end
 
 @par function _tAdams_Bashforth3rdO!(u::AbstractArray{Complex128,3}, rhs::AbstractArray, dt12::Real, rm1::AbstractArray, rm2::AbstractArray, s::@par(AbstractParameters)) 
-    @mthreads for kk in 1:length(Kzr)
-      k = Kzr[kk]
-      for (jj,j) in enumerate(Kyr)
-        @fastmath @inbounds @msimd for i in Kxr
-          #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
-          u[i,j,k] = muladd(muladd(23, rhs[i,j,k], muladd(-16, rm1[i,jj,kk], 5rm2[i,jj,kk])), dt12, u[i,j,k])
-        end
+  @mthreads for kk in 1:length(Kzr)
+    k = Kzr[kk]
+    jj::Int = 1
+    for y in Kyr, j in y
+      @fastmath @inbounds @msimd for i in Kxr
+        #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
+        u[i,j,k] = muladd(muladd(23, rhs[i,j,k], muladd(-16, rm1[i,jj,kk], 5rm2[i,jj,kk])), dt12, u[i,j,k])
       end
+    jj+=1
     end
+  end
 end
 
 @par function _tAdams_Bashforth3rdO!(u::AbstractArray{Float64,3}, rhs::AbstractArray, dt12::Real, rm1::AbstractArray, rm2::AbstractArray, s::@par(AbstractParameters)) 
-    @mthreads for kk in 1:length(Kzr)
-      k = Kzr[kk]
-      for (jj,j) in enumerate(Kyr)
-        @fastmath @inbounds @msimd for i in 1:(2length(Kxr))
-          #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
-          u[i,j,k] = muladd(muladd(23, rhs[i,j,k], muladd(-16, rm1[i,jj,kk], 5rm2[i,jj,kk])), dt12, u[i,j,k])
-        end
+  @mthreads for kk in 1:length(Kzr)
+    k = Kzr[kk]
+    jj::Int = 1
+    for y in Kyr, j in y
+      @fastmath @inbounds @msimd for i in 1:(2length(Kxr))
+        #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
+        u[i,j,k] = muladd(muladd(23, rhs[i,j,k], muladd(-16, rm1[i,jj,kk], 5rm2[i,jj,kk])), dt12, u[i,j,k])
       end
+    jj+=1
     end
+  end
 end

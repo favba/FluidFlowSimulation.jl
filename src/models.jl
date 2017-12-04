@@ -69,7 +69,7 @@ end
 
 @par function _add_viscosity!(rhs::AbstractArray,u::AbstractArray,mν::Real,s::@par(AbstractParameters))
   @mthreads for k in Kzr
-    for j in Kyr
+    for y in Kyr, j in y
       @fastmath @inbounds @msimd for i in Kxr
         #rhs[i,j,k] = (kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])*mŒΩ*u[i,j,k] + rhs[i,j,k]
         rhs[i,j,k] = muladd(muladd(kx[i], kx[i], muladd(ky[j], ky[j], kz[k]*kz[k])), mν*u[i,j,k], rhs[i,j,k])
@@ -85,7 +85,7 @@ end
  @par function pressure_projection!(rhsx,rhsy,rhsz,s::@par(AbstractParameters))
   @inbounds a = (rhsx[1],rhsy[1],rhsz[1])
   @mthreads for k in Kzr
-    for j in Kyr
+    for y in Kyr, j in y
       @fastmath @inbounds @msimd for i in Kxr
         #p1 = -(kx[i]*rhsx[i,j,k] + ky[j]*rhsy[i,j,k] + kz[k]*rhsz[i,j,k])/(kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])
         p1 = -muladd(kx[i], rhsx[i,j,k], muladd(ky[j], rhsy[i,j,k], kz[k]*rhsz[i,j,k]))/muladd(kx[i], kx[i], muladd(ky[j], ky[j],  kz[k]*kz[k]))
@@ -100,7 +100,7 @@ end
 
 @par function addgravity!(rhs,ρ,g::Real,s::@par(BoussinesqParameters))
   @mthreads for k in Kzr
-    for j in Kyr
+    for y in Kyr, j in y
       @fastmath @inbounds @msimd for i in Kxr
         rhs[i,j,k] = muladd(ρ[i,j,k],g,rhs[i,j,k])
       end
@@ -120,10 +120,12 @@ end
 @par function mycopy!(rm::AbstractArray{T,3},rhs::AbstractArray{T,3},s::@par(AbstractParameters)) where T<:Complex
   @mthreads for kk in 1:length(Kzr)
     k = Kzr[kk]
-    for (jj,j) in enumerate(Kyr)
+    jj::Int = 1
+    for y in Kyr, j in y
       for i in Kxr
         @inbounds rm[i,jj,kk] = rhs[i,j,k]
       end
+    jj+=1
     end
   end
 end
@@ -131,10 +133,12 @@ end
 @par function mycopy!(rm::AbstractArray{T,3},rhs::AbstractArray{T,3},s::@par(AbstractParameters)) where T<:Real
   @mthreads for kk in 1:length(Kzr)
     k = Kzr[kk]
-    for (jj,j) in enumerate(Kyr)
+    jj::Int = 1
+    for y in Kyr, j in y
       for i in 1:(2length(Kxr))
         @inbounds rm[i,jj,kk] = rhs[i,j,k]
       end
+    jj+=1
     end
   end
 end
@@ -147,7 +151,7 @@ end
 
 @par function _mycopy!(out::Array{Complex128,3},inp::Array{Complex128,3},s::@par(AbstractParameters))
   @mthreads for k in Kzr
-    for j in Kyr
+    for y in Kyr, j in y
       for i in Kxr
         @inbounds out[i,j,k] = inp[i,j,k]
       end
