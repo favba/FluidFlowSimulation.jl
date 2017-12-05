@@ -50,13 +50,14 @@ end
 
   stats(s,init,ttime)
 
-  @assert totalnsteps >= dtOutput >= dtStats
-  for i = 1:(totalnsteps ÷ dtOutput)
-    for j = 1:(dtOutput ÷ dtStats)
-      init, dt, ttime = advance_in_time!(s,init,dtStats,dt,ttime)
-      stats(s,init,ttime)
-    end
-    writeoutput(s,init)
+  @assert totalnsteps >= dtOutput 
+  @assert totalnsteps >= dtStats
+
+  for i = 1:totalnsteps
+    advance_in_time!(s,dt)
+    ttime+=dt
+    mod(i,dtOutput) == 0 && writeoutput(s,i)
+    mod(i,dtStats) == 0 && stats(s,i,ttime)
   end
 end
 

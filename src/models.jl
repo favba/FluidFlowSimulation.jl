@@ -1,13 +1,7 @@
-@par function advance_in_time!(s::A,init::Int64,Nsteps::Int64,dt::Real,ttime::Real) where {A<:@par(AbstractParameters)}
-
-  for t=1:Nsteps
-    init += 1
-    calculate_rhs!(s)
-    time_step!(s,dt)
-    ttime += dt
-  end
-
-  return init, dt, ttime
+@inline @par function advance_in_time!(s::A,dt::Real) where {A<:@par(AbstractParameters)}
+  calculate_rhs!(s)
+  time_step!(s,dt)
+  return nothing
 end
 
 @par function calculate_rhs!(s::A) where {A<:@par(AbstractParameters)}
