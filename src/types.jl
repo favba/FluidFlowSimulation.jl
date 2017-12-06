@@ -257,8 +257,8 @@ end
   
   Viscosity: $(s.ν)
   Density Diffusivity: $(s.α)
-  Density mean gradient / reference density: $(s.dρdz)
-  Gravity acceleration: $(s.g)
+  Density mean gradient: $(s.dρdz)
+  Gravity acceleration / reference density: $(s.g)
   Gravity direction: $GDirec
   
   Time Step method: $Integrator
@@ -327,14 +327,14 @@ function parameters(d::Dict)
     model = Symbol(d[:model])
     if model == :PassiveScalar
       α = ν/parse(Float64,d[:Pr])
-      dρdz = parse(Float64,d[:densityGradient])/parse(Float64,d[:referenceDensity])
+      dρdz = parse(Float64,d[:densityGradient])
       info("Reading initial scalar field")
       rho = isfile("rho.0") ? PaddedArray("rho.0",(nx,ny,nz),padded=true) : PaddedArray(zeros(nx,ny,nz)) 
       s = PassiveScalarParameters(u,nx,ny,nz,lx,ly,lz,ν,rho,α,dρdz,integrator,Dealiastype,dealias,kx,ky,kz,gdir,kxr,kyr,kzr)
     elseif model == :Boussinesq 
       α = ν/parse(Float64,d[:Pr])
-      dρdz = parse(Float64,d[:densityGradient])/parse(Float64,d[:referenceDensity])
-      g = parse(Float64,d[:zAcceleration])
+      dρdz = parse(Float64,d[:densityGradient])
+      g = parse(Float64,d[:zAcceleration])/parse(Float64,d[:referenceDensity])
       info("Reading initial density field")
       rho = isfile("rho.0") ? PaddedArray("rho.0",(nx,ny,nz),padded=true) : PaddedArray(zeros(nx,ny,nz)) 
       s = BoussinesqParameters(u,nx,ny,nz,lx,ly,lz,ν,rho,α,dρdz,g,integrator,Dealiastype,dealias,kx,ky,kz,gdir,kxr,kyr,kzr)
