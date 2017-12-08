@@ -8,7 +8,7 @@ end
   compute_nonlinear!(s)
   add_viscosity!(s.rhs,s.u,s.ν,s)
   if A<:BoussinesqParameters
-    gdir = GDirec == :x ? s.rhs.cx : GDirec == :y ? s.rhs.cy : s.rhs.cz 
+    gdir = GDirec === :x ? s.rhs.cx : GDirec === :y ? s.rhs.cy : s.rhs.cz 
     addgravity!(gdir, complex(s.ρ), -s.g, s)
   end
   pressure_projection!(s.rhs.cx,s.rhs.cy,s.rhs.cz,s)
