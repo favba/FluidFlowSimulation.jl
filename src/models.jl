@@ -29,7 +29,7 @@ end
     s.p*s.aux
     dealias!(s.aux, s)
     s.ps*s.ρ
-    gdir = GDirec == :x ? s.u.cx : GDirec == :y ? s.u.cy : s.u.cz 
+    gdir = GDirec === :x ? s.u.cx : GDirec === :y ? s.u.cy : s.u.cz 
     div!(complex(s.ρrhs), s.aux.cx, s.aux.cy, s.aux.cz, gdir, -s.dρdz, s)
   else
     dealias!(s.aux,s)
