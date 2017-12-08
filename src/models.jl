@@ -111,26 +111,26 @@ end
   end
 end
 
-@par function mycopy!(rm::AbstractArray{T,3},rhs::AbstractArray{T,3},s::@par(AbstractParameters)) where T<:Complex
+@inbounds @par function mycopy!(rm::AbstractArray{T,3},rhs::AbstractArray{T,3},s::@par(AbstractParameters)) where T<:Complex
   @mthreads for kk in 1:length(Kzr)
     k = Kzr[kk]
     jj::Int = 1
     for y in Kyr, j in y
       for i in Kxr
-        @inbounds rm[i,jj,kk] = rhs[i,j,k]
+        rm[i,jj,kk] = rhs[i,j,k]
       end
     jj+=1
     end
   end
 end
 
-@par function mycopy!(rm::AbstractArray{T,3},rhs::AbstractArray{T,3},s::@par(AbstractParameters)) where T<:Real
+@inbounds @par function mycopy!(rm::AbstractArray{T,3},rhs::AbstractArray{T,3},s::@par(AbstractParameters)) where T<:Real
   @mthreads for kk in 1:length(Kzr)
     k = Kzr[kk]
     jj::Int = 1
     for y in Kyr, j in y
       for i in 1:(2length(Kxr))
-        @inbounds rm[i,jj,kk] = rhs[i,j,k]
+        rm[i,jj,kk] = rhs[i,j,k]
       end
     jj+=1
     end
