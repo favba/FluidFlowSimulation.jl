@@ -17,14 +17,17 @@ end
 
 @par function compute_nonlinear!(s::A) where {A<:@par(AbstractParameters)}
   curl!(s.aux,s.u,s)
-  s.p\s.u
-  s.p\s.aux
+  #s.p\s.u
+  back_transform!(s.u,s.p,s)
+  #s.p\s.aux
+  back_transform!(s.aux,s.p,s)
 
   rcross!(s.rhs, s.u, s.aux, s)
   s.p*s.rhs
   dealias!(s.rhs, s)
   if A<:ScalarParameters
-    s.ps\s.ρ
+    #s.ps\s.ρ
+    back_transform!(s.ρ,s.ps,s)
     scalar_advection!(s.aux, s.ρ, s.u, s)
     s.p*s.aux
     dealias!(s.aux, s)
@@ -103,10 +106,10 @@ end
 end
 
 @par function time_step!(s::A,dt::Real) where {A<:@par(AbstractParameters)}
-  if Integrator == :Euller
+  if Integrator === :Euller
     Euller!(rawreal(s.u),rawreal(s.rhs),dt,s)
     A <: ScalarParameters && Euller!(complex(s.ρ),complex(s.ρrhs),dt,s)
-  elseif Integrator == :Adams_Bashforth3rdO
+  elseif Integrator === :Adams_Bashforth3rdO
     Adams_Bashforth3rdO!(dt,s)
   end
 end
@@ -151,4 +154,29 @@ end
       end
     end
   end
+end
+
+@inline function back_transform!(field,p,s)
+  A_mul_B!(real(field),p.pinv.p,complex(field))
+  my_scale!(field,s)
+  return nothing
+end
+
+@inline @par function my_scale!(field::AbstractArray{<:Real,3},s::@par(AbstractParameters))
+  x = 1/(Nrx*Ny*Nz)
+  @mthreads for k in 1:Nz
+    for j in 1:Ny
+      @msimd for i in 1:Nrx
+        @inbounds field[i,j,k] = x*field[i,j,k]
+      end
+    end
+  end
+end 
+
+@inline my_scale!(field::PaddedArray,s) = my_scale!(rawreal(field),s)
+
+@inline function my_scale!(field::VectorField,s)
+  my_scale!(field.rx,s)
+  my_scale!(field.ry,s)
+  my_scale!(field.rz,s)
 end

@@ -1,6 +1,6 @@
 function writeoutput(s::AbstractParameters,init::Integer)
   mycopy!(s.aux,s.u,s)
-  s.p\s.aux
+  back_transform!(s.aux,s.p,s)
   write("u1.$init",s.aux.rx)
   write("u2.$init",s.aux.ry)
   write("u3.$init",s.aux.rz)
@@ -9,13 +9,13 @@ end
 
 function writeoutput(s::ScalarParameters,init::Integer)
   mycopy!(s.aux,s.u,s)
-  s.p\s.aux
+  back_transform!(s.aux,s.p,s)
   write("u1.$init",s.aux.rx)
   write("u2.$init",s.aux.ry)
   write("u3.$init",s.aux.rz)
   dealias!(s.aux,s)
   copy!(rawreal(s.ρrhs),rawreal(s.ρ))
-  s.ps\s.ρrhs
+  back_transform!(s.ρrhs,s.ps,s)
   write("rho.$init",s.ρrhs)
   dealias!(s.ρrhs,s)
 end

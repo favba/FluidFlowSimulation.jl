@@ -1,5 +1,5 @@
 @par function Euller!(u::AbstractArray{Float64,N},rhs::AbstractArray,dt::Real,s::@par(AbstractParameters)) where {N}
-  @mthreads for i in 1:(N==3 ? Lrs : Lrv)
+  @mthreads for i in 1:(N===3 ? Lrs : Lrv)
     #@inbounds u[i] += dt*rhs[i]
     @fastmath @inbounds u[i] = muladd(dt,rhs[i],u[i])
   end
