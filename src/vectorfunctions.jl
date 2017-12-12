@@ -35,8 +35,8 @@ end
      outz[i] = muladd(scale*ux[i],vy[i], mscale*uy[i]*vx[i])
 
      vx[i] = ux[i]*ρ[i]
-     vy[i] = ux[i]*ρ[i]
-     vz[i] = ux[i]*ρ[i]
+     vy[i] = uy[i]*ρ[i]
+     vz[i] = uz[i]*ρ[i]
     end
   end
 end
