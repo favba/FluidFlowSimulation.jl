@@ -2,11 +2,41 @@
                   ux::AbstractArray{T},uy::AbstractArray{T},uz::AbstractArray{T},
                   vx::AbstractArray{T},vy::AbstractArray{T},vz::AbstractArray{T},
                   s::@par(AbstractParameters)) where {T<:Real}
+  scale::Float64 = 1/(Nrx*Ny*Nz)                
+  mscale::Float64 = -1/(Nrx*Ny*Nz)                
   @mthreads for i in 1:Lrs
     @fastmath @inbounds begin
-     outx[i] = uy[i]*vz[i] - uz[i]*vy[i]
-     outy[i] = uz[i]*vx[i] - ux[i]*vz[i]
-     outz[i] = ux[i]*vy[i] - uy[i]*vx[i]
+     ux[i] *= scale
+     uy[i] *= scale
+     uz[i] *= scale
+
+     outx[i] = muladd(scale*uy[i],vz[i], mscale*uz[i]*vy[i])
+     outy[i] = muladd(scale*uz[i],vx[i], mscale*ux[i]*vz[i])
+     outz[i] = muladd(scale*ux[i],vy[i], mscale*uy[i]*vx[i])
+    end
+  end
+end
+
+@par function cross!(outx::AbstractArray{T},outy::AbstractArray{T},outz::AbstractArray{T},
+                  ux::AbstractArray{T},uy::AbstractArray{T},uz::AbstractArray{T},
+                  vx::AbstractArray{T},vy::AbstractArray{T},vz::AbstractArray{T},
+                  ρ, s::@par(AbstractParameters)) where {T<:Real}
+  scale::Float64 = 1/(Nrx*Ny*Nz)                
+  mscale::Float64 = -1/(Nrx*Ny*Nz)                
+  @mthreads for i in 1:Lrs
+    @fastmath @inbounds begin
+     ux[i] *= scale
+     uy[i] *= scale
+     uz[i] *= scale
+     ρ[i] *= scale
+
+     outx[i] = muladd(scale*uy[i],vz[i], mscale*uz[i]*vy[i])
+     outy[i] = muladd(scale*uz[i],vx[i], mscale*ux[i]*vz[i])
+     outz[i] = muladd(scale*ux[i],vy[i], mscale*uy[i]*vx[i])
+
+     vx[i] = ux[i]*ρ[i]
+     vy[i] = ux[i]*ρ[i]
+     vz[i] = ux[i]*ρ[i]
     end
   end
 end
@@ -38,9 +68,13 @@ end
   end  
 end
 
-function rcross!(out::VectorField,u::VectorField,v::VectorField,s::AbstractParameters)
-  cross!(out.rx,out.ry,out.rz,u.rx,u.ry,u.rz,v.rx,v.ry,v.rz,s)
-  return out  
+function realspace!(rhs::VectorField,u::VectorField,aux::VectorField,s::A) where {A<:AbstractParameters}
+  if A<:ScalarParameters 
+    cross!(rhs.rx,rhs.ry,rhs.rz,u.rx,u.ry,u.rz,aux.rx,aux.ry,aux.rz, complex(s.ρ), s)
+  else 
+    cross!(rhs.rx,rhs.ry,rhs.rz,u.rx,u.ry,u.rz,aux.rx,aux.ry,aux.rz,s)
+  end
+  return nothing  
 end
 
 function ccross!(out::VectorField,u::VectorField,v::VectorField,s::AbstractParameters)

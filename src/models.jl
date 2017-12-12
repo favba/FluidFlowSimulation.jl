@@ -17,18 +17,16 @@ end
 
 @par function compute_nonlinear!(s::A) where {A<:@par(AbstractParameters)}
   curl!(s.aux,s.u,s)
-  #s.p\s.u
-  back_transform!(s.u,s.p,s)
-  #s.p\s.aux
-  back_transform!(s.aux,s.p,s)
-
-  rcross!(s.rhs, s.u, s.aux, s)
+  A_mul_B!(real(s.u),s.pinv.p,complex(s.u))
+  A_mul_B!(real(s.aux),s.pinv.p,complex(s.aux))
+  
+  A<:ScalarParameters && A_mul_B!(real(s.ρ),s.ps.pinv.p,complex(s.ρ))
+  
+  realspace!(s.rhs, s.u, s.aux, s)
   s.p*s.rhs
   dealias!(s.rhs, s)
+  s.p*s.u
   if A<:ScalarParameters
-    #s.ps\s.ρ
-    back_transform!(s.ρ,s.ps,s)
-    scalar_advection!(s.aux, s.ρ, s.u, s)
     s.p*s.aux
     dealias!(s.aux, s)
     s.ps*s.ρ
@@ -37,7 +35,6 @@ end
   else
     dealias!(s.aux,s)
   end
-  s.p*s.u
   return nothing
 end
 
