@@ -70,7 +70,7 @@ end
 
 function realspace!(rhs::VectorField,u::VectorField,aux::VectorField,s::A) where {A<:AbstractParameters}
   if A<:ScalarParameters 
-    cross!(rhs.rx,rhs.ry,rhs.rz,u.rx,u.ry,u.rz,aux.rx,aux.ry,aux.rz, complex(s.ρ), s)
+    cross!(rhs.rx,rhs.ry,rhs.rz,u.rx,u.ry,u.rz,aux.rx,aux.ry,aux.rz, rawreal(s.ρ), s)
   else 
     cross!(rhs.rx,rhs.ry,rhs.rz,u.rx,u.ry,u.rz,aux.rx,aux.ry,aux.rz,s)
   end

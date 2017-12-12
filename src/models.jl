@@ -17,8 +17,8 @@ end
 
 @par function compute_nonlinear!(s::A) where {A<:@par(AbstractParameters)}
   curl!(s.aux,s.u,s)
-  A_mul_B!(real(s.u),s.pinv.p,complex(s.u))
-  A_mul_B!(real(s.aux),s.pinv.p,complex(s.aux))
+  A_mul_B!(real(s.u),s.p.pinv.p,complex(s.u))
+  A_mul_B!(real(s.aux),s.p.pinv.p,complex(s.aux))
   
   A<:ScalarParameters && A_mul_B!(real(s.ρ),s.ps.pinv.p,complex(s.ρ))
   

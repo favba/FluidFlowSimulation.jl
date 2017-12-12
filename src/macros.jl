@@ -18,7 +18,7 @@ end
 
 macro mthreads(ex)
   return esc(:(Threads.@threads $ex))
-  #return esc(ex)
+  return esc(ex)
 end
 
 macro msimd(ex)
