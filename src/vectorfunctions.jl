@@ -125,15 +125,13 @@ end
 end
 
 function rfftfreq(n::Integer,s::Real)::Vector{Float64}
-  d = 2π*s
-  Float64[(n/2 - i)/d for i = n/2:-1:0]
+  Float64[(n/2 - i)/s for i = n/2:-1:0]
 end
 
 function fftfreq(n::Integer,s::Real)::Vector{Float64}
-  d = 2π*s
   if iseven(n)
-    return vcat(Float64[(n/2 - i)/d for i = n/2:-1:1],Float64[-i/d for i = n/2:-1:1])
-  else return vcat(Float64[(n/2 - i)/d for i = n/2:-1:0],Float64[-i/d for i = (n-1)/2:-1:1])
+    return vcat(Float64[(n/2 - i)/s for i = n/2:-1:1],Float64[-i/s for i = n/2:-1:1])
+  else return vcat(Float64[(n/2 - i)/s for i = n/2:-1:0],Float64[-i/s for i = (n-1)/2:-1:1])
   end
 end
 

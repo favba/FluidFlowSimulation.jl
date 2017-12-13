@@ -290,9 +290,9 @@ function parameters(d::Dict)
 
   ncx = div(nx,2)+1
 
-  kxp = 2π .* reshape(rfftfreq(nx,lx),(ncx,1,1))
-  kyp = 2π .* reshape(fftfreq(ny,ly),(1,ny,1))
-  kzp = 2π .* reshape(fftfreq(nz,lz),(1,1,nz))
+  kxp = reshape(rfftfreq(nx,lx),(ncx,1,1))
+  kyp = reshape(fftfreq(ny,ly),(1,ny,1))
+  kzp = reshape(fftfreq(nz,lz),(1,1,nz))
 
   FFTW.set_num_threads(Threads.nthreads())
   
@@ -317,8 +317,8 @@ function parameters(d::Dict)
   kz = (kzp...)
 
   kxr = 1:div(2ncx,3)
-  kyr = (1:(div(ny,3)+1),(ny-div(ny,3)-1):ny)
-  rz = vcat(1:(div(nz,3)+1),(nz-div(nz,3)-1):nz)
+  kyr = (1:(div(ny,3)+1),(ny-div(ny,3)+1):ny)
+  rz = vcat(1:(div(nz,3)+1),(nz-div(nz,3)+1):nz)
   kzr = (rz...)
   
   isfile("fftw_wisdom") && FFTW.import_wisdom("fftw_wisdom")
