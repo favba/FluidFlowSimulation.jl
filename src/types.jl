@@ -15,7 +15,7 @@ struct VectorField{A<:AbstractPaddedArray{Float64, 4, false}} <: AbstractPaddedA
     cy = unsafe_wrap(Array{Complex128,3},pointer(complex(data),sub2ind(cdims,1,1,1,2)),(cnx,cny,cnz))
     cz = unsafe_wrap(Array{Complex128,3},pointer(complex(data),sub2ind(cdims,1,1,1,3)),(cnx,cny,cnz))
 
-    rnx,rny,rnz,_ = size(rawreal(data))
+    rnx,rny,rnz,_ = size(parent(real(data)))
     rdims = (rnx,rny,rnz)
     rx = reinterpret(Float64,cx,rdims)
     ry = reinterpret(Float64,cy,rdims)
@@ -36,12 +36,11 @@ end
 
 @inline Base.real(V::VectorField) = real(V.data)
 @inline Base.complex(V::VectorField) = complex(V.data) 
-@inline InplaceRealFFTW.rawreal(V::VectorField) = rawreal(V.data)
 Base.similar(V::VectorField{A}) where {A} = VectorField{A}(similar(V.data))
 Base.copy(V::VectorField{A}) where {A} = VectorField{A}(copy(V.data))
 
-InplaceRealFFTW.rfft!(V::VectorField{A}) where {A} = rfft!(V,1:3) 
-InplaceRealFFTW.irfft!(V::VectorField{A}) where {A} = irfft!(V,1:3) 
+InplaceRealFFT.rfft!(V::VectorField{A}) where {A} = rfft!(V,1:3) 
+InplaceRealFFT.irfft!(V::VectorField{A}) where {A} = irfft!(V,1:3) 
 
 #------------------------------------------------------------------------------------------------------
 
@@ -58,7 +57,7 @@ abstract type @par(AbstractParameters) end
   ly::Float64
   lz::Float64
   ν::Float64
-  p::Base.DFT.FFTW.rFFTWPlan{Float64,-1,true,4}
+  p::FFTW.rFFTWPlan{Float64,-1,true,4}
   rm1x::Array{Float64,3}
   rm1y::Array{Float64,3}
   rm1z::Array{Float64,3}
@@ -128,7 +127,7 @@ abstract type @par(ScalarParameters) <: @par(AbstractParameters) end
 struct @par(PassiveScalarParameters) <: @par(ScalarParameters)
   @GenericParameters
   ρ::PaddedArray{Float64,3,false}
-  ps::Base.DFT.FFTW.rFFTWPlan{Float64,-1,true,3}
+  ps::FFTW.rFFTWPlan{Float64,-1,true,3}
   α::Float64 #Difusitivity = ν/Pr  
   dρdz::Float64  
   ρrhs::PaddedArray{Float64,3,false}
@@ -203,7 +202,7 @@ end
 struct @par(BoussinesqParameters) <: @par(ScalarParameters)
   @GenericParameters
   ρ::PaddedArray{Float64,3,false}
-  ps::Base.DFT.FFTW.rFFTWPlan{Float64,-1,true,3}
+  ps::FFTW.rFFTWPlan{Float64,-1,true,3}
   α::Float64 #Difusitivity = ν/Pr  
   dρdz::Float64 #This is actually dρsdz/ρ₀
   g::Float64

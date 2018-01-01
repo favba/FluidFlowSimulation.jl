@@ -21,9 +21,9 @@ end
   mycopy!(s.rm1z,s.rhs.rz,s)
 
   if A<:ScalarParameters
-    _tAdams_Bashforth3rdO!(rawreal(s.ρ),rawreal(s.ρrhs),dt12,s.rrm1,s.rrm2,s)
+    _tAdams_Bashforth3rdO!(parent(real(s.ρ)),parent(real(s.ρrhs)),dt12,s.rrm1,s.rrm2,s)
     copy!(s.rrm2,s.rrm1)
-    mycopy!(s.rrm1,rawreal(s.ρrhs),s)
+    mycopy!(s.rrm1,parent(real(s.ρrhs)),s)
   end
 
   return nothing
