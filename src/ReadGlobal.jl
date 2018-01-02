@@ -1,6 +1,10 @@
 module ReadGlobal
 export readglobal, getdimsize, checkinput
 
+if VERSION >= v"0.7-"
+  using DelimitedFiles
+end
+
 function findglobal()
   filename="global"
   if !isfile(filename)

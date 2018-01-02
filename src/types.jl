@@ -1,5 +1,5 @@
 
-struct VectorField{A<:AbstractPaddedArray{Float64, 4, false}} <: AbstractPaddedArray{Float64,4,false}
+struct VectorField{A<:AbstractPaddedArray{Float64, 4}} <: AbstractPaddedArray{Float64,4}
   data::A
   cx::Array{Complex128,3}
   cy::Array{Complex128,3}
@@ -8,7 +8,7 @@ struct VectorField{A<:AbstractPaddedArray{Float64, 4, false}} <: AbstractPaddedA
   ry::Array{Float64,3}
   rz::Array{Float64,3}
 
-  function VectorField{A}(data::A) where {A<:AbstractPaddedArray{Float64, 4,false}}
+  function VectorField{A}(data::A) where {A<:AbstractPaddedArray{Float64, 4}}
     cdims = size(data)
     cnx, cny, cnz, _ = cdims
     cx = unsafe_wrap(Array{Complex128,3},pointer(complex(data)),(cnx,cny,cnz))
@@ -17,14 +17,18 @@ struct VectorField{A<:AbstractPaddedArray{Float64, 4, false}} <: AbstractPaddedA
 
     rnx,rny,rnz,_ = size(parent(real(data)))
     rdims = (rnx,rny,rnz)
-    rx = reinterpret(Float64,cx,rdims)
-    ry = reinterpret(Float64,cy,rdims)
-    rz = reinterpret(Float64,cz,rdims)
+    #rx = reinterpret(Float64,cx,rdims)
+    rx = unsafe_wrap(Array{Float64,3},reinterpret(Ptr{Float64},pointer(cx)),rdims)
+    #ry = reinterpret(Float64,cy,rdims)
+    ry = unsafe_wrap(Array{Float64,3},reinterpret(Ptr{Float64},pointer(cy)),rdims)
+    #rz = reinterpret(Float64,cz,rdims)
+    rz = unsafe_wrap(Array{Float64,3},reinterpret(Ptr{Float64},pointer(cz)),rdims)
+
     return new{A}(data,cx,cy,cz,rx,ry,rz)
   end
 end
 
-VectorField(data::AbstractPaddedArray{Float64,4,false}) = VectorField{typeof(data)}(data)
+VectorField(data::AbstractPaddedArray{Float64,4}) = VectorField{typeof(data)}(data)
 
 function VectorField(ux::AbstractString,uy::AbstractString,uz::AbstractString,nx::Integer,ny::Integer,nz::Integer)
   field = VectorField(PaddedArray(nx,ny,nz,3))
