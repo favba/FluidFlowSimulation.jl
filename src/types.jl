@@ -1,4 +1,4 @@
-
+Base.complex(a::AbstractPaddedArray) = InplaceRealFFT.unsafe_complex_view(a)
 struct VectorField{A<:AbstractPaddedArray{Float64, 4}} <: AbstractPaddedArray{Float64,4}
   data::A
   cx::Array{Complex128,3}
@@ -39,7 +39,7 @@ function VectorField(ux::AbstractString,uy::AbstractString,uz::AbstractString,nx
 end
 
 @inline Base.real(V::VectorField) = real(V.data)
-@inline Base.complex(V::VectorField) = complex(V.data) 
+@inline InplaceRealFFT.unsafe_complex_view(V::VectorField) = InplaceRealFFT.unsafe_complex_view(V.data) 
 Base.similar(V::VectorField{A}) where {A} = VectorField{A}(similar(V.data))
 Base.copy(V::VectorField{A}) where {A} = VectorField{A}(copy(V.data))
 
@@ -332,14 +332,14 @@ function parameters(d::Dict)
       α = ν/parse(Float64,d[:Pr])
       dρdz = parse(Float64,d[:densityGradient])
       info("Reading initial scalar field")
-      rho = isfile("rho.0") ? PaddedArray("rho.0",(nx,ny,nz),padded=true) : PaddedArray(zeros(nx,ny,nz)) 
+      rho = isfile("rho.0") ? PaddedArray("rho.0",(nx,ny,nz),true) : PaddedArray(zeros(nx,ny,nz)) 
       s = PassiveScalarParameters(u,nx,ny,nz,lx,ly,lz,ν,rho,α,dρdz,integrator,Dealiastype,dealias,kx,ky,kz,gdir,kxr,kyr,kzr)
     elseif model == :Boussinesq 
       α = ν/parse(Float64,d[:Pr])
       dρdz = parse(Float64,d[:densityGradient])
       g = parse(Float64,d[:zAcceleration])/parse(Float64,d[:referenceDensity])
       info("Reading initial density field")
-      rho = isfile("rho.0") ? PaddedArray("rho.0",(nx,ny,nz),padded=true) : PaddedArray(zeros(nx,ny,nz)) 
+      rho = isfile("rho.0") ? PaddedArray("rho.0",(nx,ny,nz),true) : PaddedArray(zeros(nx,ny,nz)) 
       s = BoussinesqParameters(u,nx,ny,nz,lx,ly,lz,ν,rho,α,dρdz,g,integrator,Dealiastype,dealias,kx,ky,kz,gdir,kxr,kyr,kzr)
     else
       error("Unkown Model in global file: $model")
