@@ -12,25 +12,27 @@
   outz = s.rhs.rz
   L::UnitRange{Int64} = 1:Lrs
   if A<:ScalarParameters
-    ρ::Array{Float64,3} = rawreal(s.ρ)
+    ρ::Array{Float64,3} = parent(real(s.ρ))
   end
-  @mthreads for i in L
-    @fastmath @inbounds begin
-     ux[i] *= scale
-     uy[i] *= scale
-     uz[i] *= scale
 
-     outx[i] = muladd(scale*uy[i],vz[i], mscale*uz[i]*vy[i])
-     outy[i] = muladd(scale*uz[i],vx[i], mscale*ux[i]*vz[i])
-     outz[i] = muladd(scale*ux[i],vy[i], mscale*uy[i]*vx[i])
-     if A<:ScalarParameters
-       ρ[i] *= scale
-       vx[i] = ux[i]*ρ[i]
-       vy[i] = uy[i]*ρ[i]
-       vz[i] = uz[i]*ρ[i]
-     end
+  @mthreads for i in L
+    @inbounds begin
+      ux[i] *= scale
+      uy[i] *= scale
+      uz[i] *= scale
+
+      outx[i] = muladd(scale*uy[i],vz[i], mscale*uz[i]*vy[i])
+      outy[i] = muladd(scale*uz[i],vx[i], mscale*ux[i]*vz[i])
+      outz[i] = muladd(scale*ux[i],vy[i], mscale*uy[i]*vx[i])
+      if A<:ScalarParameters
+        ρ[i] *= scale
+        vx[i] = ux[i]*ρ[i]
+        vy[i] = uy[i]*ρ[i]
+        vz[i] = uz[i]*ρ[i]
+      end
     end
   end
+
   return nothing
 end
 
@@ -59,15 +61,6 @@ end
       end
     end
   end  
-end
-
-function realspace!(rhs::VectorField,u::VectorField,aux::VectorField,s::A) where {A<:AbstractParameters}
-  if A<:ScalarParameters 
-    cross!(rhs.rx,rhs.ry,rhs.rz,u.rx,u.ry,u.rz,aux.rx,aux.ry,aux.rz, parent(real(s.ρ)), s)
-  else 
-    cross!(rhs.rx,rhs.ry,rhs.rz,u.rx,u.ry,u.rz,aux.rx,aux.ry,aux.rz,s)
-  end
-  return nothing  
 end
 
 function ccross!(out::VectorField,u::VectorField,v::VectorField,s::AbstractParameters)

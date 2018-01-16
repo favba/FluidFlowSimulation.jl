@@ -22,7 +22,7 @@ end
   
   A<:ScalarParameters && A_mul_B!(real(s.ρ),s.ps.pinv.p,complex(s.ρ))
   
-  realspace!(s.rhs, s.u, s.aux, s)
+  realspace!(s)
   s.p*s.rhs
   dealias!(s.rhs, s)
   s.p*s.u
