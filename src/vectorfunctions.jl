@@ -61,6 +61,15 @@ end
   end  
 end
 
+function realspace!(rhs::VectorField,u::VectorField,aux::VectorField,s::A) where {A<:AbstractParameters}
+  if A<:ScalarParameters 
+    cross!(rhs.rx,rhs.ry,rhs.rz,u.rx,u.ry,u.rz,aux.rx,aux.ry,aux.rz, parent(real(s.ρ)), s)
+  else 
+    cross!(rhs.rx,rhs.ry,rhs.rz,u.rx,u.ry,u.rz,aux.rx,aux.ry,aux.rz,s)
+  end
+  return nothing  
+end
+
 function ccross!(out::VectorField,u::VectorField,v::VectorField,s::AbstractParameters)
   cross!(out.cx,out.cy,out.cz,u.cx,u.cy,u.cz,v.cx,v.cy,v.cz,s)
   return out
@@ -121,9 +130,9 @@ end
 
 function scalar_advection!(out::VectorField,scalar::AbstractArray,v::VectorField,s::ScalarParameters)
 
-  _scalar_advection!(out.rx,rawreal(scalar),v.rx,s)
-  _scalar_advection!(out.ry,rawreal(scalar),v.ry,s)
-  _scalar_advection!(out.rz,rawreal(scalar),v.rz,s)
+  _scalar_advection!(out.rx,parent(real(scalar)),v.rx,s)
+  _scalar_advection!(out.ry,parent(real(scalar)),v.ry,s)
+  _scalar_advection!(out.rz,parent(real(scalar)),v.rz,s)
 
 end
 

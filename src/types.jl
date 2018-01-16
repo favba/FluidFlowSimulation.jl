@@ -1,5 +1,5 @@
-
-struct VectorField{A<:AbstractPaddedArray{Float64, 4, false}} <: AbstractPaddedArray{Float64,4,false}
+Base.complex(a::AbstractPaddedArray) = InplaceRealFFT.unsafe_complex_view(a)
+struct VectorField{A<:AbstractPaddedArray{Float64, 4}} <: AbstractPaddedArray{Float64,4}
   data::A
   cx::Array{Complex128,3}
   cy::Array{Complex128,3}
@@ -8,23 +8,27 @@ struct VectorField{A<:AbstractPaddedArray{Float64, 4, false}} <: AbstractPaddedA
   ry::Array{Float64,3}
   rz::Array{Float64,3}
 
-  function VectorField{A}(data::A) where {A<:AbstractPaddedArray{Float64, 4,false}}
+  function VectorField{A}(data::A) where {A<:AbstractPaddedArray{Float64, 4}}
     cdims = size(data)
     cnx, cny, cnz, _ = cdims
     cx = unsafe_wrap(Array{Complex128,3},pointer(complex(data)),(cnx,cny,cnz))
     cy = unsafe_wrap(Array{Complex128,3},pointer(complex(data),sub2ind(cdims,1,1,1,2)),(cnx,cny,cnz))
     cz = unsafe_wrap(Array{Complex128,3},pointer(complex(data),sub2ind(cdims,1,1,1,3)),(cnx,cny,cnz))
 
-    rnx,rny,rnz,_ = size(rawreal(data))
+    rnx,rny,rnz,_ = size(parent(real(data)))
     rdims = (rnx,rny,rnz)
-    rx = reinterpret(Float64,cx,rdims)
-    ry = reinterpret(Float64,cy,rdims)
-    rz = reinterpret(Float64,cz,rdims)
+    #rx = reinterpret(Float64,cx,rdims)
+    rx = unsafe_wrap(Array{Float64,3},reinterpret(Ptr{Float64},pointer(cx)),rdims)
+    #ry = reinterpret(Float64,cy,rdims)
+    ry = unsafe_wrap(Array{Float64,3},reinterpret(Ptr{Float64},pointer(cy)),rdims)
+    #rz = reinterpret(Float64,cz,rdims)
+    rz = unsafe_wrap(Array{Float64,3},reinterpret(Ptr{Float64},pointer(cz)),rdims)
+
     return new{A}(data,cx,cy,cz,rx,ry,rz)
   end
 end
 
-VectorField(data::AbstractPaddedArray{Float64,4,false}) = VectorField{typeof(data)}(data)
+VectorField(data::AbstractPaddedArray{Float64,4}) = VectorField{typeof(data)}(data)
 
 function VectorField(ux::AbstractString,uy::AbstractString,uz::AbstractString,nx::Integer,ny::Integer,nz::Integer)
   field = VectorField(PaddedArray(nx,ny,nz,3))
@@ -35,13 +39,12 @@ function VectorField(ux::AbstractString,uy::AbstractString,uz::AbstractString,nx
 end
 
 @inline Base.real(V::VectorField) = real(V.data)
-@inline Base.complex(V::VectorField) = complex(V.data) 
-@inline InplaceRealFFTW.rawreal(V::VectorField) = rawreal(V.data)
+@inline InplaceRealFFT.unsafe_complex_view(V::VectorField) = InplaceRealFFT.unsafe_complex_view(V.data) 
 Base.similar(V::VectorField{A}) where {A} = VectorField{A}(similar(V.data))
 Base.copy(V::VectorField{A}) where {A} = VectorField{A}(copy(V.data))
 
-InplaceRealFFTW.rfft!(V::VectorField{A}) where {A} = rfft!(V,1:3) 
-InplaceRealFFTW.irfft!(V::VectorField{A}) where {A} = irfft!(V,1:3) 
+InplaceRealFFT.rfft!(V::VectorField{A}) where {A} = rfft!(V,1:3) 
+InplaceRealFFT.irfft!(V::VectorField{A}) where {A} = irfft!(V,1:3) 
 
 #------------------------------------------------------------------------------------------------------
 
@@ -58,7 +61,7 @@ abstract type @par(AbstractParameters) end
   ly::Float64
   lz::Float64
   ν::Float64
-  p::Base.DFT.FFTW.rFFTWPlan{Float64,-1,true,4}
+  p::FFTW.rFFTWPlan{Float64,-1,true,4}
   rm1x::Array{Float64,3}
   rm1y::Array{Float64,3}
   rm1z::Array{Float64,3}
@@ -128,7 +131,7 @@ abstract type @par(ScalarParameters) <: @par(AbstractParameters) end
 struct @par(PassiveScalarParameters) <: @par(ScalarParameters)
   @GenericParameters
   ρ::PaddedArray{Float64,3,false}
-  ps::Base.DFT.FFTW.rFFTWPlan{Float64,-1,true,3}
+  ps::FFTW.rFFTWPlan{Float64,-1,true,3}
   α::Float64 #Difusitivity = ν/Pr  
   dρdz::Float64  
   ρrhs::PaddedArray{Float64,3,false}
@@ -203,7 +206,7 @@ end
 struct @par(BoussinesqParameters) <: @par(ScalarParameters)
   @GenericParameters
   ρ::PaddedArray{Float64,3,false}
-  ps::Base.DFT.FFTW.rFFTWPlan{Float64,-1,true,3}
+  ps::FFTW.rFFTWPlan{Float64,-1,true,3}
   α::Float64 #Difusitivity = ν/Pr  
   dρdz::Float64 #This is actually dρsdz/ρ₀
   g::Float64
@@ -329,14 +332,14 @@ function parameters(d::Dict)
       α = ν/parse(Float64,d[:Pr])
       dρdz = parse(Float64,d[:densityGradient])
       info("Reading initial scalar field")
-      rho = isfile("rho.0") ? PaddedArray("rho.0",(nx,ny,nz),padded=true) : PaddedArray(zeros(nx,ny,nz)) 
+      rho = isfile("rho.0") ? PaddedArray("rho.0",(nx,ny,nz),true) : PaddedArray(zeros(nx,ny,nz)) 
       s = PassiveScalarParameters(u,nx,ny,nz,lx,ly,lz,ν,rho,α,dρdz,integrator,Dealiastype,dealias,kx,ky,kz,gdir,kxr,kyr,kzr)
     elseif model == :Boussinesq 
       α = ν/parse(Float64,d[:Pr])
       dρdz = parse(Float64,d[:densityGradient])
       g = parse(Float64,d[:zAcceleration])/parse(Float64,d[:referenceDensity])
       info("Reading initial density field")
-      rho = isfile("rho.0") ? PaddedArray("rho.0",(nx,ny,nz),padded=true) : PaddedArray(zeros(nx,ny,nz)) 
+      rho = isfile("rho.0") ? PaddedArray("rho.0",(nx,ny,nz),true) : PaddedArray(zeros(nx,ny,nz)) 
       s = BoussinesqParameters(u,nx,ny,nz,lx,ly,lz,ν,rho,α,dρdz,g,integrator,Dealiastype,dealias,kx,ky,kz,gdir,kxr,kyr,kzr)
     else
       error("Unkown Model in global file: $model")

@@ -62,7 +62,7 @@ end
   rho = real(s.ρ[1,1,1])/(Nrx*Ny*Nz)  
   _mycopy!(complex(s.ρrhs),complex(s.ρ),s)
   s.ps\s.ρrhs
-  rho2 = tmean(x->x^2,rawreal(s.ρrhs),s)
+  rho2 = tmean(x->x^2,parent(real(s.ρrhs)),s)
   dealias!(s.ρrhs,s)
 
   grad!(s.aux,complex(s.ρ),s)
@@ -74,7 +74,7 @@ end
   return rho, rho2, drd1, drd2, drd3
 end
 
-ape(s::ScalarParameters) = tmean(x->x^2,rawreal(s.ρ),s)
+ape(s::ScalarParameters) = tmean(x->x^2,parent(real(s.ρ)),s)
 
 @par function tmean(f::Function,x::AbstractArray{T,3},s::@par(AbstractParameters)) where {T<:Number}
 

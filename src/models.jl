@@ -104,7 +104,7 @@ end
 
 @par function time_step!(s::A,dt::Real) where {A<:@par(AbstractParameters)}
   if Integrator === :Euller
-    Euller!(rawreal(s.u),rawreal(s.rhs),dt,s)
+    Euller!(parent(real(s.u)),parent(real(s.rhs)),dt,s)
     A <: ScalarParameters && Euller!(complex(s.ρ),complex(s.ρrhs),dt,s)
   elseif Integrator === :Adams_Bashforth3rdO
     Adams_Bashforth3rdO!(dt,s)
@@ -170,7 +170,7 @@ end
   end
 end 
 
-@inline my_scale!(field::PaddedArray,s) = my_scale!(rawreal(field),s)
+@inline my_scale!(field::PaddedArray,s) = my_scale!(parent(real(field)),s)
 
 @inline function my_scale!(field::VectorField,s)
   my_scale!(field.rx,s)

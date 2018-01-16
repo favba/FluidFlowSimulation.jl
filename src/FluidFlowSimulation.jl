@@ -2,7 +2,8 @@ __precompile__()
 module FluidFlowSimulation
 export run_simulation, advance_in_time!, VectorField, parameters, readglobal
 
-using InplaceRealFFTW
+import FFTW
+using InplaceRealFFT
 function Base.unsafe_getindex(A::Tuple, I)
   Base.@_inline_meta
   @inbounds r = getindex(A, I)
@@ -43,7 +44,7 @@ end
     mycopy!(s.rm2z,s.rhs.rz,s)
     copy!(s.rm1z,s.rm2z)
     if typeof(s) <: ScalarParameters
-      mycopy!(s.rrm1,rawreal(s.ρrhs),s)
+      mycopy!(s.rrm1,parent(real(s.ρrhs)),s)
       copy!(s.rrm2,s.rrm1)
     end
   end
