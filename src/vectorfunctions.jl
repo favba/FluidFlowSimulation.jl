@@ -1,4 +1,12 @@
 @par function realspace!(s::A) where {A<:@par(AbstractParameters)}
+  n = Thr ? Threads.nthreads() : 1
+  @mthreads for j in 1:n
+    _realspace!(s,j)
+  end
+  return nothing
+end
+
+@par function _realspace!(s::A,j) where {A<:@par(AbstractParameters), range} 
   scale::Float64 = 1/(Nrx*Ny*Nz)                
   mscale::Float64 = -1/(Nrx*Ny*Nz)                
   ux = s.u.rx
@@ -10,29 +18,25 @@
   outx = s.rhs.rx
   outy = s.rhs.ry
   outz = s.rhs.rz
-  L::UnitRange{Int64} = 1:Lrs
   if A<:ScalarParameters
     ρ::Array{Float64,3} = parent(real(s.ρ))
   end
 
-  @mthreads for i in L
-    @inbounds begin
-      ux[i] *= scale
-      uy[i] *= scale
-      uz[i] *= scale
+  @inbounds @msimd for i in RealRanges[j]
+    ux[i] *= scale
+    uy[i] *= scale
+    uz[i] *= scale
 
-      outx[i] = muladd(scale*uy[i],vz[i], mscale*uz[i]*vy[i])
-      outy[i] = muladd(scale*uz[i],vx[i], mscale*ux[i]*vz[i])
-      outz[i] = muladd(scale*ux[i],vy[i], mscale*uy[i]*vx[i])
-      if A<:ScalarParameters
-        ρ[i] *= scale
-        vx[i] = ux[i]*ρ[i]
-        vy[i] = uy[i]*ρ[i]
-        vz[i] = uz[i]*ρ[i]
-      end
+    outx[i] = muladd(scale*uy[i],vz[i], mscale*uz[i]*vy[i])
+    outy[i] = muladd(scale*uz[i],vx[i], mscale*ux[i]*vz[i])
+    outz[i] = muladd(scale*ux[i],vy[i], mscale*uy[i]*vx[i])
+    if A<:ScalarParameters
+      ρ[i] *= scale
+      vx[i] = ux[i]*ρ[i]
+      vy[i] = uy[i]*ρ[i]
+      vz[i] = uz[i]*ρ[i]
     end
   end
-
   return nothing
 end
 

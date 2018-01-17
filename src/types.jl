@@ -118,13 +118,13 @@ Threaded: $Thr
 print(io,msg)
 end
 
-function Parameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,integrator::Symbol,Deal::Symbol,deat,kx,ky,kz,kxr,kyr,kzr,tr::Bool) 
+function Parameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,integrator::Symbol,Deal::Symbol,deat,kx,ky,kz,kxr,kyr,kzr,tr::Bool,b)
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
   lrs = 2*lcs
   lrv = 2*lcv
-  return Parameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,Deal,kxr,kyr,kzr,kx,ky,kz,:z,tr}(u,nx,ny,nz,lx,ly,lz,ν,deat)
+  return Parameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,Deal,kxr,kyr,kzr,kx,ky,kz,:z,tr,b}(u,nx,ny,nz,lx,ly,lz,ν,deat)
 end
 
 abstract type @par(ScalarParameters) <: @par(AbstractParameters) end
@@ -196,13 +196,13 @@ end
   print(io,msg)
 end
 
-function PassiveScalarParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, α::Real,dρdz::Real,integrator::Symbol,Deal::Symbol,deat,kx,ky,kz,gdir::Symbol,kxr,kyr,kzr,tr::Bool) 
+function PassiveScalarParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray, α::Real,dρdz::Real,integrator::Symbol,Deal::Symbol,deat,kx,ky,kz,gdir::Symbol,kxr,kyr,kzr,tr::Bool,b)
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
   lrs = 2*lcs
   lrv = 2*lcv
-  return PassiveScalarParameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,Deal,kxr,kyr,kzr,kx,ky,kz,gdir,tr}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz,deat)
+  return PassiveScalarParameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,Deal,kxr,kyr,kzr,kx,ky,kz,gdir,tr,b}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz,deat)
 end
 
 struct @par(BoussinesqParameters) <: @par(ScalarParameters)
@@ -210,8 +210,8 @@ struct @par(BoussinesqParameters) <: @par(ScalarParameters)
   ρ::PaddedArray{Float64,3,false}
   ps::FFTW.rFFTWPlan{Float64,-1,true,3}
   α::Float64 #Difusitivity = ν/Pr  
-  dρdz::Float64 #This is actually dρsdz/ρ₀
-  g::Float64
+  dρdz::Float64 
+  g::Float64 #This is actually g/ρ₀
   ρrhs::PaddedArray{Float64,3,false}
   rrm1::Array{Float64,3}
   rrm2::Array{Float64,3}
@@ -273,13 +273,13 @@ end
   print(io,msg)
 end
 
-function BoussinesqParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray,α::Real, dρdz::Real,g::Real,integrator::Symbol,Deal::Symbol,deat,kx,ky,kz,gdir,kxr,kyr,kzr,tr::Bool) 
+function BoussinesqParameters(u::VectorField,nx::Integer,ny::Integer,nz::Integer,lx::Real,ly::Real,lz::Real,ν::Real,ρ::PaddedArray,α::Real, dρdz::Real,g::Real,integrator::Symbol,Deal::Symbol,deat,kx,ky,kz,gdir,kxr,kyr,kzr,tr::Bool,b)
   ncx = div(nx,2)+1
   lcs = ncx*ny*nz
   lcv = 3*lcs
   lrs = 2*lcs
   lrv = 2*lcv
-  return BoussinesqParameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,Deal,kxr,kyr,kzr,kx,ky,kz,gdir,tr}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz,g,deat)
+  return BoussinesqParameters{ncx,ny,nz,lcs,lcv,nx,lrs,lrv,integrator,Deal,kxr,kyr,kzr,kx,ky,kz,gdir,tr,b}(u,nx,ny,nz,lx,ly,lz,ν,ρ,α,dρdz,g,deat)
 end
 
 function parameters(d::Dict)
@@ -303,7 +303,28 @@ function parameters(d::Dict)
   haskey(d,:threaded) ? (tr = parse(Bool,d[:threaded])) : (tr = true)
 
   tr && FFTW.set_num_threads(Threads.nthreads())
-  
+ 
+  if tr
+    nt = Threads.nthreads()
+    lr = ncx*2*ny*nz
+    a = UnitRange{Int}[]
+    if lr%nt == 0
+      init = 1
+      n = lr÷nt
+      for i=1:nt
+        stop=init+n-1
+        push!(a,init:stop)
+        init = stop+1
+      end
+    else
+      # TODO 
+    end
+    b = (a...,)
+  else
+    lr = ncx*2*ny*nz
+    b = (1:lr,)
+  end
+
   haskey(d,:timeIntegrator) ? (integrator = Symbol(d[:timeIntegrator])) : (integrator = :Adams_Bashforth3rdO)
   integrator in (:Euller,:Adams_Bashforth3rdO) || error("Unkown time integration method in global file: $integrator")
 
@@ -338,19 +359,19 @@ function parameters(d::Dict)
       dρdz = parse(Float64,d[:densityGradient])
       info("Reading initial scalar field")
       rho = isfile("rho.0") ? PaddedArray("rho.0",(nx,ny,nz),true) : PaddedArray(zeros(nx,ny,nz)) 
-      s = PassiveScalarParameters(u,nx,ny,nz,lx,ly,lz,ν,rho,α,dρdz,integrator,Dealiastype,dealias,kx,ky,kz,gdir,kxr,kyr,kzr,tr)
+      s = PassiveScalarParameters(u,nx,ny,nz,lx,ly,lz,ν,rho,α,dρdz,integrator,Dealiastype,dealias,kx,ky,kz,gdir,kxr,kyr,kzr,tr,b)
     elseif model == :Boussinesq 
       α = ν/parse(Float64,d[:Pr])
       dρdz = parse(Float64,d[:densityGradient])
       g = parse(Float64,d[:zAcceleration])/parse(Float64,d[:referenceDensity])
       info("Reading initial density field")
       rho = isfile("rho.0") ? PaddedArray("rho.0",(nx,ny,nz),true) : PaddedArray(zeros(nx,ny,nz)) 
-      s = BoussinesqParameters(u,nx,ny,nz,lx,ly,lz,ν,rho,α,dρdz,g,integrator,Dealiastype,dealias,kx,ky,kz,gdir,kxr,kyr,kzr,tr)
+      s = BoussinesqParameters(u,nx,ny,nz,lx,ly,lz,ν,rho,α,dρdz,g,integrator,Dealiastype,dealias,kx,ky,kz,gdir,kxr,kyr,kzr,tr,b)
     else
       error("Unkown Model in global file: $model")
     end
   else
-    s = Parameters(u,nx,ny,nz,lx,ly,lz,ν,integrator,Dealiastype,dealias,kx,ky,kz,kxr,kyr,kzr,tr)
+    s = Parameters(u,nx,ny,nz,lx,ly,lz,ν,integrator,Dealiastype,dealias,kx,ky,kz,kxr,kyr,kzr,tr,b)
   end
 
   FFTW.export_wisdom("fftw_wisdom")
