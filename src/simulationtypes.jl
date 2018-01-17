@@ -6,10 +6,10 @@ abstract type @par(BoussinesqParameters) <: @par(ScalarParameters) end
 abstract type @par(AbstractSimulation) end
 
 #Traits
-isscalar(s::Union{AbstractSimulation,Type{<:AbstractSimulation}}) = false
-isbuoyant(s::Union{AbstractSimulation,Type{<:AbstractSimulation}}) = false
-isles(s::Union{AbstractSimulation,Type{<:AbstractSimulation}}) = false
-isforced(s::Union{AbstractSimulation,Type{<:AbstractSimulation}}) = false
+Base.@pure isscalar(s::Union{AbstractSimulation,Type{<:AbstractSimulation}}) = false
+Base.@pure isbuoyant(s::Union{AbstractSimulation,Type{<:AbstractSimulation}}) = false
+Base.@pure isles(s::Union{AbstractSimulation,Type{<:AbstractSimulation}}) = false
+Base.@pure isforced(s::Union{AbstractSimulation,Type{<:AbstractSimulation}}) = false
 
 @def GenericParameters begin
   u::VectorField{PaddedArray{Float64,4,false}}
@@ -120,7 +120,7 @@ struct @par(PassiveScalarSimulation) <: @par(AbstractSimulation)
 
 end
 
-isscalar(s::Union{PassiveScalarSimulation,Type{<:PassiveScalarSimulation}}) = true
+Base.@pure isscalar(s::Union{PassiveScalarSimulation,Type{<:PassiveScalarSimulation}}) = true
 
 @par function Base.show(io::IO,s::@par(PassiveScalarSimulation))
   msg = """
@@ -162,8 +162,8 @@ struct @par(BoussinesqSimulation) <: @par(AbstractSimulation)
 
 end
 
-isscalar(s::Union{BoussinesqSimulation,Type{<:BoussinesqSimulation}}) = true
-isbuoyant(s::Union{BoussinesqSimulation,Type{<:BoussinesqSimulation}}) = true
+Base.@pure isscalar(s::Union{BoussinesqSimulation,Type{<:BoussinesqSimulation}}) = true
+Base.@pure isbuoyant(s::Union{BoussinesqSimulation,Type{<:BoussinesqSimulation}}) = true
 
 @par function Base.show(io::IO,s::@par(BoussinesqSimulation))
   msg = """
