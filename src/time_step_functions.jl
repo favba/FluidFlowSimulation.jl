@@ -1,4 +1,4 @@
-@par function Euller!(u::AbstractArray{Float64,N},rhs::AbstractArray,dt::Real,s::@par(AbstractParameters)) where {N}
+@par function Euller!(u::AbstractArray{Float64,N},rhs::AbstractArray,dt::Real,s::@par(AbstractSimulation)) where {N}
   @mthreads for i in 1:(N===3 ? Lrs : Lrv)
     #@inbounds u[i] += dt*rhs[i]
     @fastmath @inbounds u[i] = muladd(dt,rhs[i],u[i])
@@ -6,7 +6,7 @@
   return nothing
 end
 
-@par function Adams_Bashforth3rdO!(dt::Real, s::A) where {A<:@par(AbstractParameters)}
+@par function Adams_Bashforth3rdO!(dt::Real, s::A) where {A<:@par(AbstractSimulation)}
   dt12 = dt/12
 
   _tAdams_Bashforth3rdO!(s.u.rx,s.rhs.rx,dt12,s.rm1x,s.rm2x,s)
@@ -20,7 +20,7 @@ end
   mycopy!(s.rm1y,s.rhs.ry,s)
   mycopy!(s.rm1z,s.rhs.rz,s)
 
-  if A<:ScalarParameters
+  if isscalar(A)
     _tAdams_Bashforth3rdO!(parent(real(s.ρ)),parent(real(s.ρrhs)),dt12,s.rrm1,s.rrm2,s)
     copy!(s.rrm2,s.rrm1)
     mycopy!(s.rrm1,parent(real(s.ρrhs)),s)
@@ -29,7 +29,7 @@ end
   return nothing
 end
 
-@inbounds @par function _tAdams_Bashforth3rdO!(u::AbstractArray{Complex128,3}, rhs::AbstractArray, dt12::Real, rm1::AbstractArray, rm2::AbstractArray, s::@par(AbstractParameters)) 
+@inbounds @par function _tAdams_Bashforth3rdO!(u::AbstractArray{Complex128,3}, rhs::AbstractArray, dt12::Real, rm1::AbstractArray, rm2::AbstractArray, s::@par(AbstractSimulation)) 
   @mthreads for kk in 1:length(Kzr)
     k = Kzr[kk]
     jj::Int = 1
@@ -43,7 +43,7 @@ end
   end
 end
 
-@inbounds @par function _tAdams_Bashforth3rdO!(u::AbstractArray{Float64,3}, rhs::AbstractArray, dt12::Real, rm1::AbstractArray, rm2::AbstractArray, s::@par(AbstractParameters)) 
+@inbounds @par function _tAdams_Bashforth3rdO!(u::AbstractArray{Float64,3}, rhs::AbstractArray, dt12::Real, rm1::AbstractArray, rm2::AbstractArray, s::@par(AbstractSimulation)) 
   @mthreads for kk in 1:length(Kzr)
     k = Kzr[kk]
     jj::Int = 1

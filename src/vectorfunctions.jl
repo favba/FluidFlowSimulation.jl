@@ -1,4 +1,4 @@
-@par function realspace!(s::A) where {A<:@par(AbstractParameters)}
+@par function realspace!(s::A) where {A<:@par(AbstractSimulation)}
   n = Thr ? Threads.nthreads() : 1
   @mthreads for j in 1:n
     _realspace!(s,j)
@@ -6,7 +6,7 @@
   return nothing
 end
 
-@par function _realspace!(s::A,j) where {A<:@par(AbstractParameters), range} 
+@par function _realspace!(s::A,j) where {A<:@par(AbstractSimulation), range} 
   scale::Float64 = 1/(Nrx*Ny*Nz)                
   mscale::Float64 = -1/(Nrx*Ny*Nz)                
   ux = s.u.rx
@@ -18,7 +18,7 @@ end
   outx = s.rhs.rx
   outy = s.rhs.ry
   outz = s.rhs.rz
-  if A<:ScalarParameters
+  if isscalar(A)
     ρ::Array{Float64,3} = parent(real(s.ρ))
   end
 
@@ -30,7 +30,7 @@ end
     outx[i] = muladd(scale*uy[i],vz[i], mscale*uz[i]*vy[i])
     outy[i] = muladd(scale*uz[i],vx[i], mscale*ux[i]*vz[i])
     outz[i] = muladd(scale*ux[i],vy[i], mscale*uy[i]*vx[i])
-    if A<:ScalarParameters
+    if isscalar(A) 
       ρ[i] *= scale
       vx[i] = ux[i]*ρ[i]
       vy[i] = uy[i]*ρ[i]
@@ -43,7 +43,7 @@ end
 @par function cross!(outx::AbstractArray{T},outy::AbstractArray{T},outz::AbstractArray{T},
   ux::AbstractArray{T},uy::AbstractArray{T},uz::AbstractArray{T},
   vx::AbstractArray{T},vy::AbstractArray{T},vz::AbstractArray{T},
-  s::@par(AbstractParameters)) where {T<:Complex}
+  s::@par(AbstractSimulation)) where {T<:Complex}
   @mthreads for k in Kzr
     for y in Kyr, j in y
       @fastmath @inbounds @msimd for i in Kxr
@@ -55,7 +55,7 @@ end
   end
 end
 
-@par function crossk!(outx,outy,outz,vx,vy,vz,s::@par(AbstractParameters)) 
+@par function crossk!(outx,outy,outz,vx,vy,vz,s::@par(AbstractSimulation)) 
   @mthreads for k in Kzr
     for y in Kyr, j in y
       @fastmath @inbounds @msimd for i in Kxr 
@@ -67,24 +67,24 @@ end
   end  
 end
 
-function ccross!(out::VectorField,u::VectorField,v::VectorField,s::AbstractParameters)
+function ccross!(out::VectorField,u::VectorField,v::VectorField,s::AbstractSimulation)
   cross!(out.cx,out.cy,out.cz,u.cx,u.cy,u.cz,v.cx,v.cy,v.cz,s)
   return out
 end
 
-function curl!(out::VectorField,u::VectorField,s::AbstractParameters)
+function curl!(out::VectorField,u::VectorField,s::AbstractSimulation)
   crossk!(out.cx,out.cy,out.cz,u.cx,u.cy,u.cz,s)
   return out
 end
 
-function grad!(out::VectorField,f::AbstractArray{<:Complex,3},s::AbstractParameters)
+function grad!(out::VectorField,f::AbstractArray{<:Complex,3},s::AbstractSimulation)
   dx!(out.cx,f,s)
   dy!(out.cy,f,s)
   dz!(out.cz,f,s)
   dealias!(out,s)
 end
 
-@par function dx!(out::AbstractArray{<:Complex,3},f::AbstractArray{<:Complex,3},s::@par(AbstractParameters)) 
+@par function dx!(out::AbstractArray{<:Complex,3},f::AbstractArray{<:Complex,3},s::@par(AbstractSimulation)) 
   @mthreads for k in Kzr
     for y in Kyr, j in y
       @inbounds @msimd for i in Kxr
@@ -94,7 +94,7 @@ end
   end
 end
 
-@par function dy!(out::AbstractArray{<:Complex,3},f::AbstractArray{<:Complex,3},s::@par(AbstractParameters)) 
+@par function dy!(out::AbstractArray{<:Complex,3},f::AbstractArray{<:Complex,3},s::@par(AbstractSimulation)) 
   @mthreads for k in Kzr
     for y in Kyr, j in y
       @inbounds @msimd for i in Kxr
@@ -104,7 +104,7 @@ end
   end
 end
 
-@par function dz!(out::AbstractArray{<:Complex,3},f::AbstractArray{<:Complex,3},s::@par(AbstractParameters)) 
+@par function dz!(out::AbstractArray{<:Complex,3},f::AbstractArray{<:Complex,3},s::@par(AbstractSimulation)) 
   @mthreads for k in Kzr
     for y in Kyr, j in y
       @inbounds @msimd for i in Kxr
@@ -125,7 +125,7 @@ function fftfreq(n::Integer,s::Real)::Vector{Float64}
   end
 end
 
-function scalar_advection!(out::VectorField,scalar::AbstractArray,v::VectorField,s::ScalarParameters)
+function scalar_advection!(out::VectorField,scalar::AbstractArray,v::VectorField,s::AbstractSimulation)
 
   _scalar_advection!(out.rx,parent(real(scalar)),v.rx,s)
   _scalar_advection!(out.ry,parent(real(scalar)),v.ry,s)
@@ -133,13 +133,13 @@ function scalar_advection!(out::VectorField,scalar::AbstractArray,v::VectorField
 
 end
 
-@par function _scalar_advection!(out::AbstractArray{Float64,3},scalar::AbstractArray{Float64,3},v::AbstractArray{Float64,3},s::@par(ScalarParameters))
+@par function _scalar_advection!(out::AbstractArray{Float64,3},scalar::AbstractArray{Float64,3},v::AbstractArray{Float64,3},s::@par(AbstractSimulation))
   @mthreads for i in 1:Lrs
       @fastmath @inbounds out[i] = scalar[i]*v[i]
   end
 end
 
-@par function div!(out::AbstractArray{Complex128,3},ux,uy,uz,w,mdρdz::Real, s::@par(ScalarParameters))
+@par function div!(out::AbstractArray{Complex128,3},ux,uy,uz,w,mdρdz::Real, s::@par(AbstractSimulation))
   mim::Complex128 = -im
   @mthreads for k in Kzr
     for y in Kyr, j in y
@@ -151,7 +151,7 @@ end
   end
 end
 
-@par function div!(out::AbstractArray{Complex128,3},ux,uy,uz, s::@par(AbstractParameters))
+@par function div!(out::AbstractArray{Complex128,3},ux,uy,uz, s::@par(AbstractSimulation))
   mim::Complex128 = -im
   @mthreads for k in Kzr
     for y in Kyr, j in y

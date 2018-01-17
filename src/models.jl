@@ -1,32 +1,33 @@
-@inline @par function advance_in_time!(s::A,dt::Real) where {A<:@par(AbstractParameters)}
+@inline @par function advance_in_time!(s::A,dt::Real) where {A<:@par(AbstractSimulation)}
   calculate_rhs!(s)
   time_step!(s,dt)
   return nothing
 end
 
-@par function calculate_rhs!(s::A) where {A<:@par(AbstractParameters)}
+@par function calculate_rhs!(s::A) where {A<:@par(AbstractSimulation)}
   compute_nonlinear!(s)
   add_viscosity!(s.rhs,s.u,s.ν,s)
-  if A<:BoussinesqParameters
+  if isbuoyant(A)
     gdir = GDirec === :x ? s.rhs.cx : GDirec === :y ? s.rhs.cy : s.rhs.cz 
     addgravity!(gdir, complex(s.ρ), -s.g, s)
   end
   pressure_projection!(s.rhs.cx,s.rhs.cy,s.rhs.cz,s)
-  A<:ScalarParameters && add_scalar_difusion!(complex(s.ρrhs),complex(s.ρ),s.α,s)
+  isscalar(A) && add_scalar_difusion!(complex(s.ρrhs),complex(s.ρ),s.α,s)
+  return nothing
 end
 
-@par function compute_nonlinear!(s::A) where {A<:@par(AbstractParameters)}
+@par function compute_nonlinear!(s::A) where {A<:@par(AbstractSimulation)}
   curl!(s.aux,s.u,s)
   A_mul_B!(real(s.u),s.p.pinv.p,complex(s.u))
   A_mul_B!(real(s.aux),s.p.pinv.p,complex(s.aux))
   
-  A<:ScalarParameters && A_mul_B!(real(s.ρ),s.ps.pinv.p,complex(s.ρ))
+  isscalar(A) && A_mul_B!(real(s.ρ),s.ps.pinv.p,complex(s.ρ))
   
   realspace!(s)
   s.p*s.rhs
   dealias!(s.rhs, s)
   s.p*s.u
-  if A<:ScalarParameters
+  if isscalar(A) 
     s.p*s.aux
     dealias!(s.aux, s)
     s.ps*s.ρ
@@ -39,15 +40,15 @@ end
 end
 
 
-@inline @par function dealias!(rhs::VectorField,s::@par(AbstractParameters))
+@inline @par function dealias!(rhs::VectorField,s::@par(AbstractSimulation))
   dealias!(rhs.cx,s.dealias,s)
   dealias!(rhs.cy,s.dealias,s)
   dealias!(rhs.cz,s.dealias,s)
 end
 
-dealias!(rhs::AbstractArray{<:Complex,3},s::AbstractParameters) = dealias!(rhs,s.dealias,s)
+dealias!(rhs::AbstractArray{<:Complex,3},s::AbstractSimulation) = dealias!(rhs,s.dealias,s)
 
-@inline @par function dealias!(rhs::AbstractArray{T,3},dealias,s::@par(AbstractParameters)) where {T<:Complex}
+@inline @par function dealias!(rhs::AbstractArray{T,3},dealias,s::@par(AbstractSimulation)) where {T<:Complex}
  @mthreads for i = 1:Lcs
   @inbounds begin
     dealias[i] && (rhs[i] = zero(T))
@@ -55,13 +56,13 @@ dealias!(rhs::AbstractArray{<:Complex,3},s::AbstractParameters) = dealias!(rhs,s
  end
 end
 
-function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,s::AbstractParameters)
+function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,s::AbstractSimulation)
   _add_viscosity!(rhs.cx,u.cx,-ν,s)
   _add_viscosity!(rhs.cy,u.cy,-ν,s)
   _add_viscosity!(rhs.cz,u.cz,-ν,s)
 end
 
-@par function _add_viscosity!(rhs::AbstractArray,u::AbstractArray,mν::Real,s::@par(AbstractParameters))
+@par function _add_viscosity!(rhs::AbstractArray,u::AbstractArray,mν::Real,s::@par(AbstractSimulation))
   @mthreads for k in Kzr
     for y in Kyr, j in y
       @fastmath @inbounds @msimd for i in Kxr
@@ -72,11 +73,11 @@ end
   end
 end
 
-function add_scalar_difusion!(rhs::AbstractArray,u::AbstractArray,ν::Real,s::AbstractParameters)
+function add_scalar_difusion!(rhs::AbstractArray,u::AbstractArray,ν::Real,s::AbstractSimulation)
   _add_viscosity!(rhs,u,-ν,s)
 end
 
- @par function pressure_projection!(rhsx,rhsy,rhsz,s::@par(AbstractParameters))
+ @par function pressure_projection!(rhsx,rhsy,rhsz,s::@par(AbstractSimulation))
   @inbounds a = (rhsx[1],rhsy[1],rhsz[1])
   @mthreads for k in Kzr
     for y in Kyr, j in y
@@ -92,7 +93,7 @@ end
   @inbounds rhsx[1],rhsy[1],rhsz[1] = a
 end
 
-@par function addgravity!(rhs,ρ,g::Real,s::@par(BoussinesqParameters))
+@par function addgravity!(rhs,ρ,g::Real,s::@par(BoussinesqSimulation))
   @mthreads for k in Kzr
     for y in Kyr, j in y
       @fastmath @inbounds @msimd for i in Kxr
@@ -102,16 +103,16 @@ end
   end
 end
 
-@par function time_step!(s::A,dt::Real) where {A<:@par(AbstractParameters)}
+@par function time_step!(s::A,dt::Real) where {A<:@par(AbstractSimulation)}
   if Integrator === :Euller
     Euller!(parent(real(s.u)),parent(real(s.rhs)),dt,s)
-    A <: ScalarParameters && Euller!(complex(s.ρ),complex(s.ρrhs),dt,s)
+    isscalar(A) && Euller!(complex(s.ρ),complex(s.ρrhs),dt,s)
   elseif Integrator === :Adams_Bashforth3rdO
     Adams_Bashforth3rdO!(dt,s)
   end
 end
 
-@inbounds @par function mycopy!(rm::AbstractArray{T,3},rhs::AbstractArray{T,3},s::@par(AbstractParameters)) where T<:Complex
+@inbounds @par function mycopy!(rm::AbstractArray{T,3},rhs::AbstractArray{T,3},s::@par(AbstractSimulation)) where T<:Complex
   @mthreads for kk in 1:length(Kzr)
     k = Kzr[kk]
     jj::Int = 1
@@ -124,7 +125,7 @@ end
   end
 end
 
-@inbounds @par function mycopy!(rm::AbstractArray{T,3},rhs::AbstractArray{T,3},s::@par(AbstractParameters)) where T<:Real
+@inbounds @par function mycopy!(rm::AbstractArray{T,3},rhs::AbstractArray{T,3},s::@par(AbstractSimulation)) where T<:Real
   @mthreads for kk in 1:length(Kzr)
     k = Kzr[kk]
     jj::Int = 1
@@ -137,13 +138,13 @@ end
   end
 end
 
-@par function mycopy!(out::VectorField,inp::VectorField,s::@par(AbstractParameters))
+@par function mycopy!(out::VectorField,inp::VectorField,s::@par(AbstractSimulation))
   _mycopy!(out.cx,inp.cx,s)
   _mycopy!(out.cy,inp.cy,s)
   _mycopy!(out.cz,inp.cz,s)
 end
 
-@par function _mycopy!(out::Array{Complex128,3},inp::Array{Complex128,3},s::@par(AbstractParameters))
+@par function _mycopy!(out::Array{Complex128,3},inp::Array{Complex128,3},s::@par(AbstractSimulation))
   @mthreads for k in Kzr
     for y in Kyr, j in y
       for i in Kxr
@@ -159,7 +160,7 @@ end
   return nothing
 end
 
-@inline @par function my_scale!(field::AbstractArray{<:Real,3},s::@par(AbstractParameters))
+@inline @par function my_scale!(field::AbstractArray{<:Real,3},s::@par(AbstractSimulation))
   x = 1/(Nrx*Ny*Nz)
   @mthreads for k in 1:Nz
     for j in 1:Ny

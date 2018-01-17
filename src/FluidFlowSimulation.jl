@@ -28,13 +28,13 @@ function run_simulation()
   run_simulation(s,parse(Int,par[:dtStat]),parse(Int,par[:writeTime]),parse(Int,par[:nt]),parse(Float64,par[:dt]))
 end
 
-@par function run_simulation(s::@par(AbstractParameters),dtStats::Integer,dtOutput::Integer,totalnsteps::Integer,dt::Real)
+@par function run_simulation(s::@par(AbstractSimulation),dtStats::Integer,dtOutput::Integer,totalnsteps::Integer,dt::Real)
   info("Simulation started.")
   init=0
   ttime=0.
   writeheader(s)
   s.p*s.u
-  typeof(s)<:ScalarParameters && s.ps*s.ρ
+  isscalar(s) && s.ps*s.ρ
   
   if Integrator !== :Euller
     calculate_rhs!(s)
@@ -44,7 +44,7 @@ end
     copy!(s.rm1y,s.rm2y)
     mycopy!(s.rm2z,s.rhs.rz,s)
     copy!(s.rm1z,s.rm2z)
-    if typeof(s) <: ScalarParameters
+    if isscalar(s)
       mycopy!(s.rrm1,parent(real(s.ρrhs)),s)
       copy!(s.rrm2,s.rrm1)
     end
