@@ -12,7 +12,8 @@ end
 
 include("ReadGlobal.jl")
 include("macros.jl")
-include("types.jl")
+include("fieldtypes.jl")
+include("simulationtypes.jl")
 include("vectorfunctions.jl")
 include("time_step_functions.jl")
 include("stats.jl")
