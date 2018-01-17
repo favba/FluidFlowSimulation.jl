@@ -49,7 +49,7 @@ end
   rm2y = Array{Float64}(2length(Kxr),length(Kyr[1])+length(Kyr[2]),length(Kzr))
   rm2z = Array{Float64}(2length(Kxr),length(Kyr[1])+length(Kyr[2]),length(Kzr))
 
-  reduction = Vector{Float64}(Threads.nthreads())
+  reduction = Vector{Float64}(Thr ? Threads.nthreads() : 1)
 end
 
 struct @par(SimpleSimulation) <: @par(AbstractSimulation)
