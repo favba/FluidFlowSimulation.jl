@@ -1,58 +1,88 @@
-@par function Euller!(u::AbstractArray{Float64,N},rhs::AbstractArray,dt::Real,s::@par(AbstractSimulation)) where {N}
-  @mthreads for i in 1:(N===3 ? Lrs : Lrv)
-    #@inbounds u[i] += dt*rhs[i]
-    @fastmath @inbounds u[i] = muladd(dt,rhs[i],u[i])
-  end
-  return nothing
-end
+# Structs Start
 
-@par function Adams_Bashforth3rdO!(dt::Real, s::A) where {A<:@par(AbstractSimulation)}
-  dt12 = dt/12
+  abstract type AbstractTimeStep end
+  abstract type AbstractScalarTimeStep{N} <: AbstractTimeStep end
 
-  _tAdams_Bashforth3rdO!(s.u.rx,s.rhs.rx,dt12,s.rm1x,s.rm2x,s)
-  _tAdams_Bashforth3rdO!(s.u.ry,s.rhs.ry,dt12,s.rm1y,s.rm2y,s)
-  _tAdams_Bashforth3rdO!(s.u.rz,s.rhs.rz,dt12,s.rm1z,s.rm2z,s)
-
-  copy!(s.rm2x,s.rm1x)
-  copy!(s.rm2y,s.rm1y)
-  copy!(s.rm2z,s.rm1z)
-  mycopy!(s.rm1x,s.rhs.rx,s)
-  mycopy!(s.rm1y,s.rhs.ry,s)
-  mycopy!(s.rm1z,s.rhs.rz,s)
-
-  if isscalar(A)
-    _tAdams_Bashforth3rdO!(parent(real(s.ρ)),parent(real(s.ρrhs)),dt12,s.rrm1,s.rrm2,s)
-    copy!(s.rrm2,s.rrm1)
-    mycopy!(s.rrm1,parent(real(s.ρrhs)),s)
+  struct VectorTimeStep{Tx<:AbstractScalarTimeStep,Ty<:AbstractScalarTimeStep,Tz<:AbstractScalarTimeStep} <: AbstractTimeStep
+    x::Tx
+    y::Ty 
+    z::Tz
   end
 
-  return nothing
-end
+  function (f::VectorTimeStep)(u::VectorField,rhs::VectorField,dt::Real,s::AbstractSimulation)
+    f.x(u.rx,rhs.rx,dt,s)
+    f.y(u.ry,rhs.ry,dt,s)
+    f.z(u.rz,rhs.rz,dt,s)
+  end
 
-@inbounds @par function _tAdams_Bashforth3rdO!(u::AbstractArray{Complex128,3}, rhs::AbstractArray, dt12::Real, rm1::AbstractArray, rm2::AbstractArray, s::@par(AbstractSimulation)) 
-  @mthreads for kk in 1:length(Kzr)
-    k = Kzr[kk]
-    jj::Int = 1
-    for y in Kyr, j in y
-      @fastmath @msimd for i in Kxr
-        #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
-        u[i,j,k] = muladd(muladd(23, rhs[i,j,k], muladd(-16, rm1[i,jj,kk], 5rm2[i,jj,kk])), dt12, u[i,j,k])
+  function (::Type{T})(Kxr,Kyr,Kzr) where {N,T<:AbstractScalarTimeStep{N}}
+    if N === 0
+      return T()
+    else
+      arrays = Array{Float64,3}[]
+      for i = 1:N
+        push!(arrays,zeros(2length(Kxr),length(Kyr[1])+length(Kyr[2]),length(Kzr)))
       end
-    jj+=1
+    end
+    return T(arrays...)
+  end
+
+  #@inline function (f::(T where {T<:AbstractScalarTimeStep{N} where N}))(ρ::PaddedArray,rhs::PaddedArray,dt::Real,s::AbstractSimulation)
+  #  return f(parent(real(ρ)),parent(real(rhs)),dt,s)
+  #end
+  #
+
+  struct Euller <: AbstractScalarTimeStep{0} end
+
+  struct Adams_Bashforth3rdO <: AbstractScalarTimeStep{2}
+    fm1::Array{Float64,3} #Store latest step
+    fm2::Array{Float64,3} #Store 2 steps before
+  end
+
+#Struct End
+
+
+# Implementations
+
+# Euller Start
+
+  @par function (f::Euller)(ρ::AbstractArray{<:Real,3},rhs::AbstractArray{<:Real,3},dt::Real,s::@par(AbstractSimulation))
+    @mthreads for k in Kzr
+      for y in Kyr, j in y
+        @inbounds @fastmath @msimd for i in 1:(2length(Kxr))
+          #u += dt*rhs
+          ρ[i,j,k] = muladd(dt,rhs[i,j,k],ρ[i,j,k])
+        end
+      end
+    end
+    return nothing
+  end
+
+# Euller End
+
+# Adams_Bashforth3rd0 start
+  function (f::Adams_Bashforth3rdO)(ρ::AbstractArray{<:Real,3},ρrhs::AbstractArray{<:Real,3}, dt::Real, s::AbstractSimulation)
+  
+    dt12 = dt/12
+    _tAdams_Bashforth3rdO!(ρ,ρrhs,dt12,f.fm1,f.fm2,s)
+    #copy!(f.fm2,f.fm1)
+    #mycopy!(f.fm1,ρrhs,s)
+    return nothing
+  end
+  
+  @inline @inbounds @par function _tAdams_Bashforth3rdO!(u::AbstractArray{Float64,3}, rhs::AbstractArray, dt12::Real, rm1::AbstractArray, rm2::AbstractArray, s::@par(AbstractSimulation)) 
+    @mthreads for kk in 1:length(Kzr)
+      k = Kzr[kk]
+      jj::Int = 1
+      for y in Kyr, j in y
+        @fastmath @msimd for i in 1:(2length(Kxr))
+          #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
+          u[i,j,k] = muladd(muladd(23, rhs[i,j,k], muladd(-16, rm1[i,jj,kk], 5rm2[i,jj,kk])), dt12, u[i,j,k])
+          rm2[i,jj,kk] = rm1[i,jj,kk]
+          rm1[i,jj,kk] = rhs[i,j,k]
+        end
+      jj+=1
+      end
     end
   end
-end
-
-@inbounds @par function _tAdams_Bashforth3rdO!(u::AbstractArray{Float64,3}, rhs::AbstractArray, dt12::Real, rm1::AbstractArray, rm2::AbstractArray, s::@par(AbstractSimulation)) 
-  @mthreads for kk in 1:length(Kzr)
-    k = Kzr[kk]
-    jj::Int = 1
-    for y in Kyr, j in y
-      @fastmath @msimd for i in 1:(2length(Kxr))
-        #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
-        u[i,j,k] = muladd(muladd(23, rhs[i,j,k], muladd(-16, rm1[i,jj,kk], 5rm2[i,jj,kk])), dt12, u[i,j,k])
-      end
-    jj+=1
-    end
-  end
-end
+# Adams_Bashforth3rd0 start
