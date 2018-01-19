@@ -55,7 +55,7 @@ end
 @par ν(s::@par(Simulation)) = ν
 
 @par function Base.show(io::IO,s::@par(Simulation))
-msg = """
+smsg = """
 Fluid Flow Simulation
 
 nx: $(Nrx)
@@ -65,19 +65,26 @@ x domain size: $(Lx)*2π
 y domain size: $(Ly)*2π
 z domain size: $(Lz)*2π
 
-Viscosity: $(ν)
+Kinematic Viscosity: $(ν)
 
-Time Step method: $(typeof(s.timestep.x))
+Velocity time-stepping method: $(typeof(s.timestep.x))
 Dealias type: $Dealias
 Threaded: $Thr
 """
-print(io,msg)
+smsg = join((smsg,msg(s.passivescalar),
+  msg(s.densitystratification),
+  msg(s.lesmodel),
+  msg(s.forcing)))
+
+print(io,smsg)
 end
 
 # Simulaiton with Scalar fields ===================================================================================================================================================
 abstract type AbstractPassiveScalar end
 
 struct NoPassiveScalar <: AbstractPassiveScalar end
+
+msg(a::NoPassiveScalar) = "\nPassive Scalar: No passive scalar\n"
 
 struct PassiveScalar{TTimeStep, α #=Difusitivity = ν/Pr =#,
                   dρdz #=Linear mean profile=#, Gdirec #=Axis of mean profile =#} <: AbstractPassiveScalar
@@ -96,11 +103,22 @@ struct PassiveScalar{TTimeStep, α #=Difusitivity = ν/Pr =#,
   end
 end 
 
+msg(a::PassiveScalar{TT,α,dρdz,Gdirec}) where {TT,α,dρdz,Gdirec} = """
+
+Passive Scalar: true
+Scalar diffusivity: $(α)
+Scalar mean gradient: $(dρdz)
+Scalar mean gradient direction: $(Gdirec)
+Scalar time-stepping method: $(TT)
+
+"""
 # ==========================================================================================================
 
 abstract type AbstractDensityStratification end
 
 struct NoDensityStratification <: AbstractDensityStratification end
+
+msg(a::NoDensityStratification) = "\nDensity Stratification: No density stratification\n"
 
 struct BoussinesqApproximation{TTimeStep, α #=Difusitivity = ν/Pr =#,
                    dρdz #=Linear mean profile=#, g #=This is actually g/ρ₀ =#, 
@@ -120,6 +138,16 @@ struct BoussinesqApproximation{TTimeStep, α #=Difusitivity = ν/Pr =#,
   end
 end 
 
+msg(a::BoussinesqApproximation{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = """
+
+Density Stratification: Boussinesq Approximation
+Density diffusivity: $(α)
+g/ρ₀ : $(g)
+Density mean gradient : $(dρdz)
+Density mean gradient direction: $(Gdirec)
+Density time-stepping method: $(TT)
+
+"""
 # ==========================================================================================
 # LES Model
 
@@ -127,12 +155,16 @@ abstract type AbstractLESModel end
 
 struct NoLESModel <: AbstractLESModel end
 
+msg(a::NoLESModel) = "\nLES model: No LES model\n"
+
 # ==========================================================================================
 # Forcing Scheme
 
 abstract type AbstractForcing end
 
 struct NoForcing <: AbstractForcing end
+
+msg(a::NoForcing) = "\nForcing: No forcing\n"
 
 # Initializan function =========================================================================================================================================================================================================
 
