@@ -84,13 +84,15 @@ abstract type AbstractPassiveScalar end
 
 struct NoPassiveScalar <: AbstractPassiveScalar end
 
+initialize!(a::NoPassiveScalar,s::AbstractSimulation) = nothing
+
 msg(a::NoPassiveScalar) = "\nPassive Scalar: No passive scalar\n"
 
 struct PassiveScalar{TTimeStep, α #=Difusitivity = ν/Pr =#,
                   dρdz #=Linear mean profile=#, Gdirec #=Axis of mean profile =#} <: AbstractPassiveScalar
-  s::PaddedArray{Float64,3,false}
+  ρ::PaddedArray{Float64,3,false}
   ps::FFTW.rFFTWPlan{Float64,-1,true,3}
-  srhs::PaddedArray{Float64,3,false}
+  ρrhs::PaddedArray{Float64,3,false}
   timestep::TTimeStep
 
   function PassiveScalar{TT,α,dρdz,Gdirec}(ρ,timestep) where {TT,α,dρdz,Gdirec}
@@ -102,6 +104,8 @@ struct PassiveScalar{TTimeStep, α #=Difusitivity = ν/Pr =#,
     return new{TT,α,dρdz,Gdirec}(ρ,ps,ρrhs,timestep)
   end
 end 
+
+initialize!(a::AbstractPassiveScalar,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),s)
 
 msg(a::PassiveScalar{TT,α,dρdz,Gdirec}) where {TT,α,dρdz,Gdirec} = """
 
@@ -117,6 +121,8 @@ Scalar time-stepping method: $(TT)
 abstract type AbstractDensityStratification end
 
 struct NoDensityStratification <: AbstractDensityStratification end
+
+initialize!(a::NoDensityStratification,s::AbstractSimulation) = nothing
 
 msg(a::NoDensityStratification) = "\nDensity Stratification: No density stratification\n"
 
@@ -137,6 +143,8 @@ struct BoussinesqApproximation{TTimeStep, α #=Difusitivity = ν/Pr =#,
     return new{TT,α,dρdz,g,Gdirec}(ρ,ps,ρrhs,timestep)
   end
 end 
+
+initialize!(a::BoussinesqApproximation,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),s)
 
 msg(a::BoussinesqApproximation{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = """
 

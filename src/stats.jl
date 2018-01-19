@@ -1,21 +1,37 @@
 function writeheader(s::AbstractSimulation)
-  if isscalar(s)
-    open("Stats.txt","w") do f
-      write(f,"iteration  time  u1  u2  u3  u1^2  u2^2  u3^2  du1dx1^2  du1dx2^2  du1dx3^2 du2dx1^2  du2dx2^2  du2dx3^2 du3dx1^2  du3dx2^2  du3dx3^2 rho rho^2 drhodx^2 drhody^3 drhodz^2\n")
-    end
+
+  if (hasdensity(s) && !haspassivescalar(s))
+    header = "iteration  time  u1  u2  u3  u1^2  u2^2  u3^2  du1dx1^2  du1dx2^2  du1dx3^2 du2dx1^2  du2dx2^2  du2dx3^2 du3dx1^2  du3dx2^2  du3dx3^2 rho rho^2 drhodx^2 drhody^3 drhodz^2\n"
+  elseif (haspassivescalar(s) && !hasdensity(s))
+    header = "iteration  time  u1  u2  u3  u1^2  u2^2  u3^2  du1dx1^2  du1dx2^2  du1dx3^2 du2dx1^2  du2dx2^2  du2dx3^2 du3dx1^2  du3dx2^2  du3dx3^2 scalar scalar^2 dscalardx^2 dscalardy^3 dscalardz^2\n"
+  elseif (haspassivescalar(s) && hasdensity(s))
+    header = "iteration  time  u1  u2  u3  u1^2  u2^2  u3^2  du1dx1^2  du1dx2^2  du1dx3^2 du2dx1^2  du2dx2^2  du2dx3^2 du3dx1^2  du3dx2^2  du3dx3^2 rho rho^2 drhodx^2 drhody^3 drhodz^2 scalar scalar^2 dscalardx^2 dscalardy^3 dscalardz^2\n"
   else
-    open("Stats.txt","w") do f
-      write(f,"iteration  time  u1  u2  u3  u1^2  u2^2  u3^2  du1dx1^2  du1dx2^2  du1dx3^2 du2dx1^2  du2dx2^2  du2dx3^2 du3dx1^2  du3dx2^2  du3dx3^2 \n")
-    end
+    header = "iteration  time  u1  u2  u3  u1^2  u2^2  u3^2  du1dx1^2  du1dx2^2  du1dx3^2 du2dx1^2  du2dx2^2  du2dx3^2 du3dx1^2  du3dx2^2  du3dx3^2 \n"
+  end
+
+  open("Stats.txt","w") do f
+    write(f,header)
   end
 end
 
 function stats(s::AbstractSimulation,init::Integer,time::Real)
   results = velocity_stats(s)
-  if isscalar(s)
-    results2 = scalar_stats(s)  
+  if (haspassivescalar(s) && !hasdensity(s))
+    results2 = scalar_stats(s.passivescalar,s)  
     open("Stats.txt","a+") do file 
       join(file,(init, time, results..., results2..., "\n"), "  ")
+    end
+  elseif (hasdensity(s) && !haspassivescalar(s))
+    results2 = scalar_stats(s.densitystratification,s)  
+    open("Stats.txt","a+") do file 
+      join(file,(init, time, results..., results2..., "\n"), "  ")
+    end
+  elseif (hasdensity(s) && haspassivescalar(s))
+    results2 = scalar_stats(s.densitystratification,s)  
+    results3 = scalar_stats(s.passivescalar,s)  
+    open("Stats.txt","a+") do file 
+      join(file,(init, time, results..., results2..., results3..., "\n"), "  ")
     end
   else
     open("Stats.txt","a+") do file 
@@ -56,14 +72,14 @@ end
   return u1, u2, u3, u12, u22, u32, d1d1, d1d2, d1d3, d2d1, d2d2, d2d3, d3d1, d3d2, d3d3
 end
 
-@par function scalar_stats(s::@par(AbstractSimulation))
-  rho = real(s.ρ[1,1,1])/(Nrx*Ny*Nz)  
-  _mycopy!(complex(s.ρrhs),complex(s.ρ),s)
-  s.ps\s.ρrhs
-  rho2 = tmean(x->x^2,parent(real(s.ρrhs)),s)
-  dealias!(s.ρrhs,s)
+@par function scalar_stats(s1,s::@par(AbstractSimulation))
+  rho = real(s1.ρ[1,1,1])/(Nrx*Ny*Nz)  
+  _mycopy!(complex(s1.ρrhs),complex(s1.ρ),s)
+  s1.ps\s1.ρrhs
+  rho2 = tmean(x->x^2,parent(real(s1.ρrhs)),s)
+  dealias!(s1.ρrhs,s)
 
-  grad!(s.aux,complex(s.ρ),s)
+  grad!(s.aux,complex(s1.ρ),s)
   s.p\s.aux
   drd1 = tmean(x->x^2,s.aux.rx,s)
   drd2 = tmean(x->x^2,s.aux.ry,s)
@@ -72,7 +88,7 @@ end
   return rho, rho2, drd1, drd2, drd3
 end
 
-ape(s::AbstractSimulation) = tmean(x->x^2,parent(real(s.ρ)),s)
+#ape(s::AbstractSimulation) = tmean(x->x^2,parent(real(s.ρ)),s)
 
 @par function tmean(f::Function,x::AbstractArray{T,3},s::@par(AbstractSimulation)) where {T<:Number}
 

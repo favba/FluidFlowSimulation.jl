@@ -9,6 +9,13 @@
     z::Tz
   end
 
+  function initialize!(t::VectorTimeStep,rhs::VectorField,s::AbstractSimulation)
+    initialize!(t.x,rhs.rx,s)
+    initialize!(t.y,rhs.ry,s)
+    initialize!(t.z,rhs.rz,s)
+  end
+
+
   function (f::VectorTimeStep)(u::VectorField,rhs::VectorField,dt::Real,s::AbstractSimulation)
     f.x(u.rx,rhs.rx,dt,s)
     f.y(u.ry,rhs.ry,dt,s)
@@ -34,9 +41,27 @@
 
   struct Euller <: AbstractScalarTimeStep{0} end
 
+  #initialize!(t::Euller,rhs,s::AbstractSimulation) = nothing
+
   struct Adams_Bashforth3rdO <: AbstractScalarTimeStep{2}
     fm1::Array{Float64,3} #Store latest step
     fm2::Array{Float64,3} #Store 2 steps before
+  end
+
+  @generated function initialize!(t::AbstractScalarTimeStep{N},rhs,s::AbstractSimulation) where N
+    if N === 0 
+      return :(nothing)
+    elseif N === 1
+      return esc(:(mycopy!(t.fm1,rhs,s); return nothing))
+    else
+      blk= Expr(:block)
+      push!(blk.args,:(mycopy!(t.fm1,rhs,s)))
+      for i=2:N
+        push!(blk.args,:(@inbounds copy!(t.$(Symbol("fm",i)),t.$(Symbol("fm",i-1)))))
+      end
+      push!(blk.args,:(return nothing))
+      return esc(blk)
+    end
   end
 
 #Struct End

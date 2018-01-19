@@ -32,25 +32,8 @@ end
   info("Simulation started.")
   init=0
   ttime=0.
-  writeheader(s)
-  s.p*s.u
-  isscalar(s) && s.ps*s.ρ
-  
-  if Integrator !== :Euller
-    calculate_rhs!(s)
-    mycopy!(s.rm2x,s.rhs.rx,s)
-    copy!(s.rm1x,s.rm2x)
-    mycopy!(s.rm2y,s.rhs.ry,s)
-    copy!(s.rm1y,s.rm2y)
-    mycopy!(s.rm2z,s.rhs.rz,s)
-    copy!(s.rm1z,s.rm2z)
-    if isscalar(s)
-      mycopy!(s.rrm1,parent(real(s.ρrhs)),s)
-      copy!(s.rrm2,s.rrm1)
-    end
-  end
 
-  stats(s,init,ttime)
+  initialize!(s)
 
   @assert totalnsteps >= dtOutput 
   @assert totalnsteps >= dtStats
@@ -61,6 +44,21 @@ end
     mod(i,dtOutput) == 0 && writeoutput(s,i)
     mod(i,dtStats) == 0 && stats(s,i,ttime)
   end
+end
+
+function initialize!(s::AbstractSimulation)
+  writeheader(s)
+  s.p*s.u
+  haspassivescalar(s) && s.passivescalar.ps * s.passivescalar.ρ
+  hasdensity(s) && s.densitystratification.ps * s.densitystratification.ρ
+
+  calculate_rhs!(s)
+
+  initialize!(s.timestep,s.rhs,s)
+  initialize!(s.passivescalar,s)
+  initialize!(s.densitystratification,s)
+
+  stats(s,0,0)
 end
 
 end # module
