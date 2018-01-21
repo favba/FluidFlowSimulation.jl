@@ -52,15 +52,17 @@
     if N === 0 
       return :(nothing)
     elseif N === 1
-      return esc(:(mycopy!(t.fm1,rhs,s); return nothing))
+      return :(mycopy!(t.fm1,rhs,s); return nothing)
     else
       blk= Expr(:block)
       push!(blk.args,:(mycopy!(t.fm1,rhs,s)))
       for i=2:N
-        push!(blk.args,:(@inbounds copy!(t.$(Symbol("fm",i)),t.$(Symbol("fm",i-1)))))
+        fmn = Symbol("fm",i) 
+        fmnm1 = Symbol("fm",i-1) 
+        push!(blk.args,:(@inbounds copy!(t.$(fmn), t.$(fmnm1))))
       end
-      push!(blk.args,:(return nothing))
-      return esc(blk)
+      push!(blk.args,:(nothing))
+      return blk
     end
   end
 

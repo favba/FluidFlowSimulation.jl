@@ -5,19 +5,69 @@
 end
 
 @par function calculate_rhs!(s::A) where {A<:@par(AbstractSimulation)}
-  compute_nonlinear!(s)
-  add_viscosity!(s.rhs,s.u,s.ν,s)
-  if isbuoyant(A)
-    gdir = GDirec === :x ? s.rhs.cx : GDirec === :y ? s.rhs.cy : s.rhs.cz 
-    addgravity!(gdir, complex(s.ρ), -s.g, s)
-  end
-  pressure_projection!(s.rhs.cx,s.rhs.cy,s.rhs.cz,s)
-  isscalar(A) && add_scalar_difusion!(complex(s.ρrhs),complex(s.ρ),s.α,s)
+  fourierspacep1!(s)
+  realspace!(s)
+  fourierspacep2!(s)
   return nothing
 end
 
-@par function compute_nonlinear!(s::A) where {A<:@par(AbstractSimulation)}
+@par function fourierspacep1!(s::A) where {A<:@par(AbstractSimulation)}
   curl!(s.aux,s.u,s)
+  return nothing
+end
+
+@par function realspace!(s::A) where {A<:@par(AbstractSimulation)}
+  #A_mul_B!(real(s.u),s.p.pinv.p,complex(s.u))
+  s.p.pinv.p*s.u
+  #A_mul_B!(real(s.aux),s.p.pinv.p,complex(s.aux))
+  s.p.pinv.p*s.aux
+  
+  #haspassivescalar(A) && A_mul_B!(real(s.passivescalar.ρ),s.passivescalar.ps.pinv.p,complex(s.passivescalar.ρ))
+  haspassivescalar(A) && s.passivescalar.ps.pinv.p * s.passivescalar.ρ
+  #hasdensity(A) && A_mul_B!(real(s.densitystratification.ρ),s.densitystratification.ps.pinv.p,complex(s.densitystratification.ρ))
+  hasdensity(A) && s.densitystratification.ps.pinv.p * s.densitystratification.ρ
+  
+  realspacecalculation!(s)
+
+  s.p*s.rhs
+  dealias!(s.rhs, s)
+  s.p*s.u
+  if haspassivescalar(A) 
+    s.p*s.aux
+    dealias!(s.aux, s)
+    s.passivescalar.ps * s.passivescalar.ρ
+  elseif hasdensity(A)
+    s.p*s.aux
+    dealias!(s.aux, s)
+    s.densitystratification.ps * s.densitystratification.ρ
+  else
+    dealias!(s.aux, s)
+  end
+end
+
+@par function fourierspacep2!(s::A) where {A<:@par(AbstractSimulation)}
+  add_viscosity!(s.rhs,s.u,ν,s)
+  if hasdensity(A)
+    Gdirec = graddir(s.densitystratification)
+    gdir = GDirec === :x ? s.rhs.cx : GDirec === :y ? s.rhs.cy : s.rhs.cz 
+    addgravity!(gdir, complex(s.densitystratification.ρ), -gravity(s.densitystratification), s)
+  end
+  pressure_projection!(s.rhs.cx,s.rhs.cy,s.rhs.cz,s)
+  if haspassivescalar(A)
+    gdir = graddir(s.passivescalar) === :x ? s.u.cx : graddir(s.passivescalar) === :y ? s.u.cy : s.u.cz 
+    div!(complex(s.passivescalar.ρrhs), s.aux.cx, s.aux.cy, s.aux.cz, gdir, -meangradient(s.passivescalar), s)
+    add_scalar_difusion!(complex(s.passivescalar.ρrhs),complex(s.passivescalar.ρ),diffusivity(s.passivescalar),s)
+  end
+  if hasdensity(A)
+    gdir = graddir(s.densitystratification) === :x ? s.u.cx : graddir(s.densitystratification) === :y ? s.u.cy : s.u.cz 
+    div!(complex(s.densitystratification.ρrhs), s.aux.cx, s.aux.cy, s.aux.cz, gdir, -meangradient(s.densitystratification), s)
+    add_scalar_difusion!(complex(s.densitystratification.ρrhs),complex(s.densitystratification.ρ),diffusivity(s.densitystratification),s)
+  end
+  return nothing
+end
+
+
+@par function compute_nonlinear!(s::A) where {A<:@par(AbstractSimulation)}
   A_mul_B!(real(s.u),s.p.pinv.p,complex(s.u))
   A_mul_B!(real(s.aux),s.p.pinv.p,complex(s.aux))
   
@@ -104,12 +154,9 @@ end
 end
 
 @par function time_step!(s::A,dt::Real) where {A<:@par(AbstractSimulation)}
-  if Integrator === :Euller
-    Euller!(parent(real(s.u)),parent(real(s.rhs)),dt,s)
-    isscalar(A) && Euller!(complex(s.ρ),complex(s.ρrhs),dt,s)
-  elseif Integrator === :Adams_Bashforth3rdO
-    Adams_Bashforth3rdO!(dt,s)
-  end
+  s.timestep(s.u,s.rhs,dt,s)
+  haspassivescalar(s) && s.passivescalar.timestep(parent(real(s.passivescalar.ρ)),parent(real(s.passivescalar.ρrhs)),dt,s)
+  hasdensity(s) && s.densitystratification.timestep(parent(real(s.densitystratification.ρ)),parent(real(s.densitystratification.ρrhs)),dt,s)
 end
 
 @inbounds @par function mycopy!(rm::AbstractArray{T,3},rhs::AbstractArray{T,3},s::@par(AbstractSimulation)) where T<:Complex

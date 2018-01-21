@@ -1,5 +1,5 @@
-#abstract type @par(BoussinesqSimulation) end
-#abstract type @par(ScalarSimulation) end
+abstract type @par(BoussinesqSimulation) end
+abstract type @par(ScalarSimulation) end
 
 #Parent type of all simulations
 abstract type @par(AbstractSimulation) end
@@ -12,14 +12,21 @@ Simulation will encapsule different structs for:
 @par haspassivescalar(s::Type{T}) where {T<:@par(AbstractSimulation)} =
   PassiveScalarType !== NoPassiveScalar
 
+haspassivescalar(s::AbstractSimulation) = haspassivescalar(typeof(s))
+
 @par hasdensity(s::Type{T}) where {T<:@par(AbstractSimulation)}  =
   DensityStratificationType !== NoDensityStratification
+
+hasdensity(s::AbstractSimulation) = hasdensity(typeof(s))
 
 @par hasles(s::Type{T}) where {T<:@par(AbstractSimulation)}  =
   LESModelType !== NoLESModel
 
+hasles(s::AbstractSimulation) = hasles(typeof(s))
 @par hasforcing(s::Type{T}) where {T<:@par(AbstractSimulation)}  =
   ForcingType !== NoForcing
+
+hasforcing(s::AbstractSimulation) = hasforcing(typeof(s))
 
 struct @par(Simulation) <: @par(AbstractSimulation)
   u::VectorField{PaddedArray{Float64,4,false}}
@@ -82,26 +89,33 @@ print(io,smsg)
 end
 
 # Simulaiton with Scalar fields ===================================================================================================================================================
-abstract type AbstractPassiveScalar end
+abstract type AbstractPassiveScalar{TT,α,dρdz,Gdirec} end
 
-initialize!(a::AbstractPassiveScalar,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),s)
+  diffusivity(a::AbstractPassiveScalar{TT,α,dρdz,Gdirec}) where {TT,α,dρdz,Gdirec} = 
+    α
+  meangradient(a::AbstractPassiveScalar{TT,α,dρdz,Gdirec}) where {TT,α,dρdz,Gdirec} = 
+    dρdz
+  graddir(a::AbstractPassiveScalar{TT,α,dρdz,Gdirec}) where {TT,α,dρdz,Gdirec} = 
+    Gdirec
 
-statsheader(a::AbstractPassiveScalar) = "scalar,scalar^2,dscalardx^2,dscalardy^3,dscalardz^2"
+  initialize!(a::AbstractPassiveScalar,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),s)
 
-stats(a::AbstractPassiveScalar,s::AbstractSimulation) = scalar_stats(a,s)
+  statsheader(a::AbstractPassiveScalar) = "scalar,scalar^2,dscalardx^2,dscalardy^2,dscalardz^2"
 
-struct NoPassiveScalar <: AbstractPassiveScalar end
+  stats(a::AbstractPassiveScalar,s::AbstractSimulation) = scalar_stats(a,s)
 
-initialize!(a::NoPassiveScalar,s::AbstractSimulation) = nothing
+struct NoPassiveScalar <: AbstractPassiveScalar{nothing,nothing,nothing,nothing} end
 
-statsheader(a::NoPassiveScalar) = ""
+  initialize!(a::NoPassiveScalar,s::AbstractSimulation) = nothing
 
-stats(a::NoPassiveScalar,s::AbstractSimulation) = ()
+  statsheader(a::NoPassiveScalar) = ""
 
-msg(a::NoPassiveScalar) = "\nPassive Scalar: No passive scalar\n"
+  stats(a::NoPassiveScalar,s::AbstractSimulation) = ()
+
+  msg(a::NoPassiveScalar) = "\nPassive Scalar: No passive scalar\n"
 
 struct PassiveScalar{TTimeStep, α #=Difusitivity = ν/Pr =#,
-                  dρdz #=Linear mean profile=#, Gdirec #=Axis of mean profile =#} <: AbstractPassiveScalar
+                  dρdz #=Linear mean profile=#, Gdirec #=Axis of mean profile =#} <: AbstractPassiveScalar{TTimeStep,α,dρdz,Gdirec}
   ρ::PaddedArray{Float64,3,false}
   ps::FFTW.rFFTWPlan{Float64,-1,true,3}
   ρrhs::PaddedArray{Float64,3,false}
@@ -128,27 +142,37 @@ Scalar time-stepping method: $(TT)
 """
 # ==========================================================================================================
 
-abstract type AbstractDensityStratification end
+abstract type AbstractDensityStratification{TT,α,dρdz,g,Gdirec} end
 
-initialize!(a::AbstractDensityStratification,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),s)
+  diffusivity(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = 
+    α
+  meangradient(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = 
+    dρdz
+  gravity(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = 
+    g
+  graddir(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = 
+    Gdirec
 
-statsheader(a::AbstractDensityStratification) = "rho,rho^2,drhodx^2,drhody^3,drhodz^2"
 
-stats(a::AbstractDensityStratification,s::AbstractSimulation) = scalar_stats(a,s)
+  initialize!(a::AbstractDensityStratification,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),s)
 
-struct NoDensityStratification <: AbstractDensityStratification end
+  statsheader(a::AbstractDensityStratification) = "rho,rho^2,drhodx^2,drhody^3,drhodz^2"
 
-initialize!(a::NoDensityStratification,s::AbstractSimulation) = nothing
+  stats(a::AbstractDensityStratification,s::AbstractSimulation) = scalar_stats(a,s)
 
-statsheader(a::NoDensityStratification) = ""
+struct NoDensityStratification <: AbstractDensityStratification{nothing,nothing,nothing,nothing,nothing} end
 
-stats(a::NoDensityStratification,s::AbstractSimulation) = ()
+  initialize!(a::NoDensityStratification,s::AbstractSimulation) = nothing
 
-msg(a::NoDensityStratification) = "\nDensity Stratification: No density stratification\n"
+  statsheader(a::NoDensityStratification) = ""
+
+  stats(a::NoDensityStratification,s::AbstractSimulation) = ()
+
+  msg(a::NoDensityStratification) = "\nDensity Stratification: No density stratification\n"
 
 struct BoussinesqApproximation{TTimeStep, α #=Difusitivity = ν/Pr =#,
                    dρdz #=Linear mean profile=#, g #=This is actually g/ρ₀ =#, 
-                   Gdirec#=Gravity direction =#} <: AbstractDensityStratification
+                   Gdirec#=Gravity direction =#} <: AbstractDensityStratification{TTimeStep,α,dρdz,g,Gdirec}
   ρ::PaddedArray{Float64,3,false}
   ps::FFTW.rFFTWPlan{Float64,-1,true,3}
   ρrhs::PaddedArray{Float64,3,false}

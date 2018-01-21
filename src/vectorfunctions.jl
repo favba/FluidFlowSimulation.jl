@@ -1,12 +1,13 @@
-@par function realspace!(s::A) where {A<:@par(AbstractSimulation)}
+@par function realspacecalculation!(s::A) where {A<:@par(AbstractSimulation)}
+  @assert !(hasdensity(A) & haspassivescalar(A))
   n = Thr ? Threads.nthreads() : 1
   @mthreads for j in 1:n
-    _realspace!(s,j)
+    realspacecalculation!(s,j)
   end
   return nothing
 end
 
-@par function _realspace!(s::A,j) where {A<:@par(AbstractSimulation), range} 
+@par function realspacecalculation!(s::A,j::Integer) where {A<:@par(AbstractSimulation)} 
   scale::Float64 = 1/(Nrx*Ny*Nz)                
   mscale::Float64 = -1/(Nrx*Ny*Nz)                
   ux = s.u.rx
@@ -18,9 +19,10 @@ end
   outx = s.rhs.rx
   outy = s.rhs.ry
   outz = s.rhs.rz
-  if isscalar(A)
-    ρ::Array{Float64,3} = parent(real(s.ρ))
-  end
+  haspassivescalar(A) && (
+    ρ = parent(real(s.passivescalar.ρ)) )
+  hasdensity(A) && (
+    ρ = parent(real(s.densitystratification.ρ)) )
 
   @inbounds @msimd for i in RealRanges[j]
     ux[i] *= scale
@@ -30,7 +32,8 @@ end
     outx[i] = muladd(scale*uy[i],vz[i], mscale*uz[i]*vy[i])
     outy[i] = muladd(scale*uz[i],vx[i], mscale*ux[i]*vz[i])
     outz[i] = muladd(scale*ux[i],vy[i], mscale*uy[i]*vx[i])
-    if isscalar(A) 
+
+    if haspassivescalar(A) || hasdensity(A)
       ρ[i] *= scale
       vx[i] = ux[i]*ρ[i]
       vy[i] = uy[i]*ρ[i]
