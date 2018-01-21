@@ -42,7 +42,7 @@ end
     advance_in_time!(s,dt)
     ttime+=dt
     mod(i,dtOutput) == 0 && writeoutput(s,i)
-    mod(i,dtStats) == 0 && stats(s,i,ttime)
+    mod(i,dtStats) == 0 && writestats(s,i,ttime)
   end
 end
 
@@ -58,7 +58,7 @@ function initialize!(s::AbstractSimulation)
   initialize!(s.passivescalar,s)
   initialize!(s.densitystratification,s)
 
-  stats(s,0,0)
+  writestats(s,0,0)
 end
 
 end # module

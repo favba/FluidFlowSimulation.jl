@@ -52,7 +52,9 @@ struct @par(Simulation) <: @par(AbstractSimulation)
 
 end
 
-@par ν(s::@par(Simulation)) = ν
+@par nu(s::@par(Simulation)) = ν
+@par ngridpoints(s::@par(Simulation)) = (Nrx,Ny,Nz)
+@par domainlength(s::@par(Simulation)) = (Lx,Ly,Lz)
 
 @par function Base.show(io::IO,s::@par(Simulation))
 smsg = """
@@ -82,9 +84,19 @@ end
 # Simulaiton with Scalar fields ===================================================================================================================================================
 abstract type AbstractPassiveScalar end
 
+initialize!(a::AbstractPassiveScalar,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),s)
+
+statsheader(a::AbstractPassiveScalar) = "scalar,scalar^2,dscalardx^2,dscalardy^3,dscalardz^2"
+
+stats(a::AbstractPassiveScalar,s::AbstractSimulation) = scalar_stats(a,s)
+
 struct NoPassiveScalar <: AbstractPassiveScalar end
 
 initialize!(a::NoPassiveScalar,s::AbstractSimulation) = nothing
+
+statsheader(a::NoPassiveScalar) = ""
+
+stats(a::NoPassiveScalar,s::AbstractSimulation) = ()
 
 msg(a::NoPassiveScalar) = "\nPassive Scalar: No passive scalar\n"
 
@@ -105,8 +117,6 @@ struct PassiveScalar{TTimeStep, α #=Difusitivity = ν/Pr =#,
   end
 end 
 
-initialize!(a::AbstractPassiveScalar,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),s)
-
 msg(a::PassiveScalar{TT,α,dρdz,Gdirec}) where {TT,α,dρdz,Gdirec} = """
 
 Passive Scalar: true
@@ -120,9 +130,19 @@ Scalar time-stepping method: $(TT)
 
 abstract type AbstractDensityStratification end
 
+initialize!(a::AbstractDensityStratification,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),s)
+
+statsheader(a::AbstractDensityStratification) = "rho,rho^2,drhodx^2,drhody^3,drhodz^2"
+
+stats(a::AbstractDensityStratification,s::AbstractSimulation) = scalar_stats(a,s)
+
 struct NoDensityStratification <: AbstractDensityStratification end
 
 initialize!(a::NoDensityStratification,s::AbstractSimulation) = nothing
+
+statsheader(a::NoDensityStratification) = ""
+
+stats(a::NoDensityStratification,s::AbstractSimulation) = ()
 
 msg(a::NoDensityStratification) = "\nDensity Stratification: No density stratification\n"
 
@@ -161,7 +181,13 @@ Density time-stepping method: $(TT)
 
 abstract type AbstractLESModel end
 
+#statsheader(a::AbstractLESModel) = ""
+
 struct NoLESModel <: AbstractLESModel end
+
+statsheader(a::NoLESModel) = ""
+
+stats(a::NoLESModel,s::AbstractSimulation) = ()
 
 msg(a::NoLESModel) = "\nLES model: No LES model\n"
 
@@ -170,7 +196,13 @@ msg(a::NoLESModel) = "\nLES model: No LES model\n"
 
 abstract type AbstractForcing end
 
+#statsheader(a::AbstractForcing) = ""
+
 struct NoForcing <: AbstractForcing end
+
+statsheader(a::NoForcing) = ""
+
+stats(a::NoForcing,s::AbstractSimulation) = ()
 
 msg(a::NoForcing) = "\nForcing: No forcing\n"
 

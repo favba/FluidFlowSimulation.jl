@@ -1,44 +1,21 @@
 function writeheader(s::AbstractSimulation)
 
-  if (hasdensity(s) && !haspassivescalar(s))
-    header = "iteration  time  u1  u2  u3  u1^2  u2^2  u3^2  du1dx1^2  du1dx2^2  du1dx3^2 du2dx1^2  du2dx2^2  du2dx3^2 du3dx1^2  du3dx2^2  du3dx3^2 rho rho^2 drhodx^2 drhody^3 drhodz^2\n"
-  elseif (haspassivescalar(s) && !hasdensity(s))
-    header = "iteration  time  u1  u2  u3  u1^2  u2^2  u3^2  du1dx1^2  du1dx2^2  du1dx3^2 du2dx1^2  du2dx2^2  du2dx3^2 du3dx1^2  du3dx2^2  du3dx3^2 scalar scalar^2 dscalardx^2 dscalardy^3 dscalardz^2\n"
-  elseif (haspassivescalar(s) && hasdensity(s))
-    header = "iteration  time  u1  u2  u3  u1^2  u2^2  u3^2  du1dx1^2  du1dx2^2  du1dx3^2 du2dx1^2  du2dx2^2  du2dx3^2 du3dx1^2  du3dx2^2  du3dx3^2 rho rho^2 drhodx^2 drhody^3 drhodz^2 scalar scalar^2 dscalardx^2 dscalardy^3 dscalardz^2\n"
-  else
-    header = "iteration  time  u1  u2  u3  u1^2  u2^2  u3^2  du1dx1^2  du1dx2^2  du1dx3^2 du2dx1^2  du2dx2^2  du2dx3^2 du3dx1^2  du3dx2^2  du3dx3^2 \n"
-  end
-
+  simulaitionheader = "iteration,time,u1,u2,u3,u1^2,u2^2,u3^2,du1dx1^2,du1dx2^2,du1dx3^2,du2dx1^2,du2dx2^2,du2dx3^2,du3dx1^2,du3dx2^2,du3dx3^2"
+  header = join((simulaitionheader,statsheader(s.passivescalar),statsheader(s.densitystratification),statsheader(s.lesmodel),statsheader(s.forcing),"\n"), ",","")
   open("Stats.txt","w") do f
     write(f,header)
   end
 end
 
-function stats(s::AbstractSimulation,init::Integer,time::Real)
-  results = velocity_stats(s)
-  if (haspassivescalar(s) && !hasdensity(s))
-    results2 = scalar_stats(s.passivescalar,s)  
-    open("Stats.txt","a+") do file 
-      join(file,(init, time, results..., results2..., "\n"), "  ")
-    end
-  elseif (hasdensity(s) && !haspassivescalar(s))
-    results2 = scalar_stats(s.densitystratification,s)  
-    open("Stats.txt","a+") do file 
-      join(file,(init, time, results..., results2..., "\n"), "  ")
-    end
-  elseif (hasdensity(s) && haspassivescalar(s))
-    results2 = scalar_stats(s.densitystratification,s)  
-    results3 = scalar_stats(s.passivescalar,s)  
-    open("Stats.txt","a+") do file 
-      join(file,(init, time, results..., results2..., results3..., "\n"), "  ")
-    end
-  else
-    open("Stats.txt","a+") do file 
-      join(file,(init, time, results..., "\n"), "  ")
-    end
+function writestats(s::AbstractSimulation,init::Integer,time::Real)
+  results = stats(s)
+  open("stats.txt","a+") do file 
+    join(file,(init, time, results..., "\n"), ",","")
   end
 end
+
+stats(s::AbstractSimulation) = 
+  (velocity_stats(s)..., stats(s.passivescalar,s)..., stats(s.densitystratification,s)..., stats(s.lesmodel,s)..., stats(s.forcing,s)...)
 
 @par function velocity_stats(s::@par(AbstractSimulation))
   u1 = real(s.u.cx[1,1,1])/(Nrx*Ny*Nz)
