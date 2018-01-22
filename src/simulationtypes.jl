@@ -78,7 +78,7 @@ z domain size: $(Lz)*2π
 Kinematic Viscosity: $(ν)
 
 Velocity time-stepping method: $(typeof(s.timestep.x))
-Dealias type: $Dealias
+Dealias type: $(Dealias[1]) $(Dealias[2])
 Threaded: $Thr
 """
 smsg = join((smsg,msg(s.passivescalar),
@@ -262,32 +262,12 @@ function parameters(d::Dict)
 
   tr && FFTW.set_num_threads(Threads.nthreads())
  
-  if tr
-    nt = Threads.nthreads()
-    lr = ncx*2*ny*nz
-    a = UnitRange{Int}[]
-    if lr%nt == 0
-      init = 1
-      n = lr÷nt
-      for i=1:nt
-        stop=init+n-1
-        push!(a,init:stop)
-        init = stop+1
-      end
-    else
-      # TODO 
-    end
-    b = (a...,)
-  else
-    lr = ncx*2*ny*nz
-    b = (1:lr,)
-  end
-
+  b = splitrange(lrs, tr ? Threads.nthreads() : 1)
 
   haskey(d,:dealias) ? (Dealiastype = Symbol(d[:dealias])) : (Dealiastype = :sphere)
+  haskey(d,:cutoff) ? (cutoffr = Float64(eval(parse(d[:cutoff])))) : (cutoffr = 2/3)
 
-
-  cutoff = (2kxp[end]/3)^2
+  cutoff = (cutoffr*kxp[end])^2
 
   dealias = BitArray(ncx,ny,nz)
   if Dealiastype == :sphere
@@ -348,7 +328,7 @@ function parameters(d::Dict)
   s = Simulation{lx,ly,lz,ncx,ny,nz,lcs,lcv,nx,lrs,lrv,ν,
       typeof(vtimestep),
       typeof(scalartype),typeof(densitytype),typeof(lestype),typeof(forcingtype),
-      Dealiastype,
+      (Dealiastype,cutoffr),
       kxr,kyr,kzr,kx,ky,kz,tr,b}(u,dealias,vtimestep,scalartype,densitytype,lestype,forcingtype)
   #
 
