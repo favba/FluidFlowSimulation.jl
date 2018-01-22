@@ -18,14 +18,14 @@ end
 
 @par function realspace!(s::A) where {A<:@par(AbstractSimulation)}
   #A_mul_B!(real(s.u),s.p.pinv.p,complex(s.u))
-  s.p.pinv.p*s.u
+  s.pb*s.u
   #A_mul_B!(real(s.aux),s.p.pinv.p,complex(s.aux))
-  s.p.pinv.p*s.aux
+  s.pb*s.aux
   
   #haspassivescalar(A) && A_mul_B!(real(s.passivescalar.ρ),s.passivescalar.ps.pinv.p,complex(s.passivescalar.ρ))
-  haspassivescalar(A) && s.passivescalar.ps.pinv.p * s.passivescalar.ρ
+  haspassivescalar(A) && s.passivescalar.pbs * s.passivescalar.ρ
   #hasdensity(A) && A_mul_B!(real(s.densitystratification.ρ),s.densitystratification.ps.pinv.p,complex(s.densitystratification.ρ))
-  hasdensity(A) && s.densitystratification.ps.pinv.p * s.densitystratification.ρ
+  hasdensity(A) && s.densitystratification.pbs * s.densitystratification.ρ
   
   realspacecalculation!(s)
 
@@ -65,30 +65,6 @@ end
   end
   return nothing
 end
-
-
-@par function compute_nonlinear!(s::A) where {A<:@par(AbstractSimulation)}
-  A_mul_B!(real(s.u),s.p.pinv.p,complex(s.u))
-  A_mul_B!(real(s.aux),s.p.pinv.p,complex(s.aux))
-  
-  isscalar(A) && A_mul_B!(real(s.ρ),s.ps.pinv.p,complex(s.ρ))
-  
-  realspace!(s)
-  s.p*s.rhs
-  dealias!(s.rhs, s)
-  s.p*s.u
-  if isscalar(A) 
-    s.p*s.aux
-    dealias!(s.aux, s)
-    s.ps*s.ρ
-    gdir = GDirec === :x ? s.u.cx : GDirec === :y ? s.u.cy : s.u.cz 
-    div!(complex(s.ρrhs), s.aux.cx, s.aux.cy, s.aux.cz, gdir, -s.dρdz, s)
-  else
-    dealias!(s.aux,s)
-  end
-  return nothing
-end
-
 
 @inline @par function dealias!(rhs::VectorField,s::@par(AbstractSimulation))
   dealias!(rhs.cx,s.dealias,s)

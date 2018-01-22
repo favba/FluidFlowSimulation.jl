@@ -77,7 +77,7 @@ end
 end
 
 @inline function back_transform!(field,p,s)
-  A_mul_B!(real(field),p.pinv.p,complex(field))
+  A_mul_B!(real(field),p,complex(field))
   my_scale!(field,s)
   return nothing
 end

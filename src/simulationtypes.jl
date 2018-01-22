@@ -33,6 +33,7 @@ struct @par(Simulation) <: @par(AbstractSimulation)
   rhs::VectorField{PaddedArray{Float64,4,false}}
   aux::VectorField{PaddedArray{Float64,4,false}}
   p::FFTW.rFFTWPlan{Float64,-1,true,4}
+  pb::FFTW.rFFTWPlan{Complex{Float64},1,true,4}
   reduction::Vector{Float64}
   dealias::BitArray{3}
   timestep::VelocityTimeStepType
@@ -50,11 +51,11 @@ struct @par(Simulation) <: @par(AbstractSimulation)
     info("Calculating FFTW in-place forward plan for velocity field")
     p = plan_rfft!(aux,1:3,flags=FFTW.MEASURE)
     info("Calculating FFTW in-place backward plan for velocity field")
-    p.pinv = plan_irfft!(aux,1:3,flags=FFTW.MEASURE)
+    pb = plan_brfft!(aux,1:3,flags=FFTW.MEASURE)
 
     reduction = zeros(Thr ? Threads.nthreads() : 1)
 
-    return @par(new)(u,rhs,aux,p,reduction,dealias,timestep,passivescalar,densitystratification,lesmodel,forcing)
+    return @par(new)(u,rhs,aux,p,pb,reduction,dealias,timestep,passivescalar,densitystratification,lesmodel,forcing)
   end
 
 end
@@ -118,6 +119,7 @@ struct PassiveScalar{TTimeStep, α #=Difusitivity = ν/Pr =#,
                   dρdz #=Linear mean profile=#, Gdirec #=Axis of mean profile =#} <: AbstractPassiveScalar{TTimeStep,α,dρdz,Gdirec}
   ρ::PaddedArray{Float64,3,false}
   ps::FFTW.rFFTWPlan{Float64,-1,true,3}
+  pbs::FFTW.rFFTWPlan{Complex{Float64},1,true,3}
   ρrhs::PaddedArray{Float64,3,false}
   timestep::TTimeStep
 
@@ -126,8 +128,8 @@ struct PassiveScalar{TTimeStep, α #=Difusitivity = ν/Pr =#,
     info("Calculating FFTW in-place forward plan for scalar field")
     ps = plan_rfft!(ρrhs,flags=FFTW.MEASURE)
     info("Calculating FFTW in-place backward plan for scalar field")
-    ps.pinv = plan_irfft!(ρrhs,flags=FFTW.MEASURE) 
-    return new{TT,α,dρdz,Gdirec}(ρ,ps,ρrhs,timestep)
+    pbs = plan_brfft!(ρrhs,flags=FFTW.MEASURE) 
+    return new{TT,α,dρdz,Gdirec}(ρ,ps,pbs,ρrhs,timestep)
   end
 end 
 
@@ -175,6 +177,7 @@ struct BoussinesqApproximation{TTimeStep, α #=Difusitivity = ν/Pr =#,
                    Gdirec#=Gravity direction =#} <: AbstractDensityStratification{TTimeStep,α,dρdz,g,Gdirec}
   ρ::PaddedArray{Float64,3,false}
   ps::FFTW.rFFTWPlan{Float64,-1,true,3}
+  pbs::FFTW.rFFTWPlan{Complex{Float64},1,true,3}
   ρrhs::PaddedArray{Float64,3,false}
   timestep::TTimeStep
 
@@ -183,8 +186,8 @@ struct BoussinesqApproximation{TTimeStep, α #=Difusitivity = ν/Pr =#,
     info("Calculating FFTW in-place forward plan for scalar field")
     ps = plan_rfft!(ρrhs,flags=FFTW.MEASURE)
     info("Calculating FFTW in-place backward plan for scalar field")
-    ps.pinv = plan_irfft!(ρrhs,flags=FFTW.MEASURE) 
-    return new{TT,α,dρdz,g,Gdirec}(ρ,ps,ρrhs,timestep)
+    pbs = plan_brfft!(ρrhs,flags=FFTW.MEASURE) 
+    return new{TT,α,dρdz,g,Gdirec}(ρ,ps,pbs,ρrhs,timestep)
   end
 end 
 
