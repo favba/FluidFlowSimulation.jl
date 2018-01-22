@@ -45,6 +45,51 @@ end
   end
 end
 
+@par function realspacecalculation!(s::A) where {A<:@par(AbstractSimulation)}
+  @assert !(hasdensity(A) & haspassivescalar(A))
+  n = Thr ? Threads.nthreads() : 1
+  @mthreads for j in 1:n
+    realspacecalculation!(s,j)
+  end
+  return nothing
+end
+
+@par function realspacecalculation!(s::A,j::Integer) where {A<:@par(AbstractSimulation)} 
+  scale::Float64 = 1/(Nrx*Ny*Nz)                
+  mscale::Float64 = -1/(Nrx*Ny*Nz)                
+  ux = s.u.rx
+  uy = s.u.ry
+  uz = s.u.rz
+  vx = s.aux.rx
+  vy = s.aux.ry
+  vz = s.aux.rz
+  outx = s.rhs.rx
+  outy = s.rhs.ry
+  outz = s.rhs.rz
+  haspassivescalar(A) && (
+    ρ = parent(real(s.passivescalar.ρ)) )
+  hasdensity(A) && (
+    ρ = parent(real(s.densitystratification.ρ)) )
+
+  @inbounds @msimd for i in RealRanges[j]
+    ux[i] *= scale
+    uy[i] *= scale
+    uz[i] *= scale
+
+    outx[i] = muladd(scale*uy[i],vz[i], mscale*uz[i]*vy[i])
+    outy[i] = muladd(scale*uz[i],vx[i], mscale*ux[i]*vz[i])
+    outz[i] = muladd(scale*ux[i],vy[i], mscale*uy[i]*vx[i])
+
+    if haspassivescalar(A) || hasdensity(A)
+      ρ[i] *= scale
+      vx[i] = ux[i]*ρ[i]
+      vy[i] = uy[i]*ρ[i]
+      vz[i] = uz[i]*ρ[i]
+    end
+  end
+  return nothing
+end
+
 @par function fourierspacep2!(s::A) where {A<:@par(AbstractSimulation)}
   add_viscosity!(s.rhs,s.u,ν,s)
   if hasdensity(A)
