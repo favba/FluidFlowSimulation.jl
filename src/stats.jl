@@ -35,18 +35,21 @@ stats(s::AbstractSimulation) =
   u32 = tmean(x->x^2,s.aux.rz,s)
 
   grad!(s.aux,s.u.cx,s)
+  dealias!(s.aux,s)
   s.p\s.aux
   d1d1 = tmean(x->x^2,s.aux.rx,s)
   d1d2 = tmean(x->x^2,s.aux.ry,s)
   d1d3 = tmean(x->x^2,s.aux.rz,s)
 
   grad!(s.aux,s.u.cy,s)
+  dealias!(s.aux,s)
   s.p\s.aux
   d2d1 = tmean(x->x^2,s.aux.rx,s)
   d2d2 = tmean(x->x^2,s.aux.ry,s)
   d2d3 = tmean(x->x^2,s.aux.rz,s)
 
   grad!(s.aux,s.u.cz,s)
+  dealias!(s.aux,s)
   s.p\s.aux
   d3d1 = tmean(x->x^2,s.aux.rx,s)
   d3d2 = tmean(x->x^2,s.aux.ry,s)
@@ -63,6 +66,7 @@ end
   dealias!(s1.ρrhs,s)
 
   grad!(s.aux,complex(s1.ρ),s)
+  dealias!(s.aux,s)
   s.p\s.aux
   drd1 = tmean(x->x^2,s.aux.rx,s)
   drd2 = tmean(x->x^2,s.aux.ry,s)

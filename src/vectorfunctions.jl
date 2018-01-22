@@ -35,11 +35,23 @@ function curl!(out::VectorField,u::VectorField,s::AbstractSimulation)
   return out
 end
 
-function grad!(out::VectorField,f::AbstractArray{<:Complex,3},s::AbstractSimulation)
-  dx!(out.cx,f,s)
-  dy!(out.cy,f,s)
-  dz!(out.cz,f,s)
-  dealias!(out,s)
+@par function grad!(out::VectorField,f::AbstractArray{<:Complex,3},s::@par(AbstractSimulation))
+  outx = out.cx
+  outy = out.cy
+  outz = out.cz
+  @mthreads for k in Kzr
+    for y in Kyr, j in y
+      @inbounds @msimd for i in Kxr
+        outx[i,j,k] = f[i,j,k]*im*kx[i]
+        outy[i,j,k] = f[i,j,k]*im*ky[j]
+        outz[i,j,k] = f[i,j,k]*im*kz[k]
+      end
+    end
+  end
+  #dx!(out.cx,f,s)
+  #dy!(out.cy,f,s)
+  #dz!(out.cz,f,s)
+  #dealias!(out,s)
 end
 
 @par function dx!(out::AbstractArray{<:Complex,3},f::AbstractArray{<:Complex,3},s::@par(AbstractSimulation)) 
