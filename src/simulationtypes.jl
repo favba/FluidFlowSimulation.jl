@@ -247,10 +247,10 @@ function parameters(d::Dict)
   lrs = 2*lcs
   lrv = 2*lcv
 
-  lx = parse(Float64,d[:xDomainSize])
-  ly = parse(Float64,d[:yDomainSize])
-  lz = parse(Float64,d[:zDomainSize])
-  ν = parse(Float64,d[:kinematicViscosity])
+  lx = Float64(eval(parse(d[:xDomainSize])))
+  ly = Float64(eval(parse(d[:yDomainSize])))
+  lz = Float64(eval(parse(d[:zDomainSize])))
+  ν = Float64(eval(parse(d[:kinematicViscosity])))
   info("Reading initial velocity field")
   u = VectorField("u1.0","u2.0","u3.0",nx,ny,nz)
 
@@ -295,8 +295,8 @@ function parameters(d::Dict)
     end
 
   if haskey(d,:passiveScalar)
-    α = ν/parse(Float64,d[:scalarPr])
-    dρdz = parse(Float64,d[:scalarGradient])
+    α = ν/Float64(eval(parse(d[:scalarPr])))
+    dρdz = Float64(eval(parse(d[:scalarGradient])))
     info("Reading initial scalar field")
     rho = isfile("scalar.0") ? PaddedArray("scalar.0",(nx,ny,nz),true) : PaddedArray(zeros(nx,ny,nz)) 
     scalardir = haskey(d,:scalarDirection) ? Symbol(d[:scalarDirection]) : :z
@@ -309,9 +309,9 @@ function parameters(d::Dict)
   if haskey(d,:densityStratification) 
 
     haskey(d,:gravityDirection) ? (gdir = Symbol(d[:gravityDirection])) : (gdir = :z)
-    α = ν/parse(Float64,d[:Pr])
-    dρdz = parse(Float64,d[:densityGradient])
-    g = parse(Float64,d[:zAcceleration])/parse(Float64,d[:referenceDensity])
+    α = ν/Float64(eval(parse(d[:Pr])))
+    dρdz = Float64(eval(parse(d[:densityGradient])))
+    g = Float64(eval(parse(d[:zAcceleration])))/Float64(eval(parse(d[:referenceDensity])))
     info("Reading initial density field")
     rho = isfile("rho.0") ? PaddedArray("rho.0",(nx,ny,nz),true) : PaddedArray(zeros(nx,ny,nz)) 
     gdir = haskey(d,:gravityDirection) ? Symbol(d[:gravityDirection]) : :z
