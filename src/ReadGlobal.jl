@@ -14,7 +14,7 @@ function findglobal()
     end
   end
   isfile(filename) || throw(error("Could not find global file"))
-  return readdlm(filename,String,comment_char='/')
+  return readdlm(filename,String,comment_char='#')
 end
 
 function readglobal()
