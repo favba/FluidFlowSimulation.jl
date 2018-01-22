@@ -117,17 +117,6 @@ end
   end
 end
 
-function rfftfreq(n::Integer,s::Real)::Vector{Float64}
-  Float64[(n/2 - i)/s for i = n/2:-1:0]
-end
-
-function fftfreq(n::Integer,s::Real)::Vector{Float64}
-  if iseven(n)
-    return vcat(Float64[(n/2 - i)/s for i = n/2:-1:1],Float64[-i/s for i = n/2:-1:1])
-  else return vcat(Float64[(n/2 - i)/s for i = n/2:-1:0],Float64[-i/s for i = (n-1)/2:-1:1])
-  end
-end
-
 function scalar_advection!(out::VectorField,scalar::AbstractArray,v::VectorField,s::AbstractSimulation)
 
   _scalar_advection!(out.rx,parent(real(scalar)),v.rx,s)

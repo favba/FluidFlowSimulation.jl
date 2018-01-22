@@ -20,7 +20,8 @@ function writestats(s::AbstractSimulation,init::Integer,time::Real)
 end
 
 stats(s::AbstractSimulation) = 
-  (velocity_stats(s)..., stats(s.passivescalar,s)..., stats(s.densitystratification,s)..., stats(s.lesmodel,s)..., stats(s.forcing,s)...)
+  (velocity_stats(s)..., flatten(stats.(getfield.(s,sim_fields),s))...)
+#  (velocity_stats(s)..., stats(s.passivescalar,s)..., stats(s.densitystratification,s)..., stats(s.lesmodel,s)..., stats(s.forcing,s)...)
 
 @par function velocity_stats(s::@par(AbstractSimulation))
   u1 = real(s.u.cx[1,1,1])/(Nrx*Ny*Nz)
