@@ -1,9 +1,14 @@
-function writeheader(s::AbstractSimulation)
-
+function statsheader(s::AbstractSimulation)
   simulaitionheader = "iteration,time,u1,u2,u3,u1^2,u2^2,u3^2,du1dx1^2,du1dx2^2,du1dx3^2,du2dx1^2,du2dx2^2,du2dx3^2,du3dx1^2,du3dx2^2,du3dx3^2"
-  header = join((simulaitionheader,statsheader(s.passivescalar),statsheader(s.densitystratification),statsheader(s.lesmodel),statsheader(s.forcing),"\n"), ",","")
+  header = join(filter(x->x !== "",
+    (simulaitionheader,statsheader.(getfield.(s,sim_fields))...,"\n")),
+    ",","")
+  return header
+end 
+
+function writeheader(s::AbstractSimulation)
   open("Stats.txt","w") do f
-    write(f,header)
+    write(f,statsheader(s))
   end
 end
 

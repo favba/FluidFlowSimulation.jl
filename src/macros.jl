@@ -40,6 +40,7 @@ const sim_par = (:Lx,:Ly,:Lz,:Nx,:Ny,:Nz,:Lcs,:Lcv,:Nrx,:Lrs,:Lrv,:ν,:VelocityT
 # Gdirec can be :x, :y, :z and gives the gravity direction. Odly, only if :z seems to work
 # Thr is true or false for threads.
 
+const sim_fields = (:passivescalar,:densitystratification,:lesmodel,:forcing)
 
 """
     @par(t::Symbol)
