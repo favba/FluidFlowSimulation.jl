@@ -81,3 +81,23 @@ end
   my_scale!(field,s)
   return nothing
 end
+
+function splitrange(lr,nt)
+  a = UnitRange{Int}[]
+  sizehint!(a,nt)
+  n = lr÷nt
+  r = lr%nt
+  stop = 0
+  init = 1
+  for i=1:r
+    stop=init+n
+    push!(a,init:stop)
+    init = stop+1
+  end
+  for i=1:(nt-r)
+    stop=init+n-1
+    push!(a,init:stop)
+    init = stop+1
+  end
+  return (a...,)
+end
