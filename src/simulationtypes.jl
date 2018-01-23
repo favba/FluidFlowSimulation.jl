@@ -261,8 +261,9 @@ function parameters(d::Dict)
   haskey(d,:threaded) ? (tr = parse(Bool,d[:threaded])) : (tr = true)
 
   tr && FFTW.set_num_threads(Threads.nthreads())
- 
-  b = splitrange(lrs, tr ? Threads.nthreads() : 1)
+  nt = tr ? Threads.nthreads() : 1 
+
+  b = splitrange(lrs, nt)
 
   haskey(d,:dealias) ? (Dealiastype = Symbol(d[:dealias])) : (Dealiastype = :sphere)
   haskey(d,:cutoff) ? (cutoffr = Float64(eval(parse(d[:cutoff])))) : (cutoffr = 2/3)
@@ -329,7 +330,7 @@ function parameters(d::Dict)
       typeof(vtimestep),
       typeof(scalartype),typeof(densitytype),typeof(lestype),typeof(forcingtype),
       (Dealiastype,cutoffr),
-      kxr,kyr,kzr,kx,ky,kz,tr,b}(u,dealias,vtimestep,scalartype,densitytype,lestype,forcingtype)
+      kxr,kyr,kzr,kx,ky,kz,tr,nt,b}(u,dealias,vtimestep,scalartype,densitytype,lestype,forcingtype)
   #
 
   FFTW.export_wisdom("fftw_wisdom")

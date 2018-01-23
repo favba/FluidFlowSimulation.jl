@@ -30,7 +30,7 @@ macro gen(ex)
   return esc(:(@generated $ex2))
 end
 
-const sim_par = (:Lx,:Ly,:Lz,:Nx,:Ny,:Nz,:Lcs,:Lcv,:Nrx,:Lrs,:Lrv,:ν,:VelocityTimeStepType,:PassiveScalarType,:DensityStratificationType,:LESModelType,:ForcingType,:Dealias,:Kxr,:Kyr,:Kzr,:kx,:ky,:kz,:Thr,:RealRanges)
+const sim_par = (:Lx,:Ly,:Lz,:Nx,:Ny,:Nz,:Lcs,:Lcv,:Nrx,:Lrs,:Lrv,:ν,:VelocityTimeStepType,:PassiveScalarType,:DensityStratificationType,:LESModelType,:ForcingType,:Dealias,:Kxr,:Kyr,:Kzr,:kx,:ky,:kz,:Thr,:Nt,:RealRanges)
 # Nx,Ny,Nz size of the grid in Fourier Space
 # Lcs = Nx*Ny*Nz; Lcv = Lcs*3
 # Nrx size of x direction in Real Space skipping padding. The same as 1:(:nx) in global file
@@ -39,6 +39,7 @@ const sim_par = (:Lx,:Ly,:Lz,:Nx,:Ny,:Nz,:Lcs,:Lcv,:Nrx,:Lrs,:Lrv,:ν,:VelocityT
 # kx,ky,kz wavenumber vectors.
 # Gdirec can be :x, :y, :z and gives the gravity direction. Odly, only if :z seems to work
 # Thr is true or false for threads.
+# Nt number of threads.
 
 const sim_fields = (:passivescalar,:densitystratification,:lesmodel,:forcing)
 

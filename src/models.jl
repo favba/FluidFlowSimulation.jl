@@ -47,7 +47,7 @@ end
 
 @par function realspacecalculation!(s::A) where {A<:@par(AbstractSimulation)}
   @assert !(hasdensity(A) & haspassivescalar(A))
-  n = Thr ? Threads.nthreads() : 1
+  n = Nt
   @mthreads for j in 1:n
     realspacecalculation!(s,j)
   end
