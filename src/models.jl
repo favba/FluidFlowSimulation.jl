@@ -12,8 +12,18 @@ end
 end
 
 @par function fourierspacep1!(s::A) where {A<:@par(AbstractSimulation)}
-  curl!(s.aux,s.u,s)
+  if !hasles(A)
+    curl!(s.aux,s.u,s)
+  else
+    @mthreads for j in 1:Nt
+      fourierspacep1!(s,j)
+    end
+  end
   return nothing
+end
+
+@par function fourierspacep1!(s::@par(AbstractSimulation),j::Int) 
+
 end
 
 @par function realspace!(s::A) where {A<:@par(AbstractSimulation)}
