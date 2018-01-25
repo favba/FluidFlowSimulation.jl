@@ -12,18 +12,42 @@ end
 end
 
 @par function fourierspacep1!(s::A) where {A<:@par(AbstractSimulation)}
-  if !hasles(A)
-    curl!(s.aux,s.u,s)
-  else
-    @mthreads for j in 1:Nt
-      fourierspacep1!(s,j)
-    end
+  @mthreads for k in Kzr
+    fourierspacep1!(k,s)
   end
   return nothing
 end
 
-@par function fourierspacep1!(s::@par(AbstractSimulation),j::Int) 
-
+@inline @par function fourierspacep1!(k,s::@par(AbstractSimulation)) 
+  auxx = s.aux.cx
+  auxy = s.aux.cy
+  auxz = s.aux.cz
+  ux = s.u.cx
+  uy = s.u.cy
+  uz = s.u.cz
+  if hasles(s)
+    txx = s.lesmodel.tau.cxx
+    txy = s.lesmodel.tau.cxy
+    txz = s.lesmodel.tau.cxz
+    tyy = s.lesmodel.tau.cyy
+    tyz = s.lesmodel.tau.cyz
+  end
+  #@inbounds for k in Kzr[j]
+    @inbounds for y in Kyr, j in y
+      @msimd for i in Kxr 
+        auxx[i,j,k] = im*(ky[j]*uz[i,j,k] - kz[k]*uy[i,j,k])
+        auxy[i,j,k] = im*(kz[k]*ux[i,j,k] - kx[i]*uz[i,j,k])
+        auxz[i,j,k] = im*(kx[i]*uy[i,j,k] - ky[j]*ux[i,j,k])
+        if hasles(s)
+          tr = (im*ky[j]*uy[i,j,k] + im*kx[i]*ux[i,j,k] + im*kz[k]*uz[i,j,k])
+          txx[i,j,k] = -im*kx[i]*ux[i,j,k] + tr
+          tyy[i,j,k] = -im*ky[j]*uy[i,j,k] + tr
+          txy[i,j,k] = -im*kx[i]*uy[i,j,k] -im*ky[j]*ux[i,j,k]
+          txz[i,j,k] = -im*kx[i]*uz[i,j,k] -im*kz[k]*ux[i,j,k]
+          tyz[i,j,k] = -im*ky[j]*uz[i,j,k] -im*kz[k]*uy[i,j,k]
+        end
+      end
+    end
 end
 
 @par function realspace!(s::A) where {A<:@par(AbstractSimulation)}
