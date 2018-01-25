@@ -249,6 +249,35 @@ msg(a::Smagorinsky) = "\nLES model: Smagorinsky\nConstant: $(cs(a))\nFilter Widt
 
 # Smagorinsky Model End ======================================================
 
+# Smagorinsky+P Model Start ======================================================
+
+struct SandP{cs,cβ,Δ} <: AbstractLESModel
+  tau::SymmetricTracelessTensor
+  pt::FFTW.rFFTWPlan{Float64,-1,true,4}
+  pbt::FFTW.rFFTWPlan{Complex{Float64},1,true,4}
+end
+
+function SandP(c::Real,cb::Real,Δ::Real,dim::NTuple{3,Integer}) 
+  data = SymmetricTracelessTensor(dim)
+  info("Calculating FFTW in-place forward plan for symmetric traceless tensor field")
+  pt = plan_rfft!(data,1:3,flags=FFTW.MEASURE)
+  info("Calculating FFTW in-place backward plan for symmetric traceless tensor field")
+  pbt = plan_brfft!(data,1:3,flags=FFTW.MEASURE)
+  fill!(data,0)
+  return SandP{c,cb,Δ}(data,pt,pbt)
+end
+
+cs(s::Union{T,Type{T}}) where {c,cb,Δ,T<:SandP{c,cb,Δ}} = c
+cbeta(s::Union{T,Type{T}}) where {c,cb,Δ,T<:SandP{c,cb,Δ}} = cb
+Delta(s::Union{T,Type{T}}) where {c,cb,Δ,T<:SandP{c,Δ}} = Δ
+
+statsheader(a::SandP) = ""
+
+stats(a::SandP,s::AbstractSimulation) = ()
+
+msg(a::SandP) = "\nLES model: Smagorinsky + P tesnor\nSmagorinsky Constant: $(cs(a))\nP tensor constant: $(cbeta(a))\nFilter Width: $(Delta(a))\n"
+
+
 # ==========================================================================================
 # Forcing Scheme
 
@@ -362,6 +391,11 @@ function parameters(d::Dict)
       c = haskey(d,:smagorinskyConstant) ? Float64(eval(parse(d[:smagrisnkyConstant]))) : 0.17 
       Δ = haskey(d,:filterWidth) ? Float64(eval(parse(d[:smagrisnkyConstant]))) : lx*2π/nx  
       lestype = Smagorinsky(c,Δ,(nx,ny,nz))
+    elseif d[:lesModel] == "Smagorinsky+P"
+      c = haskey(d,:smagorinskyConstant) ? Float64(eval(parse(d[:smagrisnkyConstant]))) : 0.17 
+      cb = haskey(d,:pTensorConstant) ? Float64(eval(parse(d[:pTensorConstant]))) : 0.017 
+      Δ = haskey(d,:filterWidth) ? Float64(eval(parse(d[:smagrisnkyConstant]))) : lx*2π/nx  
+      lestype = SandP(c,cb,Δ,(nx,ny,nz))
     end
   else
   lestype = NoLESModel()
