@@ -218,6 +218,37 @@ stats(a::NoLESModel,s::AbstractSimulation) = ()
 
 msg(a::NoLESModel) = "\nLES model: No LES model\n"
 
+# Smagorinsky Model Start ======================================================
+
+abstract type EddyViscosityModel <: AbstractLESModel end
+
+struct Smagorinsky{c,Δ} <: EddyViscosityModel
+  tau::SymmetricTracelessTensor
+  pt::FFTW.rFFTWPlan{Float64,-1,true,4}
+  pbt::FFTW.rFFTWPlan{Complex{Float64},1,true,4}
+end
+
+function Smagorinsky(c::Real,Δ::Real,dim::NTuple{3,Integer}) 
+  data = SymmetricTracelessTensor(dim)
+  info("Calculating FFTW in-place forward plan for symmetric traceless tensor field")
+  pt = plan_rfft!(data,1:3,flags=FFTW.MEASURE)
+  info("Calculating FFTW in-place backward plan for symmetric traceless tensor field")
+  pbt = plan_brfft!(data,1:3,flags=FFTW.MEASURE)
+  fill!(data,0)
+  return Smagorinsky{c,Δ}(data,pt,pbt)
+end
+
+cs(s::Union{T,Type{T}}) where {c,Δ,T<:Smagorinsky{c,Δ}} = c
+Delta(s::Union{T,Type{T}}) where {c,Δ,T<:Smagorinsky{c,Δ}} = Δ
+
+statsheader(a::Smagorinsky) = ""
+
+stats(a::Smagorinsky,s::AbstractSimulation) = ()
+
+msg(a::Smagorinsky) = "\nLES model: Smagorinsky\nConstant: $(cs(a))\nFilter Width: $(Delta(a))\n"
+
+# Smagorinsky Model End ======================================================
+
 # ==========================================================================================
 # Forcing Scheme
 
@@ -326,7 +357,15 @@ function parameters(d::Dict)
     densitytype = NoDensityStratification()
   end
 
+  if haskey(d,:lesModel)
+    if d[:lesModel] == "Smagorinsky"
+      c = haskey(d,:smagorinskyConstant) ? Float64(eval(parse(d[:smagrisnkyConstant]))) : 0.17 
+      Δ = haskey(d,:filterWidth) ? Float64(eval(parse(d[:smagrisnkyConstant]))) : lx*2π/nx  
+      lestype = Smagorinsky(c,Δ,(nx,ny,nz))
+    end
+  else
   lestype = NoLESModel()
+  end
   forcingtype = NoForcing()
 
   s = Simulation{lx,ly,lz,ncx,ny,nz,lcs,lcv,nx,lrs,lrv,ν,
