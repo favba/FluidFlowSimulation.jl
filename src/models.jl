@@ -60,6 +60,8 @@ end
   haspassivescalar(A) && s.passivescalar.pbs * s.passivescalar.ρ
   #hasdensity(A) && A_mul_B!(real(s.densitystratification.ρ),s.densitystratification.ps.pinv.p,complex(s.densitystratification.ρ))
   hasdensity(A) && s.densitystratification.pbs * s.densitystratification.ρ
+ 
+  hasles(s) && s.lesmodel.pt * s.lesmodel.tau
   
   realspacecalculation!(s)
 
@@ -77,6 +79,13 @@ end
   else
     dealias!(s.aux, s)
   end
+
+  if hasles(s)
+    s.lesmodel.pt * s.lesmodel.tau
+    dealias!(s.lesmodel.tau,s) #Implement!
+  end
+
+  return nothing
 end
 
 @par function realspacecalculation!(s::A) where {A<:@par(AbstractSimulation)}
@@ -100,10 +109,23 @@ end
   outx = s.rhs.rx
   outy = s.rhs.ry
   outz = s.rhs.rz
-  haspassivescalar(A) && (
-    ρ = parent(real(s.passivescalar.ρ)) )
-  hasdensity(A) && (
-    ρ = parent(real(s.densitystratification.ρ)) )
+  if haspassivescalar(A)
+    ρ = parent(real(s.passivescalar.ρ))
+  end
+  if hasdensity(A)
+    ρ = parent(real(s.densitystratification.ρ))
+  end
+
+  if hasles(s)
+    txx = s.lesmodel.tau.rxx
+    tyy = s.lesmodel.tau.ryy
+    txy = s.lesmodel.tau.rxy
+    txz = s.lesmodel.tau.rxz
+    tyz = s.lesmodel.tau.ryz
+    c = cs(s.lesmodel)
+    Δ = Delta(s.lesmodel)
+    α = c*c*Δ*Δ 
+  end
 
   @inbounds @msimd for i in RealRanges[j]
     ux[i] *= scale
@@ -120,12 +142,29 @@ end
       vy[i] = uy[i]*ρ[i]
       vz[i] = uz[i]*ρ[i]
     end
+
+    if hasles(s)
+      txx[i] *= scale
+      txy[i] *= scale
+      txz[i] *= scale
+      tyy[i] *= scale
+      tyz[i] *= scale
+
+      S = sqrt(2*(txx[i]^2 + tyy[i]^2 +(-txx[i]-tyy[i])^2 + 2*(txy[i]^2 + txz[i]^2 + tyz[i]^2)))
+      txx[i] *= α*S
+      txy[i] *= α*S
+      txz[i] *= α*S
+      tyy[i] *= α*S
+      tyz[i] *= α*S
+    end
+
   end
   return nothing
 end
 
 @par function fourierspacep2!(s::A) where {A<:@par(AbstractSimulation)}
   add_viscosity!(s.rhs,s.u,ν,s)
+  hasles(s) && add_residual_tensor!(s.rhs,s.lesmodel.tau,s)
   if hasdensity(A)
     Gdirec = graddir(s.densitystratification)
     gdir = GDirec === :x ? s.rhs.cx : GDirec === :y ? s.rhs.cy : s.rhs.cz 
@@ -145,10 +184,43 @@ end
   return nothing
 end
 
+@par function add_residual_tensor!(rhs::VectorField,τ::SymmetricTracelessTensor,s::@par(AbstractSimulation))
+  @mthreads for k in Kzr
+    add_residual_tensor!(rhs,τ,k,s)
+  end
+end
+
+@inline @par function add_residual_tensor!(rhs::VectorField,tau::SymmetricTracelessTensor,k::Int,s::@par(AbstractSimulation))
+  rx = rhs.cx
+  ry = rhs.cy
+  rz = rhs.cz
+  txx = tau.cxx
+  txy = tau.cxy
+  txz = tau.cxz
+  tyy = tau.cyy
+  tyz = tau.cyz
+  @inbounds for y in Kyr, j in y
+    @msimd for i in Kxr
+      rx[i,j,k] += im*(kx[i]*txx[i,j,k] + ky[j]*txy[i,j,k] + kz[k]*txz[i,j,k])
+      ry[i,j,k] += im*(kx[i]*txy[i,j,k] + ky[j]*tyy[i,j,k] + kz[k]*tyz[i,j,k])
+      rz[i,j,k] += im*(kx[i]*txz[i,j,k] + ky[j]*tyz[i,j,k] + kz[k]*(-txx[i,j,k]-tyy[i,j,k]))
+    end
+  end
+end
+
+
 @inline @par function dealias!(rhs::VectorField,s::@par(AbstractSimulation))
   dealias!(rhs.cx,s.dealias,s)
   dealias!(rhs.cy,s.dealias,s)
   dealias!(rhs.cz,s.dealias,s)
+end
+
+@inline @par function dealias!(rhs::SymmetricTracelessTensor,s::@par(AbstractSimulation))
+  dealias!(rhs.cxx,s.dealias,s)
+  dealias!(rhs.cxy,s.dealias,s)
+  dealias!(rhs.cxz,s.dealias,s)
+  dealias!(rhs.cyy,s.dealias,s)
+  dealias!(rhs.cyz,s.dealias,s)
 end
 
 dealias!(rhs::AbstractArray{<:Complex,3},s::AbstractSimulation) = dealias!(rhs,s.dealias,s)
