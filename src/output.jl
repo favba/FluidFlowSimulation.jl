@@ -8,7 +8,13 @@ function writeoutput(s::AbstractSimulation,init::Integer)
   if haspassivescalar(s)
     copy!(parent(real(s.passivescalar.ρrhs)),parent(real(s.passivescalar.ρ)))
     back_transform!(s.passivescalar.ρrhs,s.passivescalar.pbs,s)
-    write("rho.$init",s.passivescalar.ρrhs)
+    write("scalar.$init",s.passivescalar.ρrhs)
     dealias!(s.passivescalar.ρrhs,s)
+  end
+  if hasdensity(s)
+    copy!(parent(real(s.densitystratification.ρrhs)),parent(real(s.densitystratification.ρ)))
+    back_transform!(s.densitystratification.ρrhs,s.densitystratification.pbs,s)
+    write("rho.$init",s.densitystratification.ρrhs)
+    dealias!(s.densitystratification.ρrhs,s)
   end
 end
