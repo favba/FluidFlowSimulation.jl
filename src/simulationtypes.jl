@@ -208,7 +208,9 @@ Density time-stepping method: $(TT)
 
 abstract type AbstractLESModel end
 
-#statsheader(a::AbstractLESModel) = ""
+is_Smagorinsky(a::AbstractLESModel) = false
+is_SandP(a::AbstractLESModel) = false
+scalarmodel(a::AbstractLESModel) = NoLESScalar
 
 struct NoLESModel <: AbstractLESModel end
 
@@ -226,7 +228,7 @@ struct EddyDiffusion <: AbstractLESScalar
   gradρ::VectorField{PaddedArray{Float64,4,false}}
 end
 
-EddyDiffusion(nx,ny,nz) = EddyDiffusion(PaddedArray(zeros(nx,ny,nz,3)))
+EddyDiffusion(nx,ny,nz) = EddyDiffusion(VectorField(PaddedArray(zeros(nx,ny,nz,3))))
 
 # Smagorinsky Model Start ======================================================
 
@@ -252,6 +254,8 @@ end
 
 Smagorinsky(c::Real,Δ::Real,dim::NTuple{3,Integer}) = Smagorinsky(c,Δ,false,dim)
 
+is_Smagorinsky(a::Smagorinsky) = true
+
 cs(s::Union{T,Type{T}}) where {c,Δ,scalar,T<:Smagorinsky{c,Δ,scalar}} = c
 Delta(s::Union{T,Type{T}}) where {c,Δ,scalar,T<:Smagorinsky{c,Δ,scalar}} = Δ
 
@@ -274,7 +278,7 @@ struct SandP{cs,cβ,Δ,ScalarType<:AbstractLESScalar} <: AbstractLESModel
   scalar::ScalarType
 end
 
-function SandP(c::Real,cb::Real,Δ::Real,scalart::Bool,dim::NTuple{3,Integer}) 
+function SandP(c::Real,cb::Real,Δ::Real,scalar::Bool,dim::NTuple{3,Integer}) 
   data = SymmetricTracelessTensor(dim)
   info("Calculating FFTW in-place forward plan for symmetric traceless tensor field")
   pt = plan_rfft!(data,1:3,flags=FFTW.MEASURE)
@@ -282,12 +286,14 @@ function SandP(c::Real,cb::Real,Δ::Real,scalart::Bool,dim::NTuple{3,Integer})
   pbt = plan_brfft!(data,1:3,flags=FFTW.MEASURE)
   fill!(data,0)
   scalart = scalar ? EddyDiffusion(dim...) : NoLESScalar()
-  return SandP{c,cb,Δ,typeof(scalart)}(data,pt,pbt)
+  return SandP{c,cb,Δ,typeof(scalart)}(data,pt,pbt,scalart)
 end
+
+is_SandP(a::SandP) = true
 
 cs(s::Union{T,Type{T}}) where {c,cb,Δ,T<:SandP{c,cb,Δ}} = c
 cbeta(s::Union{T,Type{T}}) where {c,cb,Δ,T<:SandP{c,cb,Δ}} = cb
-Delta(s::Union{T,Type{T}}) where {c,cb,Δ,T<:SandP{c,Δ}} = Δ
+Delta(s::Union{T,Type{T}}) where {c,cb,Δ,T<:SandP{c,cb,Δ}} = Δ
 
 scalarmodel(s::Union{T,Type{T}}) where {c,cb,Δ,scalar,T<:SandP{c,cb,Δ,scalar}} = scalar
 
@@ -295,7 +301,7 @@ statsheader(a::SandP) = ""
 
 stats(a::SandP,s::AbstractSimulation) = ()
 
-msg(a::SandP) = "\nLES model: Smagorinsky + P tesnor\nSmagorinsky Constant: $(cs(a))\nP tensor constant: $(cbeta(a))\nFilter Width: $(Delta(a))\n"
+msg(a::SandP) = "\nLES model: Smagorinsky + P tensor\nSmagorinsky Constant: $(cs(a))\nP tensor constant: $(cbeta(a))\nFilter Width: $(Delta(a))\n"
 
 
 # ==========================================================================================
@@ -414,7 +420,7 @@ function parameters(d::Dict)
       lestype = Smagorinsky(c,Δ,lesscalar,(nx,ny,nz))
     elseif d[:lesModel] == "Smagorinsky+P"
       c = haskey(d,:smagorinskyConstant) ? Float64(eval(parse(d[:smagrisnkyConstant]))) : 0.17 
-      cb = haskey(d,:pTensorConstant) ? Float64(eval(parse(d[:pTensorConstant]))) : 0.017 
+      cb = haskey(d,:pTensorConstant) ? Float64(eval(parse(d[:pTensorConstant]))) : 0.17 
       Δ = haskey(d,:filterWidth) ? Float64(eval(parse(d[:smagrisnkyConstant]))) : lx*2π/nx  
       lesscalar = (haskey(d,:passiveScalar) | haskey(d,:densityStratification)) ? true : false
       lestype = SandP(c,cb,Δ,lesscalar,(nx,ny,nz))

@@ -33,9 +33,9 @@ end
     tyz = s.lesmodel.tau.cyz
     if scalarmodel(s.lesmodel) === EddyDiffusion
       ρ = hasdensity(s) ? complex(s.densitystratification.ρ) : complex(s.passivescalar.ρ) 
-      gρx = s.lesmodel.scalarmodel.gradρ.cx
-      gρy = s.lesmodel.scalarmodel.gradρ.cy
-      gρz = s.lesmodel.scalarmodel.gradρ.cz
+      gρx = s.lesmodel.scalar.gradρ.cx
+      gρy = s.lesmodel.scalar.gradρ.cy
+      gρz = s.lesmodel.scalar.gradρ.cz
     end
   end
   #@inbounds for k in Kzr[j]
@@ -72,7 +72,10 @@ end
   #hasdensity(A) && A_mul_B!(real(s.densitystratification.ρ),s.densitystratification.ps.pinv.p,complex(s.densitystratification.ρ))
   hasdensity(A) && s.densitystratification.pbs * s.densitystratification.ρ
  
-  hasles(s) && s.lesmodel.pt * s.lesmodel.tau
+  if hasles(s)
+    s.lesmodel.pt * s.lesmodel.tau
+    (haspassivescalar(A) | hasdensity(A)) && s.pb * s.lesmodel.scalar.gradρ
+  end
   
   realspacecalculation!(s)
 
@@ -93,7 +96,10 @@ end
 
   if hasles(s)
     s.lesmodel.pt * s.lesmodel.tau
-    dealias!(s.lesmodel.tau,s) #Implement!
+    dealias!(s.lesmodel.tau,s)
+    if (haspassivescalar(A) | hasdensity(A))
+      dealias!(s.lesmodel.scalar.gradρ,s)
+    end
   end
 
   return nothing
@@ -110,13 +116,12 @@ end
 
 @par function realspacecalculation!(s::A,j::Integer) where {A<:@par(AbstractSimulation)} 
   scale::Float64 = 1/(Nrx*Ny*Nz)                
-  mscale::Float64 = -1/(Nrx*Ny*Nz)                
   ux = s.u.rx
   uy = s.u.ry
   uz = s.u.rz
-  vx = s.aux.rx
-  vy = s.aux.ry
-  vz = s.aux.rz
+  ωx = s.aux.rx
+  ωy = s.aux.ry
+  ωz = s.aux.rz
   outx = s.rhs.rx
   outy = s.rhs.ry
   outz = s.rhs.rz
@@ -136,10 +141,11 @@ end
     c = cs(s.lesmodel)
     Δ = Delta(s.lesmodel)
     α = c*c*Δ*Δ 
+    is_SandP(s.lesmodel) && (β = cbeta(s.lesmodel)*Δ*Δ)
     if haspassivescalar(A) | hasdensity(A)
-      gradrhox = s.lesmodel.scalarmodel.gradρ.rx
-      gradrhoy = s.lesmodel.scalarmodel.gradρ.ry
-      gradrhoz = s.lesmodel.scalarmodel.gradρ.rz
+      gradrhox = s.lesmodel.scalar.gradρ.rx
+      gradrhoy = s.lesmodel.scalar.gradρ.ry
+      gradrhoz = s.lesmodel.scalar.gradρ.rz
     end
   end
 
@@ -148,16 +154,13 @@ end
     uy[i] *= scale
     uz[i] *= scale
 
-    outx[i] = muladd(scale*uy[i],vz[i], mscale*uz[i]*vy[i])
-    outy[i] = muladd(scale*uz[i],vx[i], mscale*ux[i]*vz[i])
-    outz[i] = muladd(scale*ux[i],vy[i], mscale*uy[i]*vx[i])
+    ωx[i] *= scale
+    ωy[i] *= scale
+    ωz[i] *= scale
 
-    if haspassivescalar(A) || hasdensity(A)
-      ρ[i] *= scale
-      vx[i] = ux[i]*ρ[i]
-      vy[i] = uy[i]*ρ[i]
-      vz[i] = uz[i]*ρ[i]
-    end
+    outx[i] = uy[i]*ωz[i] - uz[i]*ωy[i]
+    outy[i] = uz[i]*ωx[i] - ux[i]*ωz[i]
+    outz[i] = ux[i]*ωy[i] - uy[i]*ωx[i]
 
     if hasles(s)
       txx[i] *= scale
@@ -169,18 +172,42 @@ end
       S = sqrt(2*(txx[i]^2 + tyy[i]^2 +(-txx[i]-tyy[i])^2 + 2*(txy[i]^2 + txz[i]^2 + tyz[i]^2)))
       νt = α*S
 
-      txx[i] *= νt
-      txy[i] *= νt
-      txz[i] *= νt
-      tyy[i] *= νt
-      tyz[i] *= νt
-      
-      if scalarmodel(s.lesmodel) === EddyDiffusion
-        outx[i] += νt*gradrhox[i]
-        outy[i] += νt*gradrhoy[i]
-        outz[i] += νt*gradrhoz[i]
-      end
+      if is_Smagorinsky(s.lesmodel)
+        txx[i] *= νt
+        txy[i] *= νt
+        txz[i] *= νt
+        tyy[i] *= νt
+        tyz[i] *= νt
+      elseif is_SandP(s.lesmodel)
+        pxx = ωy[i]*txz[i] - ωz[i]*txy[i]
+        #pxy = (-1/2)*ωx[i]*txz[i] + (1/2)*ωz[i]*txx[i] - ((-1/2)*ωy[i]*tyz[i] + (1/2)*ωz[i]*tyy[i])
+        pxy = 0.5*(-ωx[i]*txz[i] + ωz[i]*txx[i] + ωy[i]*tyz[i] - ωz[i]*tyy[i])
+        #pxz = (1/2)*ωx[i]*txy[i] + (-1/2)*ωy[i]*txx[i] - ((1/2)*ωz[i]*tyz[i] + (-1/2)*(-txx[i] - tyy[i])*ωy[i])
+        pxz = 0.5*(ωx[i]*txy[i] - ωz[i]*tyz[i] - tyy[i]*ωy[i]) - ωy[i]*txx[i]
+        pyy = -ωx[i]*tyz[i] + ωz[i]*txy[i]
+        #pyz = (1/2)*ωx[i]*tyy[i] + (-1/2)*ωy[i]*txy[i] - ((-1/2)*ωz[i]*txz[i] + (1/2)*(-txx[i] - tyy[i])*ωx[i])
+        pyz = 0.5*(ωx[i]*txx[i] - ωy[i]*txy[i] + txz[i]*ωz[i]) + ωx[i]*tyy[i]
 
+        txx[i] = νt*txx[i] + β*pxx
+        txy[i] = νt*txy[i] + β*pxy
+        txz[i] = νt*txz[i] + β*pxz
+        tyy[i] = νt*tyy[i] + β*pyy
+        tyz[i] = νt*tyz[i] + β*pyz
+      end
+      
+    end
+
+    if haspassivescalar(A) || hasdensity(A)
+      ρ[i] *= scale
+      ωx[i] = ux[i]*ρ[i]
+      ωy[i] = uy[i]*ρ[i]
+      ωz[i] = uz[i]*ρ[i]
+
+      if scalarmodel(s.lesmodel) === EddyDiffusion
+        ωx[i] += νt*gradrhox[i]
+        ωy[i] += νt*gradrhoy[i]
+        ωz[i] += νt*gradrhoz[i]
+      end
     end
 
   end
@@ -192,7 +219,7 @@ end
   hasles(s) && add_residual_tensor!(s.rhs,s.lesmodel.tau,s)
   if hasdensity(A)
     Gdirec = graddir(s.densitystratification)
-    gdir = GDirec === :x ? s.rhs.cx : GDirec === :y ? s.rhs.cy : s.rhs.cz 
+    gdir = Gdirec === :x ? s.rhs.cx : Gdirec === :y ? s.rhs.cy : s.rhs.cz 
     addgravity!(gdir, complex(s.densitystratification.ρ), -gravity(s.densitystratification), s)
   end
   pressure_projection!(s.rhs.cx,s.rhs.cy,s.rhs.cz,s)
@@ -295,7 +322,7 @@ end
   @inbounds rhsx[1],rhsy[1],rhsz[1] = a
 end
 
-@par function addgravity!(rhs,ρ,g::Real,s::@par(BoussinesqSimulation))
+@par function addgravity!(rhs,ρ,g::Real,s::@par(AbstractSimulation))
   @mthreads for k in Kzr
     for y in Kyr, j in y
       @fastmath @inbounds @msimd for i in Kxr
