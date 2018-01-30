@@ -31,6 +31,12 @@ end
     txz = s.lesmodel.tau.cxz
     tyy = s.lesmodel.tau.cyy
     tyz = s.lesmodel.tau.cyz
+    if scalarmodel(s.lesmodel) === EddyDiffusion
+      ρ = hasdensity(s) ? complex(s.densitystratification.ρ) : complex(s.passivescalar.ρ) 
+      gρx = s.lesmodel.scalarmodel.gradρ.cx
+      gρy = s.lesmodel.scalarmodel.gradρ.cy
+      gρz = s.lesmodel.scalarmodel.gradρ.cz
+    end
   end
   #@inbounds for k in Kzr[j]
     @inbounds for y in Kyr, j in y
@@ -45,6 +51,11 @@ end
           txy[i,j,k] = -im*kx[i]*uy[i,j,k] -im*ky[j]*ux[i,j,k]
           txz[i,j,k] = -im*kx[i]*uz[i,j,k] -im*kz[k]*ux[i,j,k]
           tyz[i,j,k] = -im*ky[j]*uz[i,j,k] -im*kz[k]*uy[i,j,k]
+          if scalarmodel(s.lesmodel) === EddyDiffusion
+            gρx[i,j,k] = -im*kx[i]*ρ[i,j,k]
+            gρy[i,j,k] = -im*ky[j]*ρ[i,j,k]
+            gρz[i,j,k] = -im*kz[k]*ρ[i,j,k]
+          end
         end
       end
     end
@@ -125,6 +136,11 @@ end
     c = cs(s.lesmodel)
     Δ = Delta(s.lesmodel)
     α = c*c*Δ*Δ 
+    if haspassivescalar(A) | hasdensity(A)
+      gradrhox = s.lesmodel.scalarmodel.gradρ.rx
+      gradrhoy = s.lesmodel.scalarmodel.gradρ.ry
+      gradrhoz = s.lesmodel.scalarmodel.gradρ.rz
+    end
   end
 
   @inbounds @msimd for i in RealRanges[j]
@@ -151,11 +167,20 @@ end
       tyz[i] *= scale
 
       S = sqrt(2*(txx[i]^2 + tyy[i]^2 +(-txx[i]-tyy[i])^2 + 2*(txy[i]^2 + txz[i]^2 + tyz[i]^2)))
-      txx[i] *= α*S
-      txy[i] *= α*S
-      txz[i] *= α*S
-      tyy[i] *= α*S
-      tyz[i] *= α*S
+      νt = α*S
+
+      txx[i] *= νt
+      txy[i] *= νt
+      txz[i] *= νt
+      tyy[i] *= νt
+      tyz[i] *= νt
+      
+      if scalarmodel(s.lesmodel) === EddyDiffusion
+        outx[i] += νt*gradrhox[i]
+        outy[i] += νt*gradrhoy[i]
+        outz[i] += νt*gradrhoz[i]
+      end
+
     end
 
   end
