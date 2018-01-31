@@ -26,20 +26,22 @@ using .ReadGlobal
 function run_simulation()
   par = readglobal()
   s = parameters(par)
-  run_simulation(s,parse(Int,par[:dtStat]),parse(Int,par[:writeTime]),parse(Int,par[:nt]),parse(Float64,par[:dt]))
+  init = haskey(par,:start) ? parse(Int,par[:start]) : 0
+  ttime = haskey(par,:startTime) ? parse(Float64,par[:startTime]) : 0.0
+  run_simulation(s,init,ttime,parse(Int,par[:dtStat]),parse(Int,par[:writeTime]),parse(Int,par[:nt]),parse(Float64,par[:dt]))
 end
 
-@par function run_simulation(s::@par(AbstractSimulation),dtStats::Integer,dtOutput::Integer,totalnsteps::Integer,dt::Real)
+@par function run_simulation(s::@par(AbstractSimulation),init::Int,itime::Real,dtStats::Integer,dtOutput::Integer,totalnsteps::Integer,dt::Real)
   info("Simulation started.")
-  init=0
-  ttime=0.
 
-  initialize!(s)
+  initialize!(s,init)
 
   @assert totalnsteps >= dtOutput 
   @assert totalnsteps >= dtStats
+  finalstep = init + totalnsteps
 
-  for i = 1:totalnsteps
+  ttime = itime
+  for i = (init+1):finalstep
     advance_in_time!(s,dt)
     ttime+=dt
     mod(i,dtOutput) == 0 && writeoutput(s,i)
@@ -47,8 +49,8 @@ end
   end
 end
 
-function initialize!(s::AbstractSimulation)
-  writeheader(s)
+function initialize!(s::AbstractSimulation,init::Integer)
+  init == 0 && writeheader(s)
   s.p*s.u
   haspassivescalar(s) && s.passivescalar.ps * s.passivescalar.ρ
   hasdensity(s) && s.densitystratification.ps * s.densitystratification.ρ
@@ -59,7 +61,8 @@ function initialize!(s::AbstractSimulation)
   initialize!(s.passivescalar,s)
   initialize!(s.densitystratification,s)
 
-  writestats(s,0,0)
+  init == 0 && writestats(s,0,0)
+  return nothing
 end
 
 end # module

@@ -337,8 +337,11 @@ function parameters(d::Dict)
   ly = Float64(eval(parse(d[:yDomainSize])))
   lz = Float64(eval(parse(d[:zDomainSize])))
   ν = Float64(eval(parse(d[:kinematicViscosity])))
-  info("Reading initial velocity field")
-  u = VectorField("u1.0","u2.0","u3.0",nx,ny,nz)
+
+  start = haskey(d,:start) ? d[:start] : "0"
+
+  info("Reading initial velocity field u1.$start u2.$start u3.$start")
+  u = VectorField("u1.$start","u2.$start","u3.$start",nx,ny,nz)
 
   kxp = reshape(rfftfreq(nx,lx),(ncx,1,1))
   kyp = reshape(fftfreq(ny,ly),(1,ny,1))
@@ -382,13 +385,13 @@ function parameters(d::Dict)
       VectorTimeStep(Euller(),Euller(),Euller())
     else
       VectorTimeStep(Adams_Bashforth3rdO(kxr,kyr,kzr),Adams_Bashforth3rdO(kxr,kyr,kzr),Adams_Bashforth3rdO(kxr,kyr,kzr))
-    end
+  end
 
   if haskey(d,:passiveScalar)
     α = ν/Float64(eval(parse(d[:scalarPr])))
     dρdz = Float64(eval(parse(d[:scalarGradient])))
-    info("Reading initial scalar field")
-    rho = isfile("scalar.0") ? PaddedArray("scalar.0",(nx,ny,nz),true) : PaddedArray(zeros(nx,ny,nz)) 
+    info("Reading initial scalar field scalar.$start")
+    rho = isfile("scalar.$start") ? PaddedArray("scalar.$start",(nx,ny,nz),true) : PaddedArray(zeros(nx,ny,nz)) 
     scalardir = haskey(d,:scalarDirection) ? Symbol(d[:scalarDirection]) : :z
     scalartimestep = Adams_Bashforth3rdO(kxr,kyr,kzr) 
     scalartype = PassiveScalar{typeof(scalartimestep),α,dρdz,scalardir}(rho,scalartimestep)
@@ -402,8 +405,8 @@ function parameters(d::Dict)
     α = ν/Float64(eval(parse(d[:Pr])))
     dρdz = Float64(eval(parse(d[:densityGradient])))
     g = Float64(eval(parse(d[:zAcceleration])))/Float64(eval(parse(d[:referenceDensity])))
-    info("Reading initial density field")
-    rho = isfile("rho.0") ? PaddedArray("rho.0",(nx,ny,nz),true) : PaddedArray(zeros(nx,ny,nz)) 
+    info("Reading initial density field rho.$start")
+    rho = isfile("rho.$start") ? PaddedArray("rho.$start",(nx,ny,nz),true) : PaddedArray(zeros(nx,ny,nz)) 
     gdir = haskey(d,:gravityDirection) ? Symbol(d[:gravityDirection]) : :z
     densitytimestep = Adams_Bashforth3rdO(kxr,kyr,kzr) 
     densitytype = BoussinesqApproximation{typeof(densitytimestep),α,dρdz,g,gdir}(rho,densitytimestep)
