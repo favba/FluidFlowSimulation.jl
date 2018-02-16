@@ -323,7 +323,7 @@ msg(a::NoForcing) = "\nForcing: No forcing\n"
   return nothing
 end
 
-struct RfForcing <: AbstractForcing
+struct RfForcing{Tf,α} #= Tf = 1.0 , α = 1.0  =# <: AbstractForcing
   Ef::Vector{Float64} # Velocity Field Spectrum
   Em::Vector{Float64} # Target Spectrum
   R::Vector{Float64} # Solution to ODE
