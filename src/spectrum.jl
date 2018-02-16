@@ -11,7 +11,7 @@
       if n <= Nx
         #magsq = a1.c[i,j,0].r*b1.c[i,j,0].r + a1.c[i,j,0].i*b1.c[i,j,0].i;
         #magsq += a2.c[i,j,0].r*b2.c[i,j,0].r + a2.c[i,j,0].i*b2.c[i,j,0].i;
-        magsq = abs2(ux[i,j,0]) + abs2(uy[i,j,0])
+        magsq = abs2(ux[i,j,1]) + abs2(uy[i,j,1])
         ee = 0.5*conjFactX * magsq / dk;
         Ef[n]+=ee;
         conjFactX=2.0;
