@@ -4,7 +4,7 @@
   # Initialize the shells to zeros
   fill!(Ef,0)
   dk = kx[2] - kx[1] 
-  scale = 1/(Nxr*Ny*Nz)
+  scale = 1/(Nrx*Ny*Nz)
   @inbounds for j=1:Ny
     conjFactX=1.0
     for i=1:Nx
