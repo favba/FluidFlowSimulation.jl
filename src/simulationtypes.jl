@@ -319,6 +319,19 @@ stats(a::NoForcing,s::AbstractSimulation) = ()
 
 msg(a::NoForcing) = "\nForcing: No forcing\n"
 
+@inline function (f::NoForcing)(u,s)
+  return nothing
+end
+
+struct RfForcing <: AbstractForcing
+  Ef::Vector{Float64} # Velocity Field Spectrum
+  Em::Vector{Float64} # Target Spectrum
+  R::Vector{Float64} # Solution to ODE
+  Zf::Vector{Float64} # Cutoff function
+  #dRdt::Vector{Float64} # Not needed if I use Euller timestep
+  factor::Vector{Float64} # Factor to multiply velocity Field
+end
+
 # Initializan function =========================================================================================================================================================================================================
 
 function parameters(d::Dict)
