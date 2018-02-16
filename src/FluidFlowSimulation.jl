@@ -13,6 +13,7 @@ end
 include("ReadGlobal.jl")
 include("macros.jl")
 include("fieldtypes.jl")
+include("spectrum.jl")
 include("simulationtypes.jl")
 include("utils.jl")
 include("vectorfunctions.jl")
