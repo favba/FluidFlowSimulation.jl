@@ -28,5 +28,5 @@ end
 
 @inline @par function getn2d(i,j,s::@par(AbstractSimulation))
   K = sqrt(kx[i]^2 + ky[j]^2)
-  return trunc(Int,K/kx[2] + 0.5)
+  return trunc(Int,K/kx[2] + 1.5)
 end
