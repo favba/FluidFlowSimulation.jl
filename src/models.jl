@@ -62,40 +62,36 @@ end
 end
 
 @par function realspace!(s::A) where {A<:@par(AbstractSimulation)}
-  #A_mul_B!(real(s.u),s.p.pinv.p,complex(s.u))
-  s.pb*s.u
-  #A_mul_B!(real(s.aux),s.p.pinv.p,complex(s.aux))
-  s.pb*s.aux
+  irfft!(s.u,s.pb,s)
+  irfft!(s.aux,s.pb,s)
   
-  #haspassivescalar(A) && A_mul_B!(real(s.passivescalar.ρ),s.passivescalar.ps.pinv.p,complex(s.passivescalar.ρ))
-  haspassivescalar(A) && s.passivescalar.pbs * s.passivescalar.ρ
-  #hasdensity(A) && A_mul_B!(real(s.densitystratification.ρ),s.densitystratification.ps.pinv.p,complex(s.densitystratification.ρ))
-  hasdensity(A) && s.densitystratification.pbs * s.densitystratification.ρ
+  haspassivescalar(A) && irfft!(s.passivescalar.ρ, s.passivescalar.pbs, s)
+  hasdensity(A) && irfft!(s.densitystratification.ρ, s.densitystratification.pbs, s)
  
   if hasles(s)
-    s.lesmodel.pt * s.lesmodel.tau
-    (haspassivescalar(A) | hasdensity(A)) && s.pb * s.lesmodel.scalar.gradρ
+    irfft!(s.lesmodel.tau, s.lesmodel.pbt, s)
+    (haspassivescalar(A) | hasdensity(A)) && irfft!(s.lesmodel.scalar.gradρ, s.pb, s)
   end
   
   realspacecalculation!(s)
 
-  s.p*s.rhs
+  rfft!(s.rhs,s.p, s)
   dealias!(s.rhs, s)
-  s.p*s.u
+  rfft!(s.u,s.p, s)
   if haspassivescalar(A) 
-    s.p*s.aux
+    rfft!(s.aux,s.p,s)
     dealias!(s.aux, s)
-    s.passivescalar.ps * s.passivescalar.ρ
+    rfft!(s.passivescalar.ρ, s.passivescalar.ps, s)
   elseif hasdensity(A)
-    s.p*s.aux
+    rfft!(s.aux, s.p, s)
     dealias!(s.aux, s)
-    s.densitystratification.ps * s.densitystratification.ρ
+    rfft!(s.densitystratification.ρ, s.densitystratification.ps, s)
   else
     dealias!(s.aux, s)
   end
 
   if hasles(s)
-    s.lesmodel.pt * s.lesmodel.tau
+    rfft!(s.lesmodel.tau, s.lesmodel.pt, s)
     dealias!(s.lesmodel.tau,s)
     if (haspassivescalar(A) | hasdensity(A))
       dealias!(s.lesmodel.scalar.gradρ,s)
@@ -115,7 +111,6 @@ end
 end
 
 @par function realspacecalculation!(s::A,j::Integer) where {A<:@par(AbstractSimulation)} 
-  scale::Float64 = 1/(Nrx*Ny*Nz)                
   ux = s.u.rx
   uy = s.u.ry
   uz = s.u.rz
@@ -150,24 +145,12 @@ end
   end
 
   @inbounds @msimd for i in RealRanges[j]
-    ux[i] *= scale
-    uy[i] *= scale
-    uz[i] *= scale
-
-    ωx[i] *= scale
-    ωy[i] *= scale
-    ωz[i] *= scale
 
     outx[i] = uy[i]*ωz[i] - uz[i]*ωy[i]
     outy[i] = uz[i]*ωx[i] - ux[i]*ωz[i]
     outz[i] = ux[i]*ωy[i] - uy[i]*ωx[i]
 
     if hasles(s)
-      txx[i] *= scale
-      txy[i] *= scale
-      txz[i] *= scale
-      tyy[i] *= scale
-      tyz[i] *= scale
 
       S = sqrt(2*(txx[i]^2 + tyy[i]^2 +(-txx[i]-tyy[i])^2 + 2*(txy[i]^2 + txz[i]^2 + tyz[i]^2)))
       νt = α*S
@@ -198,7 +181,6 @@ end
     end
 
     if haspassivescalar(A) || hasdensity(A)
-      ρ[i] *= scale
       ωx[i] = ux[i]*ρ[i]
       ωy[i] = uy[i]*ρ[i]
       ωz[i] = uz[i]*ρ[i]
