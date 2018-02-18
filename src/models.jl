@@ -75,9 +75,9 @@ end
   
   realspacecalculation!(s)
 
-  rfft!(s.rhs,s.p,s)
+  rfft!(s.rhs,s.p, s)
   dealias!(s.rhs, s)
-  rfft!(s.u,s.p)
+  rfft!(s.u,s.p, s)
   if haspassivescalar(A) 
     rfft!(s.aux,s.p,s)
     dealias!(s.aux, s)
