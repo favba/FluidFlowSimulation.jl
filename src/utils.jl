@@ -57,7 +57,7 @@ end
   end
 end
 
-@inline @par function my_scale!(field::AbstractArray{<:Real,3},s::@par(AbstractSimulation))
+@inline @par function my_scale_real!(field::AbstractArray{<:Real,3},s::@par(AbstractSimulation))
   x = 1/(Nrx*Ny*Nz)
   @mthreads for k in 1:Nz
     for j in 1:Ny
@@ -68,19 +68,56 @@ end
   end
 end 
 
-@inline my_scale!(field::PaddedArray,s) = my_scale!(parent(real(field)),s)
+@inline my_scale_real!(field::PaddedArray,s) = my_scale_real!(parent(real(field)),s)
 
-@inline function my_scale!(field::VectorField,s)
-  my_scale!(field.rx,s)
-  my_scale!(field.ry,s)
-  my_scale!(field.rz,s)
+@inline function my_scale_real!(field::VectorField,s)
+  my_scale_real!(field.rx,s)
+  my_scale_real!(field.ry,s)
+  my_scale_real!(field.rz,s)
 end
 
-@inline function back_transform!(field,p,s)
-  A_mul_B!(real(field),p,complex(field))
-  my_scale!(field,s)
+
+@inline @par function my_scale_fourier!(field::AbstractArray{<:Real,3},s::@par(AbstractSimulation))
+  x = 1/(Nrx*Ny*Nz)
+  @mthreads for k in 1:Nz
+    for j in 1:Ny
+      @inbounds @fastmath @msimd for i in 1:2Nx
+        field[i,j,k] = x*field[i,j,k]
+      end
+    end
+  end
+end 
+
+
+@inline my_scale_fourier!(field::PaddedArray,s) = my_scale_fourier!(parent(real(field)),s)
+
+@inline function my_scale_fourier!(field::VectorField,s)
+  my_scale_fourier!(field.rx,s)
+  my_scale_fourier!(field.ry,s)
+  my_scale_fourier!(field.rz,s)
+end
+
+@inline function my_scale_fourier!(field::SymmetricTracelessTensor,s)
+  my_scale_fourier!(field.rxx,s)
+  my_scale_fourier!(field.rxy,s)
+  my_scale_fourier!(field.rxz,s)
+  my_scale_fourier!(field.ryy,s)
+  my_scale_fourier!(field.ryz,s)
+end
+
+@inline function irfft!(field,p,s::AbstractSimulation)
+  p*field
+  #Not doing scaling in real space anymore.
+  #my_scale_real!(field,s)
   return nothing
 end
+
+@inline function rfft!(field,p,s::AbstractSimulation)
+  p*field
+  my_scale_fourier!(field,s)
+  return nothing
+end
+
 
 function splitrange(lr,nt)
   a = UnitRange{Int}[]

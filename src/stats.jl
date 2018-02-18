@@ -29,28 +29,28 @@ stats(s::AbstractSimulation) =
   u3 = real(s.u.cz[1,1,1])/(Nrx*Ny*Nz)
 
   mycopy!(s.aux,s.u,s)
-  s.p\s.aux
+  irfft!(s.aux, s.pb, s)
   u12 = tmean(x->x^2,s.aux.rx,s)
   u22 = tmean(x->x^2,s.aux.ry,s)
   u32 = tmean(x->x^2,s.aux.rz,s)
 
   dealias!(s.aux,s)
   grad!(s.aux,s.u.cx,s)
-  s.p\s.aux
+  irfft!(s.aux, s.pb, s)
   d1d1 = tmean(x->x^2,s.aux.rx,s)
   d1d2 = tmean(x->x^2,s.aux.ry,s)
   d1d3 = tmean(x->x^2,s.aux.rz,s)
 
   dealias!(s.aux,s)
   grad!(s.aux,s.u.cy,s)
-  s.p\s.aux
+  irfft!(s.aux, s.pb, s)
   d2d1 = tmean(x->x^2,s.aux.rx,s)
   d2d2 = tmean(x->x^2,s.aux.ry,s)
   d2d3 = tmean(x->x^2,s.aux.rz,s)
 
   dealias!(s.aux,s)
   grad!(s.aux,s.u.cz,s)
-  s.p\s.aux
+  irfft!(s.aux, s.pb, s)
   d3d1 = tmean(x->x^2,s.aux.rx,s)
   d3d2 = tmean(x->x^2,s.aux.ry,s)
   d3d3 = tmean(x->x^2,s.aux.rz,s)
@@ -62,12 +62,12 @@ end
 @par function scalar_stats(s1,s::@par(AbstractSimulation))
   rho = real(s1.ρ[1,1,1])/(Nrx*Ny*Nz)  
   _mycopy!(complex(s1.ρrhs),complex(s1.ρ),s)
-  s1.ps\s1.ρrhs
+  irfft!(s1.ρrhs, s1.pbs, s)
   rho2 = tmean(x->x^2,parent(real(s1.ρrhs)),s)
   dealias!(s1.ρrhs,s)
 
   grad!(s.aux,complex(s1.ρ),s)
-  s.p\s.aux
+  irfft!(s.aux, s.pb, s)
   drd1 = tmean(x->x^2,s.aux.rx,s)
   drd2 = tmean(x->x^2,s.aux.ry,s)
   drd3 = tmean(x->x^2,s.aux.rz,s)
