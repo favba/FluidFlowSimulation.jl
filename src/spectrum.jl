@@ -1,4 +1,4 @@
-@par function calculate_u1u2_spectrum!(Ef,u,s::@par(AbstractSimulation))
+@par function calculate_u1u2_spectrum!(Ef,u,cplane,s::@par(AbstractSimulation))
   ux = u.cx
   uy = u.cy
   # Initialize the shells to zeros
@@ -12,7 +12,7 @@
       if n <= Nx
         #magsq = a1.c[i,j,0].r*b1.c[i,j,0].r + a1.c[i,j,0].i*b1.c[i,j,0].i;
         #magsq += a2.c[i,j,0].r*b2.c[i,j,0].r + a2.c[i,j,0].i*b2.c[i,j,0].i;
-        magsq = abs2(scale*ux[i,j,1]) + abs2(scale*uy[i,j,1])
+        magsq = abs2(scale*ux[i,j,cplane]) + abs2(scale*uy[i,j,cplane])
         ee = 0.5*conjFactX * magsq / dk;
         Ef[n]+=ee;
         conjFactX=2.0;

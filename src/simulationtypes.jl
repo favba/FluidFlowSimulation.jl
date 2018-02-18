@@ -330,7 +330,11 @@ struct RfForcing{Tf,α} #= Tf = 1.0 , α = 1.0  =# <: AbstractForcing
   Zf::Vector{Float64} # Cutoff function
   #dRdt::Vector{Float64} # Not needed if I use Euller timestep
   factor::Vector{Float64} # Factor to multiply velocity Field
+  force::Vector{Float64} # Final force
 end
+
+getTf(f::RfForcing{Tf,α}) where {Tf,α} = Tf
+getalpha(f::RfForcing{Tf,α}) where {Tf,α} = α
 
 # Initializan function =========================================================================================================================================================================================================
 
