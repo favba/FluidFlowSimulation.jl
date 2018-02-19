@@ -24,9 +24,9 @@ stats(s::AbstractSimulation) =
 #  (velocity_stats(s)..., stats(s.passivescalar,s)..., stats(s.densitystratification,s)..., stats(s.lesmodel,s)..., stats(s.forcing,s)...)
 
 @par function velocity_stats(s::@par(AbstractSimulation))
-  u1 = real(s.u.cx[1,1,1])/(Nrx*Ny*Nz)
-  u2 = real(s.u.cy[1,1,1])/(Nrx*Ny*Nz)
-  u3 = real(s.u.cz[1,1,1])/(Nrx*Ny*Nz)
+  u1 = real(s.u.cx[1,1,1])
+  u2 = real(s.u.cy[1,1,1])
+  u3 = real(s.u.cz[1,1,1])
 
   mycopy!(s.aux,s.u,s)
   irfft!(s.aux, s.pb, s)
@@ -60,7 +60,7 @@ stats(s::AbstractSimulation) =
 end
 
 @par function scalar_stats(s1,s::@par(AbstractSimulation))
-  rho = real(s1.ρ[1,1,1])/(Nrx*Ny*Nz)  
+  rho = real(s1.ρ[1,1,1])
   _mycopy!(complex(s1.ρrhs),complex(s1.ρ),s)
   irfft!(s1.ρrhs, s1.pbs, s)
   rho2 = tmean(x->x^2,parent(real(s1.ρrhs)),s)
