@@ -319,6 +319,23 @@ stats(a::NoForcing,s::AbstractSimulation) = ()
 
 msg(a::NoForcing) = "\nForcing: No forcing\n"
 
+@inline function (f::NoForcing)(u,s)
+  return nothing
+end
+
+struct RfForcing{Tf,α} #= Tf = 1.0 , α = 1.0  =# <: AbstractForcing
+  Ef::Vector{Float64} # Velocity Field Spectrum
+  Em::Vector{Float64} # Target Spectrum
+  R::Vector{Float64} # Solution to ODE
+  Zf::Vector{Float64} # Cutoff function
+  #dRdt::Vector{Float64} # Not needed if I use Euller timestep
+  factor::Vector{Float64} # Factor to multiply velocity Field
+  force::Vector{Float64} # Final force
+end
+
+getTf(f::RfForcing{Tf,α}) where {Tf,α} = Tf
+getalpha(f::RfForcing{Tf,α}) where {Tf,α} = α
+
 # Initializan function =========================================================================================================================================================================================================
 
 function parameters(d::Dict)
@@ -366,11 +383,23 @@ function parameters(d::Dict)
     @. dealias = (kxp^2 > cutoff) | (kyp^2 > cutoff) | (kzp^2 > cutoff)
   end
 
+  xr = zeros(UInt16,(ny,nz))
+  for k = 1:nz
+    for j = 1:ny
+      for i = 1:ncx
+        if dealias[i,j,k]
+          xr[j,k] = i-1
+          break
+        end
+      end
+    end
+  end
+  kxr = (reinterpret(NTuple{ny,UInt16},xr,(nz,))...)
   kx = (kxp...)
   ky = (kyp...)
   kz = (kzp...)
 
-  kxr = 1:(findfirst(x->x^2>cutoff,kx)-1)
+  #kxr = 1:(findfirst(x->x^2>cutoff,kx)-1)
   wly = (findfirst(x->x^2>cutoff,ky)-1)
   kyr = (1:wly,(ny-wly+2):ny)
   wlz = (findfirst(x->x^2>cutoff,kz)-1)
