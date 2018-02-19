@@ -383,11 +383,23 @@ function parameters(d::Dict)
     @. dealias = (kxp^2 > cutoff) | (kyp^2 > cutoff) | (kzp^2 > cutoff)
   end
 
+  xr = zeros(UInt16,(ny,nz))
+  for k = 1:nz
+    for j = 1:ny
+      for i = 1:ncx
+        if dealias[i,j,k]
+          xr[j,k] = i-1
+          break
+        end
+      end
+    end
+  end
+  kxr = (reinterpret(NTuple{ny,UInt16},xr,(nz,))...)
   kx = (kxp...)
   ky = (kyp...)
   kz = (kzp...)
 
-  kxr = 1:(findfirst(x->x^2>cutoff,kx)-1)
+  #kxr = 1:(findfirst(x->x^2>cutoff,kx)-1)
   wly = (findfirst(x->x^2>cutoff,ky)-1)
   kyr = (1:wly,(ny-wly+2):ny)
   wlz = (findfirst(x->x^2>cutoff,kz)-1)

@@ -76,7 +76,7 @@
   @par function (f::Euller)(ρ::AbstractArray{<:Real,3},rhs::AbstractArray{<:Real,3},dt::Real,s::@par(AbstractSimulation))
     @mthreads for k in Kzr
       for y in Kyr, j in y
-        @inbounds @fastmath @msimd for i in 1:(2length(Kxr))
+        @inbounds @fastmath @msimd for i in 1:(2Kxr[k][j])
           #u += dt*rhs
           ρ[i,j,k] = muladd(dt,rhs[i,j,k],ρ[i,j,k])
         end
@@ -102,7 +102,7 @@
       k = Kzr[kk]
       jj::Int = 1
       for y in Kyr, j in y
-        @fastmath @msimd for i in 1:(2length(Kxr))
+        @fastmath @msimd for i in 1:(2Kxr[k][j])
           #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
           u[i,j,k] = muladd(muladd(23, rhs[i,j,k], muladd(-16, rm1[i,jj,kk], 5rm2[i,jj,kk])), dt12, u[i,j,k])
           rm2[i,jj,kk] = rm1[i,jj,kk]
