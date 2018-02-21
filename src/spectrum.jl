@@ -4,7 +4,7 @@
   # Initialize the shells to zeros
   fill!(Ef,0)
   dk =  max(kx[2],ky[2]) 
-  nshells = min(Nx,Ny)
+  nshells = min(Nx,Ny÷2 + 1)
   @inbounds for j=1:Ny
     conjFactX=1.0
     for i=1:Nx
@@ -21,13 +21,13 @@
   end
 end
 
-@par function calculate_u1u2_spectrum(u,s::@par(AbstractSimulation))
-  Ef = zeros(Nx)
-  calculate_u1u2_spectrum!(Ef,u,s)
+@par function calculate_u1u2_spectrum(u,cplane,s::@par(AbstractSimulation))
+  Ef = zeros(min(Nx, Ny÷2 + 1))
+  calculate_u1u2_spectrum!(Ef,u,cplane,s)
   return Ef
 end
 
-@inline @par function getn2d(i,j,s::@par(AbstractSimulation))
+@inline @inbounds @par function getn2d(i,j,s::@par(AbstractSimulation))
   dk = max(kx[2],ky[2])
   K = sqrt(kx[i]^2 + ky[j]^2)
   return trunc(Int,K/dk + 1.5)
