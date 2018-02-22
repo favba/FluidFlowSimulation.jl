@@ -138,3 +138,27 @@ function splitrange(lr,nt)
   end
   return (a...,)
 end
+
+function compute_shells2D(kx,ky,Nx,Ny)
+  nShells2D = min(Nx,Ny÷2)
+  maxdk2D = max(kx[2],ky[2])
+  kh = zeros(nShells2D)
+  numPtsInShell2D = zeros(Int,nShells2D)
+
+  @inbounds for j=1:Ny
+    for i=1:Nx
+      K = sqrt(kx[i]^2 + ky[j]^2)
+      ii = trunc(Int,K/maxdk2D + 0.5)+1
+      if ii <= nShells2D
+        kh[ii] += K
+        numPtsInShell2D[ii] += 1
+      end
+    end
+  end
+  
+  @inbounds @simd for i in linearindices(kh)
+    kh[i] = kh[i]/numPtsInShell2D[i]
+  end
+
+  return nShells2D, maxdk2D, numPtsInShell2D, kh
+end
