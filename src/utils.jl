@@ -148,7 +148,7 @@ function compute_shells2D(kx,ky,Nx,Ny)
   @inbounds for j=1:Ny
     for i=1:Nx
       K = sqrt(kx[i]^2 + ky[j]^2)
-      ii = trunc(Int,K/maxdk2D + 0.5)+1
+      ii = round(Int,K/maxdk2D)+1
       if ii <= nShells2D
         kh[ii] += K
         numPtsInShell2D[ii] += 1
