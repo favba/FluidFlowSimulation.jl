@@ -1,6 +1,6 @@
 function statsheader(s::AbstractSimulation)
   simulaitionheader = "iteration,time,u1,u2,u3,u1^2,u2^2,u3^2,du1dx1^2,du1dx2^2,du1dx3^2,du2dx1^2,du2dx2^2,du2dx3^2,du3dx1^2,du3dx2^2,du3dx3^2"
-  header = join(filter(x->x !== "",
+  header = join(Iterators.filter(x->x !== "",
     (simulaitionheader,statsheader.(getfield.(s,sim_fields))...,"\n")),
     ",","")
   return header
