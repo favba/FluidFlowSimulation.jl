@@ -14,7 +14,7 @@ end
 
 function writestats(s::AbstractSimulation,init::Integer,time::Real)
   results = stats(s)
-  open("stats.txt","a+") do file 
+  open("Stats.txt","a+") do file 
     join(file,(init, time, results..., "\n"), ",","")
   end
 end
