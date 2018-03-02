@@ -162,3 +162,11 @@ function compute_shells2D(kx,ky,Nx,Ny)
 
   return nShells2D, maxdk2D, numPtsInShell2D, kh
 end
+
+function calculate_Zf(kf,kh)
+  Zf = zeros(kh)
+  for (i,k) in enumerate(kh)
+      Zf[i] = tanh((kf-k) / (0.25*kf)) * (((kf-k) <= 0.0) ? 0.0 : 1.0)
+  end
+  return (Zf...)
+end
