@@ -38,7 +38,7 @@
     else
       arrays = Array{Float64,3}[]
       for i = 1:N
-        push!(arrays,zeros(2length(Kxr),length(Kyr[1])+length(Kyr[2]),length(Kzr)))
+        push!(arrays,zeros(2Kxr[1][1],length(Kyr[1])+length(Kyr[2]),length(Kzr)))
       end
     end
     return T(arrays...)
