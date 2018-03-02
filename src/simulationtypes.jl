@@ -411,7 +411,7 @@ function parameters(d::Dict)
   wly = (findfirst(x->x^2>cutoff,ky)-1)
   kyr = (1:wly,(ny-wly+2):ny)
   wlz = (findfirst(x->x^2>cutoff,kz)-1)
-  rz = vcat(1:wlz,(ny-wlz+2):ny)
+  rz = vcat(1:wlz,(nz-wlz+2):nz)
   #rz = vcat(1:(div(nz,3)+1),(nz-div(nz,3)+1):nz)
   kzr = (rz...)
   

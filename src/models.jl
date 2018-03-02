@@ -41,7 +41,7 @@ end
   end
   #@inbounds for k in Kzr[j]
     @inbounds for y in Kyr, j in y
-      @msimd for i in 1:(Kxr[j][k]) 
+      @msimd for i in 1:(Kxr[k][j]) 
         auxx[i,j,k] = im*(ky[j]*uz[i,j,k] - kz[k]*uy[i,j,k])
         auxy[i,j,k] = im*(kz[k]*ux[i,j,k] - kx[i]*uz[i,j,k])
         auxz[i,j,k] = im*(kx[i]*uy[i,j,k] - ky[j]*ux[i,j,k])
@@ -235,7 +235,7 @@ end
   tyy = tau.cyy
   tyz = tau.cyz
   @inbounds for y in Kyr, j in y
-    @msimd for i in 1:(Kxr[j][k])
+    @msimd for i in 1:(Kxr[k][j])
       rx[i,j,k] += im*(kx[i]*txx[i,j,k] + ky[j]*txy[i,j,k] + kz[k]*txz[i,j,k])
       ry[i,j,k] += im*(kx[i]*txy[i,j,k] + ky[j]*tyy[i,j,k] + kz[k]*tyz[i,j,k])
       rz[i,j,k] += im*(kx[i]*txz[i,j,k] + ky[j]*tyz[i,j,k] + kz[k]*(-txx[i,j,k]-tyy[i,j,k]))
@@ -277,7 +277,7 @@ end
 @par function _add_viscosity!(rhs::AbstractArray,u::AbstractArray,mν::Real,s::@par(AbstractSimulation))
   @mthreads for k in Kzr
     for y in Kyr, j in y
-      @fastmath @inbounds @msimd for i in 1:(Kxr[j][k])
+      @fastmath @inbounds @msimd for i in 1:(Kxr[k][j])
         #rhs[i,j,k] = (kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])*mŒΩ*u[i,j,k] + rhs[i,j,k]
         rhs[i,j,k] = muladd(muladd(kx[i], kx[i], muladd(ky[j], ky[j], kz[k]*kz[k])), mν*u[i,j,k], rhs[i,j,k])
       end
@@ -293,7 +293,7 @@ end
   @inbounds a = (rhsx[1],rhsy[1],rhsz[1])
   @mthreads for k in Kzr
     for y in Kyr, j in y
-      @fastmath @inbounds @msimd for i in 1:(Kxr[j][k])
+      @fastmath @inbounds @msimd for i in 1:(Kxr[k][j])
         #p1 = -(kx[i]*rhsx[i,j,k] + ky[j]*rhsy[i,j,k] + kz[k]*rhsz[i,j,k])/(kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])
         p1 = -muladd(kx[i], rhsx[i,j,k], muladd(ky[j], rhsy[i,j,k], kz[k]*rhsz[i,j,k]))/muladd(kx[i], kx[i], muladd(ky[j], ky[j],  kz[k]*kz[k]))
         rhsx[i,j,k] = muladd(kx[i],p1,rhsx[i,j,k])
@@ -308,7 +308,7 @@ end
 @par function addgravity!(rhs,ρ,g::Real,s::@par(AbstractSimulation))
   @mthreads for k in Kzr
     for y in Kyr, j in y
-      @fastmath @inbounds @msimd for i in 1:(Kxr[j][k])
+      @fastmath @inbounds @msimd for i in 1:(Kxr[k][j])
         rhs[i,j,k] = muladd(ρ[i,j,k],g,rhs[i,j,k])
       end
     end

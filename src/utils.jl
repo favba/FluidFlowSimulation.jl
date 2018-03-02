@@ -20,7 +20,7 @@ end
     k = Kzr[kk]
     jj::Int = 1
     for y in Kyr, j in y
-      for i in 1:(Kxr[j][k])
+      for i in 1:(Kxr[k][j])
         rm[i,jj,kk] = rhs[i,j,k]
       end
     jj+=1
@@ -33,7 +33,7 @@ end
     k = Kzr[kk]
     jj::Int = 1
     for y in Kyr, j in y
-      for i in 1:(2Kxr[j][k])
+      for i in 1:(2Kxr[k][j])
         rm[i,jj,kk] = rhs[i,j,k]
       end
     jj+=1
@@ -50,7 +50,7 @@ end
 @par function _mycopy!(out::Array{Complex128,3},inp::Array{Complex128,3},s::@par(AbstractSimulation))
   @mthreads for k in Kzr
     for y in Kyr, j in y
-      for i in 1:(Kxr[j][k])
+      for i in 1:(Kxr[k][j])
         @inbounds out[i,j,k] = inp[i,j,k]
       end
     end
