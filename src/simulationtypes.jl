@@ -459,9 +459,9 @@ function parameters(d::Dict)
       lesscalar = (haskey(d,:passiveScalar) | haskey(d,:densityStratification)) ? true : false
       lestype = Smagorinsky(c,Δ,lesscalar,(nx,ny,nz))
     elseif d[:lesModel] == "Smagorinsky+P"
-      c = haskey(d,:smagorinskyConstant) ? Float64(eval(parse(d[:smagrisnkyConstant]))) : 0.17 
+      c = haskey(d,:smagorinskyConstant) ? Float64(eval(parse(d[:smagorinskyConstant]))) : 0.17 
       cb = haskey(d,:pTensorConstant) ? Float64(eval(parse(d[:pTensorConstant]))) : 0.17 
-      Δ = haskey(d,:filterWidth) ? Float64(eval(parse(d[:smagrisnkyConstant]))) : lx*2π/nx  
+      Δ = haskey(d,:filterWidth) ? Float64(eval(parse(d[:filterWidth]))) : lx*2π/nx  
       lesscalar = (haskey(d,:passiveScalar) | haskey(d,:densityStratification)) ? true : false
       lestype = SandP(c,cb,Δ,lesscalar,(nx,ny,nz))
     end
