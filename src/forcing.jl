@@ -13,6 +13,7 @@ initialize!(f::NoForcing,s) = nothing
   _kf = getKf(F)
   maxdk = getmaxdk(F)
   avgWaveNumInShell2d = getavgk(F)
+  nShells2d = length(avgWaveNumInShell2d)
 
   Ef = F.Ef
   R = F.R
@@ -48,12 +49,14 @@ initialize!(f::NoForcing,s) = nothing
     for i=1:Nx
       K=sqrt(muladd(kx[i],kx[i],ky[j]^2))
       n = round(Int,K/maxdk) + 1
-      if avgWaveNumInShell2d[n] <= _kf
-        s1[i,j,1] = u1[i,j,1]*factor[n]
-        s2[i,j,1] = u2[i,j,1]*factor[n]
-        ff += (abs2(s1[i,j,1]) + abs2(s2[i,j,1]))*conjFactX
-        fv += (abs2(u1[i,j,1]) + abs2(u2[i,j,1]))*conjFactX
-        conjFactX=2.0
+      if (1 < n < nShells2d)
+        if avgWaveNumInShell2d[n] <= _kf
+          s1[i,j,1] = u1[i,j,1]*factor[n]
+          s2[i,j,1] = u2[i,j,1]*factor[n]
+          ff += (abs2(s1[i,j,1]) + abs2(s2[i,j,1]))*conjFactX
+          fv += (abs2(u1[i,j,1]) + abs2(u2[i,j,1]))*conjFactX
+          conjFactX=2.0
+        end
       end
     end
   end
@@ -71,7 +74,7 @@ initialize!(f::NoForcing,s) = nothing
   umag = 0.0
   #     // get the sum of the existing velocites
   for k = 2:6
-    umag += sqrt(abs2(u1[1,1,k]) + abs2(u2[1,1,k])) + sqrt(abs2(u1[1,1,Nz-k+1]) + abs2(u2[1,1,Nz-k+1]))
+    umag += sqrt(abs2(u1[1,1,k]) + abs2(u2[1,1,k])) + sqrt(abs2(u1[1,1,Nz-k+2]) + abs2(u2[1,1,Nz-k+2]))
   end
 
   f = dt*sqrt(2.0*horizontalPower*(1.0-powerFraction))/umag
@@ -79,10 +82,10 @@ initialize!(f::NoForcing,s) = nothing
   for k=2:6
     s1[1,1,k] = u1[1,1,k]*f
     s2[1,1,k] = u2[1,1,k]*f
-    s1[1,1,Nz-k+1] = u1[1,1,Nz-k+1]*f
-    s2[1,1,Nz-k+1] = u2[1,1,Nz-k+1]*f
-    ff += abs2(s1[1,1,k]) + abs2(s2[1,1,k]) + abs2(s1[1,1,Nz-k+1]) + abs2(s2[1,1,Nz-k+1])
-    fv += abs2(u1[1,1,k]) + abs2(u2[1,1,k]) + abs2(u1[1,1,Nz-k+1]) + abs2(u2[1,1,Nz-k+1])
+    s1[1,1,Nz-k+2] = u1[1,1,Nz-k+2]*f
+    s2[1,1,Nz-k+2] = u2[1,1,Nz-k+2]*f
+    ff += abs2(s1[1,1,k]) + abs2(s2[1,1,k]) + abs2(s1[1,1,Nz-k+2]) + abs2(s2[1,1,Nz-k+2])
+    fv += abs2(u1[1,1,k]) + abs2(u2[1,1,k]) + abs2(u1[1,1,Nz-k+2]) + abs2(u2[1,1,Nz-k+2])
   end
   ff = ff*0.5/dt
   fv = fv/dt

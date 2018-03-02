@@ -18,12 +18,12 @@
 
   function (f::VectorTimeStep)(u::VectorField,rhs::VectorField,dt::Real,s::AbstractSimulation)
     if hasforcing(s)
-      f.x(u.rx,rhs.rx,s.forcing.forcex, dt,s)
-      f.y(u.ry,rhs.ry,s.forcing.forcey, dt,s)
+      f.x(u.rx,rhs.rx,parent(real(s.forcing.forcex)), dt,s)
+      f.y(u.ry,rhs.ry,parent(real(s.forcing.forcey)), dt,s)
       if typeof(s.forcing) <: RfForcing
         f.z(u.rz,rhs.rz,dt,s)
       else
-        f.z(u.rz,rhs.rz,s.forcing.forcez, dt,s)
+        f.z(u.rz,rhs.rz,parent(real(s.forcing.forcez)), dt,s)
       end
     else
       f.x(u.rx,rhs.rx,dt,s)
@@ -121,7 +121,7 @@
   end
 
   # with forcing
-  function (f::Adams_Bashforth3rdO)(ρ::AbstractArray{<:Real,3},ρrhs::AbstractArray{<:Real,3}, forcing::AbstractArray{<:Real,3}, dt::Real, s::AbstractSimulation)
+  @par function (f::Adams_Bashforth3rdO)(ρ::AbstractArray{<:Real,3},ρrhs::AbstractArray{<:Real,3}, forcing::AbstractArray{<:Real,3}, dt::Real, s::@par(AbstractSimulation))
     dt12 = dt/12
     for kk = 1:length(Kzr)
       _tAdams_Bashforth3rdO!(kk, ρ,ρrhs, forcing, dt12,f.fm1,f.fm2,s)

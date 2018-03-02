@@ -319,10 +319,6 @@ stats(a::NoForcing,s::AbstractSimulation) = ()
 
 msg(a::NoForcing) = "\nForcing: No forcing\n"
 
-@inline function (f::NoForcing)(u,s)
-  return nothing
-end
-
 struct RfForcing{Tf,α,Kf,MaxDk,avgK, Zf} #= Tf = 1.0 , α = 1.0  =# <: AbstractForcing
   Ef::Vector{Float64} # Velocity Field Spectrum
   Em::Vector{Float64} # Target Spectrum
@@ -330,16 +326,23 @@ struct RfForcing{Tf,α,Kf,MaxDk,avgK, Zf} #= Tf = 1.0 , α = 1.0  =# <: Abstract
 #  Zf::Vector{Float64} # Cutoff function, using as parameter
   #dRdt::Vector{Float64} # Not needed if I use Euller timestep
   factor::Vector{Float64} # Factor to multiply velocity Field
-  forcex::Array{Float64,3} # Final force
-  forcey::Array{Float64,3} # Final force
+  forcex::PaddedArray{Float64,3,false} # Final force
+  forcey::PaddedArray{Float64,3,false} # Final force
   init::Bool # Tell if the initial condition spectra should be used instead of from data
 end
+
+statsheader(a::RfForcing) = ""
+
+stats(a::RfForcing,s::AbstractSimulation) = ()
+
+msg(a::RfForcing) = "\nForcing:  Rf forcing\nTf: $(getTf(a))\nalphac: $(getalpha(a))\nKf: $(getKf(a))\n"
 
 getTf(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = Tf
 getalpha(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = α
 getKf(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = Kf
 getmaxdk(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = MaxDk
 getavgk(f::RfForcing{Tf,α,Kf,MaxDk,AvgK, Zf}) where {Tf,α,Kf,MaxDk,AvgK, Zf} = AvgK
+getZf(f::RfForcing{Tf,α,Kf,MaxDk,AvgK, Zf}) where {Tf,α,Kf,MaxDk,AvgK, Zf} = Zf
 
 # Initializan function =========================================================================================================================================================================================================
 
@@ -465,20 +468,21 @@ function parameters(d::Dict)
   else
   lestype = NoLESModel()
   end
-  if haskey[d,:forcing]
+  if haskey(d,:forcing)
     if d[:forcing] == "rfForcing"
       TF = parse(Float64,d[:TF])
       alphac = parse(Float64,d[:alphac])
       kf = parse(Float64,d[:kf])
-      nShells2D, maxdk2D, numPtsInShell2D, kh = compute_shells2D(kx,ky,nx,ny)
+      nShells2D, maxdk2D, numPtsInShell2D, kh = compute_shells2D(kx,ky,ncx,ny)
       Ef = zeros(length(kh))
       Em = zeros(length(kh))
+      R = zeros(length(kh))
       factor = zeros(length(kh))
-      forcex = zeros((2ncx,ny,6))
-      forcey = zeros((2ncx,ny,6))
+      forcex = PaddedArray((nx,ny,nz))
+      forcey = PaddedArray((nx,ny,nz))
       Zf = calculate_Zf(kf,kh)
       if !isfile("targSpectrum.dat")
-        forcingtype = RfForcing{Tf, alphac, kf, maxdk2D, (kh...),Zf}(Ef,Em,factor,forcex,forcey,true)
+        forcingtype = RfForcing{TF, alphac, kf, maxdk2D, (kh...),Zf}(Ef,Em,R,factor,forcex,forcey,true)
       else
         #todo read spectrum.dat
       end
