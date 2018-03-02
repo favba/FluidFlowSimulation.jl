@@ -323,18 +323,23 @@ msg(a::NoForcing) = "\nForcing: No forcing\n"
   return nothing
 end
 
-struct RfForcing{Tf,α} #= Tf = 1.0 , α = 1.0  =# <: AbstractForcing
+struct RfForcing{Tf,α,Kf,MaxDk,avgK, Zf} #= Tf = 1.0 , α = 1.0  =# <: AbstractForcing
   Ef::Vector{Float64} # Velocity Field Spectrum
   Em::Vector{Float64} # Target Spectrum
   R::Vector{Float64} # Solution to ODE
-  Zf::Vector{Float64} # Cutoff function
+#  Zf::Vector{Float64} # Cutoff function, using as parameter
   #dRdt::Vector{Float64} # Not needed if I use Euller timestep
   factor::Vector{Float64} # Factor to multiply velocity Field
-  force::Vector{Float64} # Final force
+  forcex::Array{Float64,3} # Final force
+  forcey::Array{Float64,3} # Final force
+  init::Bool # Tell if the initial condition spectra should be used instead of from data
 end
 
-getTf(f::RfForcing{Tf,α}) where {Tf,α} = Tf
-getalpha(f::RfForcing{Tf,α}) where {Tf,α} = α
+getTf(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = Tf
+getalpha(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = α
+getKf(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = Kf
+getmaxdk(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = MaxDk
+getavgk(f::RfForcing{Tf,α,Kf,MaxDk,AvgK, Zf}) where {Tf,α,Kf,MaxDk,AvgK, Zf} = AvgK
 
 # Initializan function =========================================================================================================================================================================================================
 
@@ -460,7 +465,27 @@ function parameters(d::Dict)
   else
   lestype = NoLESModel()
   end
-  forcingtype = NoForcing()
+  if haskey[d,:forcing]
+    if d[:forcing] == "rfForcing"
+      TF = parse(Float64,d[:TF])
+      alphac = parse(Float64,d[:alphac])
+      kf = parse(Float64,d[:kf])
+      nShells2D, maxdk2D, numPtsInShell2D, kh = compute_shells2D(kx,ky,nx,ny)
+      Ef = zeros(length(kh))
+      Em = zeros(length(kh))
+      factor = zeros(length(kh))
+      forcex = zeros((2ncx,ny,6))
+      forcey = zeros((2ncx,ny,6))
+      Zf = calculate_Zf(kf,kh)
+      if !isfile("targSpectrum.dat")
+        forcingtype = RfForcing{Tf, alphac, kf, maxdk2D, (kh...),Zf}(Ef,Em,factor,forcex,forcey,true)
+      else
+        #todo read spectrum.dat
+      end
+    end
+  else
+    forcingtype = NoForcing()
+  end
 
   s = Simulation{lx,ly,lz,ncx,ny,nz,lcs,lcv,nx,lrs,lrv,ν,
       typeof(vtimestep),

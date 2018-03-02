@@ -17,9 +17,19 @@
 
 
   function (f::VectorTimeStep)(u::VectorField,rhs::VectorField,dt::Real,s::AbstractSimulation)
-    f.x(u.rx,rhs.rx,dt,s)
-    f.y(u.ry,rhs.ry,dt,s)
-    f.z(u.rz,rhs.rz,dt,s)
+    if hasforcing(s)
+      f.x(u.rx,rhs.rx,s.forcing.forcex, dt,s)
+      f.y(u.ry,rhs.ry,s.forcing.forcey, dt,s)
+      if typeof(s.forcing) <: RfForcing
+        f.z(u.rz,rhs.rz,dt,s)
+      else
+        f.z(u.rz,rhs.rz,s.forcing.forcez, dt,s)
+      end
+    else
+      f.x(u.rx,rhs.rx,dt,s)
+      f.y(u.ry,rhs.ry,dt,s)
+      f.z(u.rz,rhs.rz,dt,s)
+    end
   end
 
   function (::Type{T})(Kxr,Kyr,Kzr) where {N,T<:AbstractScalarTimeStep{N}}
@@ -89,11 +99,8 @@
 
 # Adams_Bashforth3rd0 start
   function (f::Adams_Bashforth3rdO)(ρ::AbstractArray{<:Real,3},ρrhs::AbstractArray{<:Real,3}, dt::Real, s::AbstractSimulation)
-  
     dt12 = dt/12
     _tAdams_Bashforth3rdO!(ρ,ρrhs,dt12,f.fm1,f.fm2,s)
-    #copy!(f.fm2,f.fm1)
-    #mycopy!(f.fm1,ρrhs,s)
     return nothing
   end
   
@@ -112,4 +119,40 @@
       end
     end
   end
-# Adams_Bashforth3rd0 start
+
+  # with forcing
+  function (f::Adams_Bashforth3rdO)(ρ::AbstractArray{<:Real,3},ρrhs::AbstractArray{<:Real,3}, forcing::AbstractArray{<:Real,3}, dt::Real, s::AbstractSimulation)
+    dt12 = dt/12
+    for kk = 1:length(Kzr)
+      _tAdams_Bashforth3rdO!(kk, ρ,ρrhs, forcing, dt12,f.fm1,f.fm2,s)
+    end
+    return nothing
+  end
+  
+  @inline @inbounds @par function _tAdams_Bashforth3rdO!(kk::Integer, u::AbstractArray{Float64,3}, rhs::AbstractArray, forcing, dt12::Real, rm1::AbstractArray, rm2::AbstractArray, s::@par(AbstractSimulation)) 
+    k = Kzr[kk]
+    jj::Int = 1
+    if (6 < k < Nz-k+1)
+      for y in Kyr, j in y
+        @fastmath @msimd for i in 1:(2Kxr[k][j])
+          #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
+          u[i,j,k] = muladd(muladd(23, rhs[i,j,k], muladd(-16, rm1[i,jj,kk], 5rm2[i,jj,kk])), dt12, u[i,j,k])
+          rm2[i,jj,kk] = rm1[i,jj,kk]
+          rm1[i,jj,kk] = rhs[i,j,k]
+        end
+      jj+=1
+      end
+    else
+      for y in Kyr, j in y
+        @fastmath @msimd for i in 1:(2Kxr[k][j])
+          #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
+          u[i,j,k] = muladd(muladd(23, rhs[i,j,k], muladd(-16, rm1[i,jj,kk], 5rm2[i,jj,kk])), dt12, u[i,j,k]) + forcing[i,j,k]
+          rm2[i,jj,kk] = rm1[i,jj,kk]
+          rm1[i,jj,kk] = rhs[i,j,k]
+        end
+      jj+=1
+      end
+    end
+  end
+#
+# Adams_Bashforth3rd0 end

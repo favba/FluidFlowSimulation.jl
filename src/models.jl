@@ -1,5 +1,6 @@
 @inline @par function advance_in_time!(s::A,dt::Real) where {A<:@par(AbstractSimulation)}
   calculate_rhs!(s)
+  hasforcing(s) && s.forcing(dt,s)
   time_step!(s,dt)
   return nothing
 end

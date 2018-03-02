@@ -65,6 +65,8 @@ function initialize!(s::AbstractSimulation,init::Integer)
   initialize!(s.timestep,s.rhs,s)
   initialize!(s.passivescalar,s)
   initialize!(s.densitystratification,s)
+  
+  initialize!(s.forcing,s)
 
   init == 0 && writestats(s,0,0)
   return nothing
