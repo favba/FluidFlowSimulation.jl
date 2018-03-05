@@ -71,32 +71,26 @@ end
 end
 
 Base.complex(a::AbstractPaddedArray) = InplaceRealFFT.unsafe_complex_view(a)
-struct VectorField{A<:AbstractPaddedArray{Float64, 4}} <: AbstractPaddedArray{Float64,4}
+struct VectorField{A<:AbstractPaddedArray{Float64, 4},SR,SC,LR,LC} <: AbstractPaddedArray{Float64,4}
   data::A
-  cx::Array{Complex128,3}
-  cy::Array{Complex128,3}
-  cz::Array{Complex128,3}
-  rx::Array{Float64,3}
-  ry::Array{Float64,3}
-  rz::Array{Float64,3}
+  cx::StaticView{SC,LC,A,Complex{Float64},3,1}
+  cy::StaticView{SC,LC,A,Complex{Float64},3,2}
+  cz::StaticView{SC,LC,A,Complex{Float64},3,3}
+  rx::StaticView{SR,LR,Array{Float64,4},Float64,3,1}
+  ry::StaticView{SR,LR,Array{Float64,4},Float64,3,2}
+  rz::StaticView{SR,LR,Array{Float64,4},Float64,3,3}
 
   function VectorField{A}(data::A) where {A<:AbstractPaddedArray{Float64, 4}}
-    cdims = size(data)
-    cnx, cny, cnz, _ = cdims
-    cx = unsafe_wrap(Array{Complex128,3},pointer(complex(data)),(cnx,cny,cnz))
-    cy = unsafe_wrap(Array{Complex128,3},pointer(complex(data),sub2ind(cdims,1,1,1,2)),(cnx,cny,cnz))
-    cz = unsafe_wrap(Array{Complex128,3},pointer(complex(data),sub2ind(cdims,1,1,1,3)),(cnx,cny,cnz))
 
-    rnx,rny,rnz,_ = size(parent(real(data)))
-    rdims = (rnx,rny,rnz)
-    #rx = reinterpret(Float64,cx,rdims)
-    rx = unsafe_wrap(Array{Float64,3},reinterpret(Ptr{Float64},pointer(cx)),rdims)
-    #ry = reinterpret(Float64,cy,rdims)
-    ry = unsafe_wrap(Array{Float64,3},reinterpret(Ptr{Float64},pointer(cy)),rdims)
-    #rz = reinterpret(Float64,cz,rdims)
-    rz = unsafe_wrap(Array{Float64,3},reinterpret(Ptr{Float64},pointer(cz)),rdims)
+    cx = StaticView(data,1)
+    cy = StaticView(data,2)
+    cz = StaticView(data,3)
 
-    return new{A}(data,cx,cy,cz,rx,ry,rz)
+    rx = StaticView(parent(real(data)),1)
+    ry = StaticView(parent(real(data)),2)
+    rz = StaticView(parent(real(data)),3)
+
+    return new{A,Tuple{size(rx)...},Tuple{size(cx)...},length(rx),length(cx)}(data,cx,cy,cz,rx,ry,rz)
   end
 end
 
@@ -104,9 +98,10 @@ VectorField(data::AbstractPaddedArray{Float64,4}) = VectorField{typeof(data)}(da
 
 function VectorField(ux::AbstractString,uy::AbstractString,uz::AbstractString,nx::Integer,ny::Integer,nz::Integer)
   field = VectorField(PaddedArray(nx,ny,nz,3))
-  read!(ux,field.rx)
-  read!(uy,field.ry)
-  read!(uz,field.rz)
+  nb = sizeof(Float64)*2*(div(nx,2)+1)*ny*nz
+  open(ux) do f; Base.unsafe_read(f,pointer(field.rx),nb); end
+  open(uy) do f; Base.unsafe_read(f,pointer(field.ry),nb); end
+  open(uz) do f; Base.unsafe_read(f,pointer(field.rz),nb); end
   return field
 end
 
@@ -119,19 +114,18 @@ InplaceRealFFT.rfft!(V::VectorField{A}) where {A} = rfft!(V,1:3)
 InplaceRealFFT.irfft!(V::VectorField{A}) where {A} = irfft!(V,1:3) 
 
 
-struct SymmetricTracelessTensor <: AbstractPaddedArray{Float64,4}
+struct SymmetricTracelessTensor{SR,SC,LR,LC} <: AbstractPaddedArray{Float64,4}
   data::PaddedArray{Float64,4,false}
-  cxx::Array{Complex128,3}
-  cxy::Array{Complex128,3}
-  cxz::Array{Complex128,3}
-  cyy::Array{Complex128,3}
-  cyz::Array{Complex128,3}
-  rxx::Array{Float64,3}
-  rxy::Array{Float64,3}
-  rxz::Array{Float64,3}
-  ryy::Array{Float64,3}
-  ryz::Array{Float64,3}
-
+  cxx::StaticView{SC,LC,PaddedArray{Float64,4,false},Complex{Float64},3,1}
+  cxy::StaticView{SC,LC,PaddedArray{Float64,4,false},Complex{Float64},3,2}
+  cxz::StaticView{SC,LC,PaddedArray{Float64,4,false},Complex{Float64},3,3}
+  cyy::StaticView{SC,LC,PaddedArray{Float64,4,false},Complex{Float64},3,4}
+  cyz::StaticView{SC,LC,PaddedArray{Float64,4,false},Complex{Float64},3,5}
+  rxx::StaticView{SR,LR,Array{Float64,4},Float64,3,1}
+  rxy::StaticView{SR,LR,Array{Float64,4},Float64,3,2}
+  rxz::StaticView{SR,LR,Array{Float64,4},Float64,3,3}
+  ryy::StaticView{SR,LR,Array{Float64,4},Float64,3,4}
+  ryz::StaticView{SR,LR,Array{Float64,4},Float64,3,5}
 
   function SymmetricTracelessTensor(data::A) where {A<:AbstractPaddedArray{Float64, 4}}
     cdims = size(data)
@@ -139,22 +133,19 @@ struct SymmetricTracelessTensor <: AbstractPaddedArray{Float64,4}
 
     @assert nfields == 5
 
-    cxx = unsafe_wrap(Array{Complex128,3},pointer(complex(data)),(cnx,cny,cnz))
-    cxy = unsafe_wrap(Array{Complex128,3},pointer(complex(data),sub2ind(cdims,1,1,1,2)),(cnx,cny,cnz))
-    cxz = unsafe_wrap(Array{Complex128,3},pointer(complex(data),sub2ind(cdims,1,1,1,3)),(cnx,cny,cnz))
-    cyy = unsafe_wrap(Array{Complex128,3},pointer(complex(data),sub2ind(cdims,1,1,1,4)),(cnx,cny,cnz))
-    cyz = unsafe_wrap(Array{Complex128,3},pointer(complex(data),sub2ind(cdims,1,1,1,5)),(cnx,cny,cnz))
+    cxx = StaticView(data,1)
+    cxy = StaticView(data,2)
+    cxz = StaticView(data,3)
+    cyy = StaticView(data,4)
+    cyz = StaticView(data,5)
 
-    rnx,rny,rnz,_ = size(parent(real(data)))
-    rdims = (rnx,rny,rnz)
+    rxx = StaticView(parent(real(data)),1)
+    rxy = StaticView(parent(real(data)),2)
+    rxz = StaticView(parent(real(data)),3)
+    ryy = StaticView(parent(real(data)),4)
+    ryz = StaticView(parent(real(data)),5)
 
-    rxx = unsafe_wrap(Array{Float64,3},reinterpret(Ptr{Float64},pointer(cxx)),rdims)
-    rxy = unsafe_wrap(Array{Float64,3},reinterpret(Ptr{Float64},pointer(cxy)),rdims)
-    rxz = unsafe_wrap(Array{Float64,3},reinterpret(Ptr{Float64},pointer(cxz)),rdims)
-    ryy = unsafe_wrap(Array{Float64,3},reinterpret(Ptr{Float64},pointer(cyy)),rdims)
-    ryz = unsafe_wrap(Array{Float64,3},reinterpret(Ptr{Float64},pointer(cyz)),rdims)
-
-    return new(data,cxx,cxy,cxz,cyy,cyz,rxx,rxy,rxz,ryy,ryz)
+    return new{Tuple{size(rxx)...},Tuple{size(cxx)...},length(rxx),length(cxx)}(data,cxx,cxy,cxz,cyy,cyz,rxx,rxy,rxz,ryy,ryz)
   end
 end
 
