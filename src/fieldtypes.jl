@@ -1,3 +1,75 @@
+struct StaticView{Size,L,AT,T,N,Ind} <: DenseArray{T,N}
+  data::AT
+end
+
+function StaticView(a::DenseArray{T,N},n) where {T,N}
+  sa = size(a)
+  newsize = sa[1:(N-1)]
+  newlength = prod(newsize)
+  return StaticView{Tuple{newsize...},newlength,typeof(a),T,N-1,n}(a)
+end
+
+Base.@pure Base.length(a::Union{StaticView{S,L,A,T,N,I},Type{StaticView{S,L,A,T,N,I}}}) where {S,L,A,T,N,I} = Int(L)
+Base.@pure Base.size(a::Union{StaticView{S,L,A,T,N,I},Type{StaticView{S,L,A,T,N,I}}}) where {S,L,A,T,N,I} = tuple(S.parameters...)
+Base.IndexStyle(::Type{<:StaticView}) = IndexLinear()
+
+@inline @generated function Base.getindex(a::StaticView{S,L,A,T,N,I},i2::Integer) where {S,L,A,T,N,I} 
+  s = (I-1)*length(a)
+  quote
+    i = i2 + $s
+    d = a.data
+    @boundscheck checkbounds(d,i)
+    r = @inbounds d[i]
+    return r
+  end
+end
+
+@inline @generated function Base.getindex(a::StaticView{S,L,A,T,N,I},In::Vararg{Integer,N}) where {S,L,A,T,N,I} 
+  s = I
+  p = Expr(:tuple)
+  for i=1:N
+    push!(p.args,:(In[$i]))
+  end
+  push!(p.args,:($I))
+  quote
+    d = a.data
+    @boundscheck checkbounds(d,$p...)
+    r = @inbounds getindex(d,$p...)
+    return r
+  end
+end
+
+@inline @generated function Base.setindex!(a::StaticView{S,L,A,T,N,I}, x,i2::Integer) where {S,L,A,T,N,I} 
+  s = (I-1)*length(a)
+  quote
+    i = i2 + $s
+    d = a.data
+    @boundscheck checkbounds(d,i)
+    @inbounds setindex!(d,x,i)
+  end
+end
+
+@inline @generated function Base.setindex!(a::StaticView{S,L,A,T,N,I}, x, In::Vararg{Integer,N}) where {S,L,A,T,N,I} 
+  s = I
+  p = Expr(:tuple)
+  for i=1:N
+    push!(p.args,:(In[$i]))
+  end
+  push!(p.args,:($I))
+  quote
+    d = a.data
+    @boundscheck checkbounds(d,$p...)
+    @inbounds setindex!(d, x, $p...)
+  end
+end
+
+@generated function Base.unsafe_convert(::Type{Ptr{T}},a::StaticView{S,L,A,T,N,I}) where {S,L,A,T,N,I}
+  s = (I-1)*length(a) + 1
+  quote
+    return pointer(a.data,$s)
+  end
+end
+
 Base.complex(a::AbstractPaddedArray) = InplaceRealFFT.unsafe_complex_view(a)
 struct VectorField{A<:AbstractPaddedArray{Float64, 4}} <: AbstractPaddedArray{Float64,4}
   data::A
