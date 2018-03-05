@@ -47,7 +47,7 @@ end
   _mycopy!(out.cz,inp.cz,s)
 end
 
-@par function _mycopy!(out::Array{Complex128,3},inp::Array{Complex128,3},s::@par(AbstractSimulation))
+@par function _mycopy!(out::AbstractArray{Complex128,3},inp::AbstractArray{Complex128,3},s::@par(AbstractSimulation))
   @mthreads for k in Kzr
     for y in Kyr, j in y
       for i in 1:(Kxr[k][j])
