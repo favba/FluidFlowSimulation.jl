@@ -1,6 +1,3 @@
-abstract type @par(BoussinesqSimulation) end
-abstract type @par(ScalarSimulation) end
-
 #Parent type of all simulations
 abstract type @par(AbstractSimulation) end
 #=
@@ -29,9 +26,9 @@ hasles(s::AbstractSimulation) = hasles(typeof(s))
 hasforcing(s::AbstractSimulation) = hasforcing(typeof(s))
 
 struct @par(Simulation) <: @par(AbstractSimulation)
-  u::VectorField{PaddedArray{Float64,4,false}}
-  rhs::VectorField{PaddedArray{Float64,4,false}}
-  aux::VectorField{PaddedArray{Float64,4,false}}
+  u::VectorField{PaddedArray{Float64,4,false},Tuple{Nrrx,Ny,Nz},Tuple{Nx,Ny,Nz},Lrs,Lcs}
+  rhs::VectorField{PaddedArray{Float64,4,false},Tuple{Nrrx,Ny,Nz},Tuple{Nx,Ny,Nz},Lrs,Lcs}
+  aux::VectorField{PaddedArray{Float64,4,false},Tuple{Nrrx,Ny,Nz},Tuple{Nx,Ny,Nz},Lrs,Lcs}
   p::FFTW.rFFTWPlan{Float64,-1,true,4}
   pb::FFTW.rFFTWPlan{Complex{Float64},1,true,4}
   reduction::Vector{Float64}
@@ -224,8 +221,8 @@ abstract type AbstractLESScalar end
 
 struct NoLESScalar <: AbstractLESScalar end
 
-struct EddyDiffusion <: AbstractLESScalar 
-  gradρ::VectorField{PaddedArray{Float64,4,false}}
+struct EddyDiffusion{VecType} <: AbstractLESScalar 
+  gradρ::VecType
 end
 
 EddyDiffusion(nx,ny,nz) = EddyDiffusion(VectorField(PaddedArray(zeros(nx,ny,nz,3))))
@@ -234,8 +231,8 @@ EddyDiffusion(nx,ny,nz) = EddyDiffusion(VectorField(PaddedArray(zeros(nx,ny,nz,3
 
 abstract type EddyViscosityModel <: AbstractLESModel end
 
-struct Smagorinsky{c,Δ,ScalarType<:AbstractLESScalar} <: EddyViscosityModel
-  tau::SymmetricTracelessTensor
+struct Smagorinsky{c,Δ,ScalarType<:AbstractLESScalar,TensorType} <: EddyViscosityModel
+  tau::TensorType
   pt::FFTW.rFFTWPlan{Float64,-1,true,4}
   pbt::FFTW.rFFTWPlan{Complex{Float64},1,true,4}
   scalar::ScalarType
@@ -249,7 +246,7 @@ function Smagorinsky(c::Real,Δ::Real,scalar::Bool,dim::NTuple{3,Integer})
   pbt = plan_brfft!(data,1:3,flags=FFTW.MEASURE)
   fill!(data,0)
   scalart = scalar ? EddyDiffusion(dim...) : NoLESScalar()
-  return Smagorinsky{c,Δ,typeof(scalart)}(data,pt,pbt,scalart)
+  return Smagorinsky{c,Δ,typeof(scalart),typeof(data)}(data,pt,pbt,scalart)
 end
 
 Smagorinsky(c::Real,Δ::Real,dim::NTuple{3,Integer}) = Smagorinsky(c,Δ,false,dim)
@@ -271,8 +268,8 @@ msg(a::Smagorinsky) = "\nLES model: Smagorinsky\nConstant: $(cs(a))\nFilter Widt
 
 # Smagorinsky+P Model Start ======================================================
 
-struct SandP{cs,cβ,Δ,ScalarType<:AbstractLESScalar} <: AbstractLESModel
-  tau::SymmetricTracelessTensor
+struct SandP{cs,cβ,Δ,ScalarType<:AbstractLESScalar,TensorType} <: AbstractLESModel
+  tau::TensorType
   pt::FFTW.rFFTWPlan{Float64,-1,true,4}
   pbt::FFTW.rFFTWPlan{Complex{Float64},1,true,4}
   scalar::ScalarType
@@ -286,7 +283,7 @@ function SandP(c::Real,cb::Real,Δ::Real,scalar::Bool,dim::NTuple{3,Integer})
   pbt = plan_brfft!(data,1:3,flags=FFTW.MEASURE)
   fill!(data,0)
   scalart = scalar ? EddyDiffusion(dim...) : NoLESScalar()
-  return SandP{c,cb,Δ,typeof(scalart)}(data,pt,pbt,scalart)
+  return SandP{c,cb,Δ,typeof(scalart),typeof(data)}(data,pt,pbt,scalart)
 end
 
 is_SandP(a::SandP) = true
@@ -491,7 +488,7 @@ function parameters(d::Dict)
     forcingtype = NoForcing()
   end
 
-  s = Simulation{lx,ly,lz,ncx,ny,nz,lcs,lcv,nx,lrs,lrv,ν,
+  s = Simulation{lx,ly,lz,ncx,ny,nz,lcs,lcv,2ncx,nx,lrs,lrv,ν,
       typeof(vtimestep),
       typeof(scalartype),typeof(densitytype),typeof(lestype),typeof(forcingtype),
       (Dealiastype,cutoffr),

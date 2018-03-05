@@ -30,10 +30,11 @@ macro gen(ex)
   return esc(:(@generated $ex2))
 end
 
-const sim_par = (:Lx,:Ly,:Lz,:Nx,:Ny,:Nz,:Lcs,:Lcv,:Nrx,:Lrs,:Lrv,:ν,:VelocityTimeStepType,:PassiveScalarType,:DensityStratificationType,:LESModelType,:ForcingType,:Dealias,:Kxr,:Kyr,:Kzr,:kx,:ky,:kz,:Thr,:Nt,:RealRanges)
+const sim_par = (:Lx,:Ly,:Lz,:Nx,:Ny,:Nz,:Lcs,:Lcv,:Nrrx,:Nrx,:Lrs,:Lrv,:ν,:VelocityTimeStepType,:PassiveScalarType,:DensityStratificationType,:LESModelType,:ForcingType,:Dealias,:Kxr,:Kyr,:Kzr,:kx,:ky,:kz,:Thr,:Nt,:RealRanges)
 # Nx,Ny,Nz size of the grid in Fourier Space
 # Lcs = Nx*Ny*Nz; Lcv = Lcs*3
 # Nrx size of x direction in Real Space skipping padding. The same as 1:(:nx) in global file
+# Nrrx size of x direction in Real Space NOT skipping padding.
 # Lrs = (Nrx+2)*Ny*Nz; Lrv = 3*Nrx
 # Kxr,Kyr,Kzr vector of places that are not dealiased in Fourier Space, therefore only places that needs computation
 # kx,ky,kz wavenumber vectors.
