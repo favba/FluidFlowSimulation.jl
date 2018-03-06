@@ -30,10 +30,10 @@ function run_simulation()
   s = parameters(par)
   init = haskey(par,:start) ? parse(Int,par[:start]) : 0
   ttime = haskey(par,:startTime) ? parse(Float64,par[:startTime]) : 0.0
-  run_simulation(s,init,ttime,parse(Int,par[:dtStat]),parse(Int,par[:writeTime]),parse(Int,par[:nt]),parse(Float64,par[:dt]))
+  run_simulation(s,init,ttime,parse(Int,par[:dtStat]),parse(Int,par[:writeTime]),parse(Int,par[:nt]))
 end
 
-@par function run_simulation(s::@par(AbstractSimulation),init::Int,itime::Real,dtStats::Integer,dtOutput::Integer,totalnsteps::Integer,dt::Real)
+@par function run_simulation(s::@par(AbstractSimulation),init::Int,itime::Real,dtStats::Integer,dtOutput::Integer,totalnsteps::Integer)
   info("Simulation started.")
 
   initialize!(s,init)
@@ -44,8 +44,8 @@ end
 
   ttime = itime
   for i = (init+1):finalstep
-    advance_in_time!(s,dt)
-    ttime+=dt
+    advance_in_time!(s)
+    ttime+=get_dt(s)
     mod(i,dtOutput) == 0 && writeoutput(s,i)
     mod(i,dtStats) == 0 && writestats(s,i,ttime)
   end
@@ -54,17 +54,17 @@ end
 function initialize!(s::AbstractSimulation,init::Integer)
   init == 0 && writeheader(s)
   rfft!(s.u,s.p,s)
-  dealias!(s.u,s)
+  #dealias!(s.u,s)
 
   #haspassivescalar(s) && s.passivescalar.ps * s.passivescalar.ρ
   if haspassivescalar(s)
     rfft!(s.passivescalar.ρ, s.passivescalar.ps,s) 
-    dealias!(s.passivescalar.ρ,s)
+    #dealias!(s.passivescalar.ρ,s)
   end
   #hasdensity(s) && s.densitystratification.ps * s.densitystratification.ρ
   if hasdensity(s) 
     rfft!(s.densitystratification.ρ, s.densitystratification.ps,s) 
-    dealias!(s.densitystratification.ρ,s)
+    #dealias!(s.densitystratification.ρ,s)
   end
 
   calculate_rhs!(s)
