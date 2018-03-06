@@ -79,9 +79,9 @@ end
 
 @inline @par function my_scale_fourier!(field::AbstractArray{<:Real,3},s::@par(AbstractSimulation))
   x = 1/(Nrx*Ny*Nz)
-  @mthreads for k in 1:Nz
-    for j in 1:Ny
-      @inbounds @fastmath @msimd for i in 1:2Nx
+  @mthreads for k in Kzr
+    for y in Kyr, j in y
+      @inbounds @fastmath @msimd for i in 1:(2(Kxr[k][j]))
         field[i,j,k] = x*field[i,j,k]
       end
     end
@@ -115,6 +115,7 @@ end
 @inline function rfft!(field,p,s::AbstractSimulation)
   p*field
   my_scale_fourier!(field,s)
+  dealias!(field,s)
   return nothing
 end
 

@@ -77,15 +77,15 @@ end
   realspacecalculation!(s)
 
   rfft!(s.rhs,s.p, s)
-  dealias!(s.rhs, s)
+  #dealias!(s.rhs, s)
   rfft!(s.u,s.p, s)
   if haspassivescalar(A) 
     rfft!(s.aux,s.p,s)
-    dealias!(s.aux, s)
+    #dealias!(s.aux, s)
     rfft!(s.passivescalar.ρ, s.passivescalar.ps, s)
   elseif hasdensity(A)
     rfft!(s.aux, s.p, s)
-    dealias!(s.aux, s)
+    #dealias!(s.aux, s)
     rfft!(s.densitystratification.ρ, s.densitystratification.ps, s)
   else
     dealias!(s.aux, s)
@@ -93,7 +93,7 @@ end
 
   if hasles(s)
     rfft!(s.lesmodel.tau, s.lesmodel.pt, s)
-    dealias!(s.lesmodel.tau,s)
+    #dealias!(s.lesmodel.tau,s)
     if (haspassivescalar(A) | hasdensity(A))
       dealias!(s.lesmodel.scalar.gradρ,s)
     end
