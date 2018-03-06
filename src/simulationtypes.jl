@@ -377,7 +377,7 @@ function parameters(d::Dict)
   b = splitrange(lrs, nt)
 
   haskey(d,:dealias) ? (Dealiastype = Symbol(d[:dealias])) : (Dealiastype = :sphere)
-  haskey(d,:cutoff) ? (cutoffr = Float64(eval(parse(d[:cutoff])))) : (cutoffr = 2/3)
+  haskey(d,:cutoff) ? (cutoffr = Float64(eval(parse(d[:cutoff])))) : (cutoffr = 15/16)
 
   cutoff = (cutoffr*kxp[end])^2
 
@@ -415,10 +415,13 @@ function parameters(d::Dict)
   isfile("fftw_wisdom") && FFTW.import_wisdom("fftw_wisdom")
   
   integrator = haskey(d,:velocityTimeStep) ? parse(d[:velocityTimeStep]) : Adams_Bashforth3rdO
+  variableTimeStep = haskey(d,:variableTimestepFlag) ? Bool(parse(d[:variableTimestepFlag])) : true
+  cfl = haskey(d,:cfl) ? Float64(parse(d[:cfl])) : 0.18
+  idt = haskey(d,:dt) ? Float64(eval(parse(d[:dt]))) : 0.0
   vtimestep = if integrator === :Euller
-      VectorTimeStep(Euller(),Euller(),Euller())
+      VectorTimeStep(Euller{variableTimeStep,idt}(Ref(idt)),Euller{variableTimeStep,idt}(Ref(idt)),Euller{variableTimeStep,idt}(Ref(idt)))
     else
-      VectorTimeStep(Adams_Bashforth3rdO(kxr,kyr,kzr),Adams_Bashforth3rdO(kxr,kyr,kzr),Adams_Bashforth3rdO(kxr,kyr,kzr))
+      VectorTimeStep(Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr),Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr),Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr))
   end
 
   if haskey(d,:passiveScalar)
@@ -427,7 +430,11 @@ function parameters(d::Dict)
     info("Reading initial scalar field scalar.$start")
     rho = isfile("scalar.$start") ? PaddedArray("scalar.$start",(nx,ny,nz),true) : PaddedArray(zeros(nx,ny,nz)) 
     scalardir = haskey(d,:scalarDirection) ? Symbol(d[:scalarDirection]) : :z
-    scalartimestep = Adams_Bashforth3rdO(kxr,kyr,kzr) 
+    scalartimestep = if integrator === :Euller
+        Euller{variableTimeStep,idt}(Ref(idt))
+      else
+        Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr)
+      end 
     scalartype = PassiveScalar{typeof(scalartimestep),α,dρdz,scalardir}(rho,scalartimestep)
   else
     scalartype = NoPassiveScalar()
@@ -442,7 +449,11 @@ function parameters(d::Dict)
     info("Reading initial density field rho.$start")
     rho = isfile("rho.$start") ? PaddedArray("rho.$start",(nx,ny,nz),true) : PaddedArray(zeros(nx,ny,nz)) 
     gdir = haskey(d,:gravityDirection) ? Symbol(d[:gravityDirection]) : :z
-    densitytimestep = Adams_Bashforth3rdO(kxr,kyr,kzr) 
+    densitytimestep = if integrator === :Euller
+      Euller{variableTimeStep,idt}(Ref(idt))
+    else
+      Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr)
+    end
     densitytype = BoussinesqApproximation{typeof(densitytimestep),α,dρdz,g,gdir}(rho,densitytimestep)
 
   else

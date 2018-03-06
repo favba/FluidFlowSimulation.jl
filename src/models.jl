@@ -1,7 +1,7 @@
-@inline @par function advance_in_time!(s::A,dt::Real) where {A<:@par(AbstractSimulation)}
+@inline @par function advance_in_time!(s::A) where {A<:@par(AbstractSimulation)}
   calculate_rhs!(s)
-  hasforcing(s) && s.forcing(dt,s)
-  time_step!(s,dt)
+  hasforcing(s) && s.forcing(s)
+  time_step!(s)
   return nothing
 end
 
@@ -315,8 +315,8 @@ end
   end
 end
 
-@par function time_step!(s::A,dt::Real) where {A<:@par(AbstractSimulation)}
-  s.timestep(s.u,s.rhs,dt,s)
-  haspassivescalar(s) && s.passivescalar.timestep(parent(real(s.passivescalar.ρ)),parent(real(s.passivescalar.ρrhs)),dt,s)
-  hasdensity(s) && s.densitystratification.timestep(parent(real(s.densitystratification.ρ)),parent(real(s.densitystratification.ρrhs)),dt,s)
+@par function time_step!(s::A) where {A<:@par(AbstractSimulation)}
+  s.timestep(s.u,s.rhs,s)
+  haspassivescalar(s) && s.passivescalar.timestep(parent(real(s.passivescalar.ρ)),parent(real(s.passivescalar.ρrhs)),s)
+  hasdensity(s) && s.densitystratification.timestep(parent(real(s.densitystratification.ρ)),parent(real(s.densitystratification.ρrhs)),s)
 end

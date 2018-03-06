@@ -15,48 +15,128 @@
     initialize!(t.z,rhs.rz,s)
   end
 
+  function set_dt!(t::VectorTimeStep,dt)
+    set_dt!(t.x,dt)
+    set_dt!(t.y,dt)
+    set_dt!(t.z,dt)
+  end
 
-  function (f::VectorTimeStep)(u::VectorField,rhs::VectorField,dt::Real,s::AbstractSimulation)
+  get_dt(t::VectorTimeStep) = get_dt(t.x)
+  get_dt(s::AbstractSimulation) = get_dt(s.timestep)
+
+  function (f::VectorTimeStep)(u::VectorField,rhs::VectorField,s::AbstractSimulation)
     if hasforcing(s)
-      f.x(u.rx,rhs.rx,parent(real(s.forcing.forcex)), dt,s)
-      f.y(u.ry,rhs.ry,parent(real(s.forcing.forcey)), dt,s)
+      f.x(u.rx,rhs.rx,parent(real(s.forcing.forcex)),s)
+      f.y(u.ry,rhs.ry,parent(real(s.forcing.forcey)),s)
       if typeof(s.forcing) <: RfForcing
-        f.z(u.rz,rhs.rz,dt,s)
+        f.z(u.rz,rhs.rz,s)
       else
-        f.z(u.rz,rhs.rz,parent(real(s.forcing.forcez)), dt,s)
+        f.z(u.rz,rhs.rz,parent(real(s.forcing.forcez)),s)
       end
     else
-      f.x(u.rx,rhs.rx,dt,s)
-      f.y(u.ry,rhs.ry,dt,s)
-      f.z(u.rz,rhs.rz,dt,s)
+      f.x(u.rx,rhs.rx,s)
+      f.y(u.ry,rhs.ry,s)
+      f.z(u.rz,rhs.rz,s)
     end
   end
 
-  function (::Type{T})(Kxr,Kyr,Kzr) where {N,T<:AbstractScalarTimeStep{N}}
-    if N === 0
-      return T()
-    else
-      arrays = Array{Float64,3}[]
-      for i = 1:N
-        push!(arrays,zeros(2Kxr[1][1],length(Kyr[1])+length(Kyr[2]),length(Kzr)))
-      end
-    end
-    return T(arrays...)
-  end
+  # function (::Type{T})(Kxr,Kyr,Kzr) where {N,T<:AbstractScalarTimeStep{N}}
+  #   if N === 0
+  #     return T()
+  #   else
+  #     arrays = Array{Float64,3}[]
+  #     for i = 1:N
+  #       push!(arrays,zeros(2Kxr[1][1],length(Kyr[1])+length(Kyr[2]),length(Kzr)))
+  #     end
+  #   end
+  #   return T(arrays...)
+  # end
 
   #@inline function (f::(T where {T<:AbstractScalarTimeStep{N} where N}))(ρ::PaddedArray,rhs::PaddedArray,dt::Real,s::AbstractSimulation)
   #  return f(parent(real(ρ)),parent(real(rhs)),dt,s)
   #end
   #
 
-  struct Euller <: AbstractScalarTimeStep{0} end
+  struct Euller{Adptative,initdt} <: AbstractScalarTimeStep{0}
+    dt::Ref{Float64} 
+  end
+  
+  get_dt(t::Euller{true,idt}) where {idt} = getindex(t.dt)
+  get_dt(t::Euller{false,idt}) where {idt} = idt
+
+  set_dt!(t::Euller{true,idt},dt::Real) where {idt} = setindex!(t.dt,dt)
+  set_dt!(t::Euller{false,idt}) where {idt} = nothing
 
   #initialize!(t::Euller,rhs,s::AbstractSimulation) = nothing
 
-  struct Adams_Bashforth3rdO <: AbstractScalarTimeStep{2}
+  struct Adams_Bashforth3rdO{Adaptative,initdt} <: AbstractScalarTimeStep{2}
     fm1::Array{Float64,3} #Store latest step
     fm2::Array{Float64,3} #Store 2 steps before
+    At::Ref{Float64} # 23*dt/12 for constant time stepping
+    Bt::Ref{Float64} # -16*dt/12 for constant time stepping
+    Ct::Ref{Float64} # 5*dt/12 for constant time stepping
+    dt::Ref{Float64}
+    dt2::Ref{Float64}
+    dt3::Ref{Float64}
   end
+
+  function Adams_Bashforth3rdO{adp,indt}(Kxr,Kyr,Kzr) where {adp,indt}
+    at = Ref(23*indt/12)
+    bt = Ref(-16*indt/12)
+    ct = Ref(5*indt/12)
+    dt = Ref(indt)
+    dt2 = Ref(indt)
+    dt3 = Ref(indt)
+    fm1 = zeros(2Kxr[1][1],length(Kyr[1])+length(Kyr[2]),length(Kzr))
+    fm2 = zeros(2Kxr[1][1],length(Kyr[1])+length(Kyr[2]),length(Kzr))
+    return Adams_Bashforth3rdO{adp,indt}(fm1,fm2,at,bt,ct,dt,dt2,dt3)
+  end
+
+  get_dt(t::Adams_Bashforth3rdO{true,idt}) where {idt} = getindex(t.dt)
+  get_dt(t::Adams_Bashforth3rdO{false,idt}) where {idt} = idt
+
+  function set_dt!(t::Adams_Bashforth3rdO{true,idt},dt::Real) where {idt} 
+    setindex!(t.dt3,t.dt2[])
+    setindex!(t.dt2,t.dt[])
+    setindex!(t.dt,dt)
+  end
+  set_dt!(t::Adams_Bashforth3rdO{false,idt}) where {idt} = nothing
+
+  function get_At(t::Adams_Bashforth3rdO{true,idt}) where {idt} 
+    dt = t.dt[]
+    dt2 = t.dt2[]
+    dt3 = t.dt3[]
+
+    At = 1. + (dt*(2*dt + 6*dt2 + 3*dt3))/(6*dt2*(dt2 + dt3))
+    At *= dt
+    return At
+  end
+
+  get_At(t::Adams_Bashforth3rdO{false,idt}) where {idt} = 23*idt/12
+
+  function get_Bt(t::Adams_Bashforth3rdO{true,idt}) where {idt} 
+    dt = t.dt[]
+    dt2 = t.dt2[]
+    dt3 = t.dt3[]
+
+    Bt= -dt*dt*(2*dt + 3*dt2 + 3*dt3)/(6*dt2*dt3*(dt+dt2))
+    Bt*=-(dt+dt2)
+    return Bt
+  end
+
+  get_Bt(t::Adams_Bashforth3rdO{false,idt}) where {idt} = -16*idt/12
+
+  function get_Ct(t::Adams_Bashforth3rdO{true,idt}) where {idt} 
+    dt = t.dt[]
+    dt2 = t.dt2[]
+    dt3 = t.dt3[]
+
+    Ct= dt*dt*(2*dt + 3*dt2)/(6*dt3*(dt + dt2 + dt3)*(dt2 + dt3))
+    Ct*=(dt+dt2+dt3)
+    return Ct
+  end
+
+  get_Ct(t::Adams_Bashforth3rdO{false,idt}) where {idt} = 5*idt/12
 
   @generated function initialize!(t::AbstractScalarTimeStep{N},rhs,s::AbstractSimulation) where N
     if N === 0 
@@ -97,21 +177,26 @@
 
 # Euller End
 
-# Adams_Bashforth3rd0 start
-  function (f::Adams_Bashforth3rdO)(ρ::AbstractArray{<:Real,3},ρrhs::AbstractArray{<:Real,3}, dt::Real, s::AbstractSimulation)
-    dt12 = dt/12
-    _tAdams_Bashforth3rdO!(ρ,ρrhs,dt12,f.fm1,f.fm2,s)
+# Adams_Bashforth3rdO start
+  @par function (f::Adams_Bashforth3rdO)(ρ::AbstractArray{<:Real,3},ρrhs::AbstractArray{<:Real,3}, s::@par(AbstractSimulation))
+    @mthreads for kk = 1:length(Kzr)
+    _tAdams_Bashforth3rdO!(kk, ρ,ρrhs,f.fm1,f.fm2,f,s)
+    end
     return nothing
   end
   
-  @inline @inbounds @par function _tAdams_Bashforth3rdO!(u::AbstractArray{Float64,3}, rhs::AbstractArray, dt12::Real, rm1::AbstractArray, rm2::AbstractArray, s::@par(AbstractSimulation)) 
-    @mthreads for kk in 1:length(Kzr)
+  @inline @par function _tAdams_Bashforth3rdO!(kk::Integer, u::AbstractArray{Float64,3}, rhs::AbstractArray, rm1::AbstractArray, rm2::AbstractArray, f, s::@par(AbstractSimulation)) 
+    @inbounds begin
+      At = get_At(f)
+      Bt = get_Bt(f)
+      Ct = get_Ct(f)
       k = Kzr[kk]
       jj::Int = 1
       for y in Kyr, j in y
         @fastmath @msimd for i in 1:(2Kxr[k][j])
           #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
-          u[i,j,k] = muladd(muladd(23, rhs[i,j,k], muladd(-16, rm1[i,jj,kk], 5rm2[i,jj,kk])), dt12, u[i,j,k])
+          #u[i,j,k] = muladd(muladd(23, rhs[i,j,k], muladd(-16, rm1[i,jj,kk], 5rm2[i,jj,kk])), dt12, u[i,j,k])
+          u[i,j,k] = muladd(At, rhs[i,j,k], muladd(Bt, rm1[i,jj,kk], muladd(Ct, rm2[i,jj,kk], u[i,j,k])))
           rm2[i,jj,kk] = rm1[i,jj,kk]
           rm1[i,jj,kk] = rhs[i,j,k]
         end
@@ -121,38 +206,42 @@
   end
 
   # with forcing
-  @par function (f::Adams_Bashforth3rdO)(ρ::AbstractArray{<:Real,3},ρrhs::AbstractArray{<:Real,3}, forcing::AbstractArray{<:Real,3}, dt::Real, s::@par(AbstractSimulation))
-    dt12 = dt/12
-    for kk = 1:length(Kzr)
-      _tAdams_Bashforth3rdO!(kk, ρ,ρrhs, forcing, dt12,f.fm1,f.fm2,s)
+  @par function (f::Adams_Bashforth3rdO)(ρ::AbstractArray{<:Real,3},ρrhs::AbstractArray{<:Real,3}, forcing::AbstractArray{<:Real,3}, s::@par(AbstractSimulation))
+    @mthreads for kk = 1:length(Kzr)
+      _tAdams_Bashforth3rdO!(kk, ρ,ρrhs, forcing, f.fm1,f.fm2,f,s)
     end
     return nothing
   end
   
-  @inline @inbounds @par function _tAdams_Bashforth3rdO!(kk::Integer, u::AbstractArray{Float64,3}, rhs::AbstractArray, forcing, dt12::Real, rm1::AbstractArray, rm2::AbstractArray, s::@par(AbstractSimulation)) 
-    k = Kzr[kk]
-    jj::Int = 1
-    if (6 < k < Nz-k+1)
-      for y in Kyr, j in y
-        @fastmath @msimd for i in 1:(2Kxr[k][j])
-          #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
-          u[i,j,k] = muladd(muladd(23, rhs[i,j,k], muladd(-16, rm1[i,jj,kk], 5rm2[i,jj,kk])), dt12, u[i,j,k])
-          rm2[i,jj,kk] = rm1[i,jj,kk]
-          rm1[i,jj,kk] = rhs[i,j,k]
+  @inline @par function _tAdams_Bashforth3rdO!(kk::Integer, u::AbstractArray{Float64,3}, rhs::AbstractArray, forcing, rm1::AbstractArray, rm2::AbstractArray, f,s::@par(AbstractSimulation)) 
+    @inbounds begin
+      At = get_At(f)
+      Bt = get_Bt(f)
+      Ct = get_Ct(f)
+      @inbounds k = Kzr[kk]
+      jj::Int = 1
+      if (6 < k < Nz-k+1)
+        for y in Kyr, j in y
+          @fastmath @msimd for i in 1:(2Kxr[k][j])
+            #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
+            u[i,j,k] = muladd(At, rhs[i,j,k], muladd(Bt, rm1[i,jj,kk], muladd(Ct, rm2[i,jj,kk], u[i,j,k])))
+            rm2[i,jj,kk] = rm1[i,jj,kk]
+            rm1[i,jj,kk] = rhs[i,j,k]
+          end
+        jj+=1
         end
-      jj+=1
-      end
-    else
-      for y in Kyr, j in y
-        @fastmath @msimd for i in 1:(2Kxr[k][j])
-          #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
-          u[i,j,k] = muladd(muladd(23, rhs[i,j,k], muladd(-16, rm1[i,jj,kk], 5rm2[i,jj,kk])), dt12, u[i,j,k]) + forcing[i,j,k]
-          rm2[i,jj,kk] = rm1[i,jj,kk]
-          rm1[i,jj,kk] = rhs[i,j,k]
+      else
+        for y in Kyr, j in y
+          @fastmath @msimd for i in 1:(2Kxr[k][j])
+            #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
+            u[i,j,k] = muladd(At, rhs[i,j,k], muladd(Bt, rm1[i,jj,kk], muladd(Ct, rm2[i,jj,kk], u[i,j,k]))) + forcing[i,j,k]
+            rm2[i,jj,kk] = rm1[i,jj,kk]
+            rm1[i,jj,kk] = rhs[i,j,k]
+          end
+        jj+=1
         end
-      jj+=1
       end
     end
   end
 #
-# Adams_Bashforth3rd0 end
+# Adams_Bashforth3rdO end

@@ -1,10 +1,10 @@
 (f::NoForcing)(dt,s) = nothing
 initialize!(f::NoForcing,s) = nothing
 
-@par function (F::RfForcing)(dt::Real,s::@par(AbstractSimulation))
+@par function (F::RfForcing)(s::@par(AbstractSimulation))
 
   cPlaneNumber = 1
-
+  dt = get_dt(s)
   Tf = getTf(F)
   ts = 10*dt
   omega = (2*π/(Tf*ts))
