@@ -57,9 +57,12 @@ struct @par(Simulation) <: @par(AbstractSimulation)
 
 end
 
-@par nu(s::@par(Simulation)) = ν
-@par ngridpoints(s::@par(Simulation)) = (Nrx,Ny,Nz)
-@par domainlength(s::@par(Simulation)) = (Lx,Ly,Lz)
+@par nu(s::Type{T}) where {T<:@par(AbstractSimulation)} = ν
+@inline nu(s::AbstractSimulation) = nu(typeof(s))
+@par ngridpoints(s::Type{T}) where {T<:@par(AbstractSimulation)} = (Nrx,Ny,Nz)
+@inline ngridpoints(s::AbstractSimulation) = ngridpoints(typeof(s))
+@par domainlength(s::Type{T}) where {T<:@par(AbstractSimulation)} = (Lx,Ly,Lz)
+@inline domainlength(s::AbstractSimulation) = domainlength(typeof(s))
 
 @par function Base.show(io::IO,s::@par(Simulation))
 smsg = """
@@ -89,12 +92,17 @@ end
 # Simulaiton with Scalar fields ===================================================================================================================================================
 abstract type AbstractPassiveScalar{TT,α,dρdz,Gdirec} end
 
-  diffusivity(a::AbstractPassiveScalar{TT,α,dρdz,Gdirec}) where {TT,α,dρdz,Gdirec} = 
+  diffusivity(a::Type{T}) where {TT,α,dρdz,Gdirec,T<:AbstractPassiveScalar{TT,α,dρdz,Gdirec}} = 
     α
-  meangradient(a::AbstractPassiveScalar{TT,α,dρdz,Gdirec}) where {TT,α,dρdz,Gdirec} = 
+  @inline diffusivity(a::AbstractPassiveScalar) = diffusivity(typeof(a)) 
+
+  meangradient(a::Type{T}) where {TT,α,dρdz,Gdirec,T<:AbstractPassiveScalar{TT,α,dρdz,Gdirec}} = 
     dρdz
-  graddir(a::AbstractPassiveScalar{TT,α,dρdz,Gdirec}) where {TT,α,dρdz,Gdirec} = 
+  @inline meangradient(a::AbstractPassiveScalar{TT,α,dρdz,Gdirec}) where {TT,α,dρdz,Gdirec} = meangradient(typeof(a))
+
+  graddir(a::Type{T}) where {TT,α,dρdz,Gdirec,T<:AbstractPassiveScalar{TT,α,dρdz,Gdirec}} = 
     Gdirec
+  @inline graddir(a::AbstractPassiveScalar{TT,α,dρdz,Gdirec}) where {TT,α,dρdz,Gdirec} = graddir(typeof(a))
 
   initialize!(a::AbstractPassiveScalar,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),s)
 
@@ -143,14 +151,21 @@ Scalar time-stepping method: $(TT)
 
 abstract type AbstractDensityStratification{TT,α,dρdz,g,Gdirec} end
 
-  diffusivity(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = 
+  diffusivity(a::Type{T}) where {TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{TT,α,dρdz,g,Gdirec}} = 
     α
-  meangradient(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = 
+  @inline diffusivity(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = diffusivity(typeof(a))
+
+  meangradient(a::Type{T}) where {TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{TT,α,dρdz,g,Gdirec}} = 
     dρdz
-  gravity(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = 
+  @inline meangradient(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = meangradient(typeof(a))
+
+  gravity(a::Type{T}) where {TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{TT,α,dρdz,g,Gdirec}} = 
     g
-  graddir(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = 
+  @inline gravity(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = gravity(typeof(a))
+
+  graddir(a::Type{T}) where {TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{TT,α,dρdz,g,Gdirec}} = 
     Gdirec
+  @inline graddir(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = graddir(typeof(a))
 
 
   initialize!(a::AbstractDensityStratification,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),s)
@@ -205,9 +220,9 @@ Density time-stepping method: $(TT)
 
 abstract type AbstractLESModel end
 
-is_Smagorinsky(a::AbstractLESModel) = false
-is_SandP(a::AbstractLESModel) = false
-scalarmodel(a::AbstractLESModel) = NoLESScalar
+is_Smagorinsky(a) = false
+is_SandP(a) = false
+lesscalarmodel(a) = NoLESScalar
 
 struct NoLESModel <: AbstractLESModel end
 
@@ -251,12 +266,19 @@ end
 
 Smagorinsky(c::Real,Δ::Real,dim::NTuple{3,Integer}) = Smagorinsky(c,Δ,false,dim)
 
-is_Smagorinsky(a::Smagorinsky) = true
+is_Smagorinsky(a::Union{<:Smagorinsky,Type{<:Smagorinsky}}) = true
+@inline @par is_Smagorinsky(s::Type{T}) where {T<:@par(AbstractSimulation)} = is_Smagorinsky(LESModelType)
+@inline is_Smagorinsky(s::T) where {T<:AbstractSimulation} = is_Smagorinsky(T)
 
-cs(s::Union{T,Type{T}}) where {c,Δ,scalar,T<:Smagorinsky{c,Δ,scalar}} = c
-Delta(s::Union{T,Type{T}}) where {c,Δ,scalar,T<:Smagorinsky{c,Δ,scalar}} = Δ
+cs(s::Type{T}) where {c,Δ,scalar,T<:Smagorinsky{c,Δ,scalar}} = c
+@inline cs(s::T) where {c,Δ,scalar,T<:Smagorinsky{c,Δ,scalar}} = cs(T)
+Delta(s::Type{T}) where {c,Δ,scalar,T<:Smagorinsky{c,Δ,scalar}} = Δ
+@inline Delta(s::T) where {c,Δ,scalar,T<:Smagorinsky{c,Δ,scalar}} = Delta(T)
 
-scalarmodel(s::Union{T,Type{T}}) where {c,Δ,scalar,T<:Smagorinsky{c,Δ,scalar}} = scalar
+lesscalarmodel(s::Type{T}) where {c,Δ,scalar,T<:Smagorinsky{c,Δ,scalar}} = scalar
+@inline lesscalarmodel(s::T) where {c,Δ,scalar,T<:Smagorinsky{c,Δ,scalar}} = lesscalarmodel(T)
+@inline @par lesscalarmodel(s::Type{T}) where {T<:@par(AbstractSimulation)} = lesscalarmodel(LESModelType)
+@inline lesscalarmodel(s::AbstractSimulation) = lesscalarmodel(typeof(s))
 
 statsheader(a::Smagorinsky) = ""
 
@@ -286,13 +308,19 @@ function SandP(c::Real,cb::Real,Δ::Real,scalar::Bool,dim::NTuple{3,Integer})
   return SandP{c,cb,Δ,typeof(scalart),typeof(data)}(data,pt,pbt,scalart)
 end
 
-is_SandP(a::SandP) = true
+is_SandP(a::Union{<:SandP,Type{<:SandP}}) = true
+@inline @par is_SandP(s::Type{T}) where {T<:@par(AbstractSimulation)} = is_SandP(LESModelType)
+@inline is_SandP(s::T) where {T<:AbstractSimulation} = is_SandP(T)
 
-cs(s::Union{T,Type{T}}) where {c,cb,Δ,T<:SandP{c,cb,Δ}} = c
-cbeta(s::Union{T,Type{T}}) where {c,cb,Δ,T<:SandP{c,cb,Δ}} = cb
-Delta(s::Union{T,Type{T}}) where {c,cb,Δ,T<:SandP{c,cb,Δ}} = Δ
+cs(s::Type{T}) where {c,cb,Δ,T<:SandP{c,cb,Δ}} = c
+@inline cs(s::T) where {c,cb,Δ,T<:SandP{c,cb,Δ}} = cs(T)
+cbeta(s::Type{T}) where {c,cb,Δ,T<:SandP{c,cb,Δ}} = cb
+@inline cbeta(s::T) where {c,cb,Δ,T<:SandP{c,cb,Δ}} = cbeta(T)
+Delta(s::Type{T}) where {c,cb,Δ,T<:SandP{c,cb,Δ}} = Δ
+@inline Delta(s::T) where {c,cb,Δ,T<:SandP{c,cb,Δ}} = Delta(T)
 
-scalarmodel(s::Union{T,Type{T}}) where {c,cb,Δ,scalar,T<:SandP{c,cb,Δ,scalar}} = scalar
+lesscalarmodel(s::Type{T}) where {c,cb,Δ,scalar,T<:SandP{c,cb,Δ,scalar}} = scalar
+@inline lesscalarmodel(s::T) where {c,cb,Δ,scalar,T<:SandP{c,cb,Δ,scalar}} = lesscalarmodel(T)
 
 statsheader(a::SandP) = ""
 
@@ -334,12 +362,23 @@ stats(a::RfForcing,s::AbstractSimulation) = ()
 
 msg(a::RfForcing) = "\nForcing:  Rf forcing\nTf: $(getTf(a))\nalphac: $(getalpha(a))\nKf: $(getKf(a))\n"
 
-getTf(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = Tf
-getalpha(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = α
-getKf(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = Kf
-getmaxdk(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = MaxDk
-getavgk(f::RfForcing{Tf,α,Kf,MaxDk,AvgK, Zf}) where {Tf,α,Kf,MaxDk,AvgK, Zf} = AvgK
-getZf(f::RfForcing{Tf,α,Kf,MaxDk,AvgK, Zf}) where {Tf,α,Kf,MaxDk,AvgK, Zf} = Zf
+getTf(f::Type{RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}}) where {Tf,α,Kf,MaxDk,avgK, Zf} = Tf
+@inline getTf(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = getTf(typeof(f))
+
+getalpha(f::Type{RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}}) where {Tf,α,Kf,MaxDk,avgK, Zf} = α
+@inline getalpha(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = getalpha(typeof(f))
+
+getKf(f::Type{RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}}) where {Tf,α,Kf,MaxDk,avgK, Zf} = Kf
+@inline getKf(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = getKf(typeof(f))
+
+getmaxdk(f::Type{RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}}) where {Tf,α,Kf,MaxDk,avgK, Zf} = MaxDk
+@inline getmaxdk(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = getmaxdk(typeof(f))
+
+getavgk(f::Type{RfForcing{Tf,α,Kf,MaxDk,AvgK, Zf}}) where {Tf,α,Kf,MaxDk,AvgK, Zf} = AvgK
+@inline getavgk(f::RfForcing{Tf,α,Kf,MaxDk,AvgK, Zf}) where {Tf,α,Kf,MaxDk,AvgK, Zf} = getavgk(typeof(f))
+
+getZf(f::Type{RfForcing{Tf,α,Kf,MaxDk,AvgK, Zf}}) where {Tf,α,Kf,MaxDk,AvgK, Zf} = Zf
+@inline getZf(f::RfForcing{Tf,α,Kf,MaxDk,AvgK, Zf}) where {Tf,α,Kf,MaxDk,AvgK, Zf} = getZf(typeof(f))
 
 # Initializan function =========================================================================================================================================================================================================
 
@@ -419,9 +458,9 @@ function parameters(d::Dict)
   cfl = haskey(d,:cfl) ? Float64(parse(d[:cfl])) : 0.18
   idt = haskey(d,:dt) ? Float64(eval(parse(d[:dt]))) : 0.0
   vtimestep = if integrator === :Euller
-      VectorTimeStep(Euller{variableTimeStep,idt}(Ref(idt)),Euller{variableTimeStep,idt}(Ref(idt)),Euller{variableTimeStep,idt}(Ref(idt)))
+      VectorTimeStep{cfl}(Euller{variableTimeStep,idt}(Ref(idt)),Euller{variableTimeStep,idt}(Ref(idt)),Euller{variableTimeStep,idt}(Ref(idt)))
     else
-      VectorTimeStep(Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr),Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr),Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr))
+      VectorTimeStep{cfl}(Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr),Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr),Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr))
   end
 
   if haskey(d,:passiveScalar)

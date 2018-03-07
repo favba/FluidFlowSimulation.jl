@@ -1,13 +1,30 @@
 # Structs Start
 
   abstract type AbstractTimeStep end
-  abstract type AbstractScalarTimeStep{N} <: AbstractTimeStep end
+  abstract type AbstractScalarTimeStep{Adp,initdt,N} <: AbstractTimeStep end
 
-  struct VectorTimeStep{Tx<:AbstractScalarTimeStep,Ty<:AbstractScalarTimeStep,Tz<:AbstractScalarTimeStep} <: AbstractTimeStep
+  has_variable_timestep(t::Type{<:AbstractScalarTimeStep{adp,idt,N}}) where {adp,idt,N} = adp
+  @inline has_variable_timestep(t::AbstractScalarTimeStep{adp,idt,N}) where {adp,idt,N} = has_variable_timestep(typeof(t))
+  
+  get_dt(t::Type{<:AbstractScalarTimeStep{false,idt,N}}) where {idt,N} = idt
+  @inline get_dt(t::AbstractScalarTimeStep{false,idt,N}) where {idt,N} = get_dt(typeof(t))
+
+  set_dt!(t::Type{<:AbstractScalarTimeStep{false,idt,N}},dt::Real) where {idt,N} = nothing
+  @inline set_dt!(t::AbstractScalarTimeStep{false,idt,N},dt::Real) where {idt,N} = set_dt!(typeof(t))
+
+  struct VectorTimeStep{cfl,Tx<:AbstractScalarTimeStep,Ty<:AbstractScalarTimeStep,Tz<:AbstractScalarTimeStep} <: AbstractTimeStep
     x::Tx
     y::Ty 
     z::Tz
   end
+
+  function VectorTimeStep{cfl}(tx,ty,tz) where {cfl}
+    return VectorTimeStep{cfl,typeof(tx),typeof(ty),typeof(tz)}(tx,ty,tz) 
+  end
+ 
+  get_cfl(t::Type{VectorTimeStep{cfl,Tx,Ty,Tz}}) where{cfl,Tx,Ty,Tz} = cfl
+  @inline get_cfl(t::VectorTimeStep) = get_cfl(typeof(t))
+  @par get_cfl(s::Union{@par(AbstractSimulation),Type{@par(AbstractSimulation)}}) = get_cfl(VelocityTimeStepType)
 
   function initialize!(t::VectorTimeStep,rhs::VectorField,s::AbstractSimulation)
     initialize!(t.x,rhs.rx,s)
@@ -21,8 +38,15 @@
     set_dt!(t.z,dt)
   end
 
-  get_dt(t::VectorTimeStep) = get_dt(t.x)
-  get_dt(s::AbstractSimulation) = get_dt(s.timestep)
+  get_dt(t::Type{VectorTimeStep{cfl,Tx,Ty,Tz}}) where {cfl,Tx,Ty,Tz} = get_dt(Tx)
+  @inline get_dt(t::A) where {A<:VectorTimeStep} = get_dt(A)
+  @inline @par get_dt(s::Type{A}) where {A<:@par(AbstractSimulation)} = get_dt(VelocityTimeStepType)
+  @inline get_dt(s::A) where {A<:AbstractSimulation} = get_dt(A)
+
+  has_variable_timestep(t::Type{VectorTimeStep{cfl,Tx,Ty,Tz}}) where {cfl,Tx,Ty,Tz} = has_variable_timestep(Tx)
+  @inline has_variable_timestep(t::VectorTimeStep) = has_variable_timestep(typeof(t))
+  @inline @par has_variable_timestep(s::Type{A}) where {A<:@par(AbstractSimulation)} = has_variable_timestep(VelocityTimeStepType)
+  @inline has_variable_timestep(s::A) where {A<:AbstractSimulation} = has_variable_timestep(A)
 
   function (f::VectorTimeStep)(u::VectorField,rhs::VectorField,s::AbstractSimulation)
     if hasforcing(s)
@@ -57,19 +81,17 @@
   #end
   #
 
-  struct Euller{Adptative,initdt} <: AbstractScalarTimeStep{0}
+  struct Euller{Adptative,initdt} <: AbstractScalarTimeStep{Adptative,initdt,0}
     dt::Ref{Float64} 
   end
   
   get_dt(t::Euller{true,idt}) where {idt} = getindex(t.dt)
-  get_dt(t::Euller{false,idt}) where {idt} = idt
 
   set_dt!(t::Euller{true,idt},dt::Real) where {idt} = setindex!(t.dt,dt)
-  set_dt!(t::Euller{false,idt}) where {idt} = nothing
 
   #initialize!(t::Euller,rhs,s::AbstractSimulation) = nothing
 
-  struct Adams_Bashforth3rdO{Adaptative,initdt} <: AbstractScalarTimeStep{2}
+  struct Adams_Bashforth3rdO{Adaptative,initdt} <: AbstractScalarTimeStep{Adaptative,initdt,2}
     fm1::Array{Float64,3} #Store latest step
     fm2::Array{Float64,3} #Store 2 steps before
     At::Ref{Float64} # 23*dt/12 for constant time stepping
@@ -92,15 +114,13 @@
     return Adams_Bashforth3rdO{adp,indt}(fm1,fm2,at,bt,ct,dt,dt2,dt3)
   end
 
-  get_dt(t::Adams_Bashforth3rdO{true,idt}) where {idt} = getindex(t.dt)
-  get_dt(t::Adams_Bashforth3rdO{false,idt}) where {idt} = idt
+  get_dt(t::Union{Adams_Bashforth3rdO{true,idt},Type{Adams_Bashforth3rdO{true,idt}}}) where {idt} = getindex(t.dt)
 
   function set_dt!(t::Adams_Bashforth3rdO{true,idt},dt::Real) where {idt} 
     setindex!(t.dt3,t.dt2[])
     setindex!(t.dt2,t.dt[])
     setindex!(t.dt,dt)
   end
-  set_dt!(t::Adams_Bashforth3rdO{false,idt}) where {idt} = nothing
 
   function get_At(t::Adams_Bashforth3rdO{true,idt}) where {idt} 
     dt = t.dt[]
@@ -112,7 +132,8 @@
     return At
   end
 
-  get_At(t::Adams_Bashforth3rdO{false,idt}) where {idt} = 23*idt/12
+  get_At(t::Type{Adams_Bashforth3rdO{false,idt}}) where {idt} = 23*idt/12
+  @inline get_At(t::A) where {indt,A<:Adams_Bashforth3rdO{false,indt}} = get_At(A)
 
   function get_Bt(t::Adams_Bashforth3rdO{true,idt}) where {idt} 
     dt = t.dt[]
@@ -124,7 +145,8 @@
     return Bt
   end
 
-  get_Bt(t::Adams_Bashforth3rdO{false,idt}) where {idt} = -16*idt/12
+  get_Bt(t::Type{Adams_Bashforth3rdO{false,idt}}) where {idt} = -16*idt/12
+  @inline get_Bt(t::A) where {indt,A<:Adams_Bashforth3rdO{false,indt}} = get_Bt(A)
 
   function get_Ct(t::Adams_Bashforth3rdO{true,idt}) where {idt} 
     dt = t.dt[]
@@ -136,7 +158,8 @@
     return Ct
   end
 
-  get_Ct(t::Adams_Bashforth3rdO{false,idt}) where {idt} = 5*idt/12
+  get_Ct(t::Type{Adams_Bashforth3rdO{false,idt}}) where {idt} = 5*idt/12
+  @inline get_Ct(t::A) where {indt,A<:Adams_Bashforth3rdO{false,indt}} = get_Ct(A)
 
   @generated function initialize!(t::AbstractScalarTimeStep{N},rhs,s::AbstractSimulation) where N
     if N === 0 
