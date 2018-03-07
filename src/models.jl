@@ -77,7 +77,12 @@ end
   realspacecalculation!(s)
 
   rfft!(s.rhs,s.p, s)
-  #dealias!(s.rhs, s)
+  # fix for erros on u×ω calculation
+  s.rhs.cx[1] = 0. + 0. *im
+  s.rhs.cy[1] = 0. + 0. *im
+  s.rhs.cz[1] = 0. + 0. *im
+
+ #dealias!(s.rhs, s)
   rfft!(s.u,s.p, s)
   if haspassivescalar(A) 
     rfft!(s.aux,s.p,s)
