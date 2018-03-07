@@ -32,7 +32,7 @@ end
     txz = s.lesmodel.tau.cxz
     tyy = s.lesmodel.tau.cyy
     tyz = s.lesmodel.tau.cyz
-    if scalarmodel(s.lesmodel) === EddyDiffusion
+    if hasdensity(s) || haspassivescalar(s)
       ρ = hasdensity(s) ? complex(s.densitystratification.ρ) : complex(s.passivescalar.ρ) 
       gρx = s.lesmodel.scalar.gradρ.cx
       gρy = s.lesmodel.scalar.gradρ.cy
@@ -46,16 +46,16 @@ end
         auxy[i,j,k] = im*(kz[k]*ux[i,j,k] - kx[i]*uz[i,j,k])
         auxz[i,j,k] = im*(kx[i]*uy[i,j,k] - ky[j]*ux[i,j,k])
         if hasles(s)
-          tr = (im*ky[j]*uy[i,j,k] + im*kx[i]*ux[i,j,k] + im*kz[k]*uz[i,j,k])
-          txx[i,j,k] = -im*kx[i]*ux[i,j,k] + tr
-          tyy[i,j,k] = -im*ky[j]*uy[i,j,k] + tr
-          txy[i,j,k] = -im*kx[i]*uy[i,j,k] -im*ky[j]*ux[i,j,k]
-          txz[i,j,k] = -im*kx[i]*uz[i,j,k] -im*kz[k]*ux[i,j,k]
-          tyz[i,j,k] = -im*ky[j]*uz[i,j,k] -im*kz[k]*uy[i,j,k]
-          if scalarmodel(s.lesmodel) === EddyDiffusion
-            gρx[i,j,k] = -im*kx[i]*ρ[i,j,k]
-            gρy[i,j,k] = -im*ky[j]*ρ[i,j,k]
-            gρz[i,j,k] = -im*kz[k]*ρ[i,j,k]
+          tr = -(im*ky[j]*uy[i,j,k] + im*kx[i]*ux[i,j,k] + im*kz[k]*uz[i,j,k])
+          txx[i,j,k] = im*kx[i]*ux[i,j,k] + tr
+          tyy[i,j,k] = im*ky[j]*uy[i,j,k] + tr
+          txy[i,j,k] = im*kx[i]*uy[i,j,k] + im*ky[j]*ux[i,j,k]
+          txz[i,j,k] = im*kx[i]*uz[i,j,k] + im*kz[k]*ux[i,j,k]
+          tyz[i,j,k] = im*ky[j]*uz[i,j,k] + im*kz[k]*uy[i,j,k]
+          if haspassivescalar(s) || hasdensity(s)
+            gρx[i,j,k] = im*kx[i]*ρ[i,j,k]
+            gρy[i,j,k] = im*ky[j]*ρ[i,j,k]
+            gρz[i,j,k] = im*kz[k]*ρ[i,j,k]
           end
         end
       end
@@ -128,7 +128,7 @@ end
     ρ = parent(real(s.densitystratification.ρ))
   end
 
-  if hasles(s)
+  if hasles(A)
     txx = s.lesmodel.tau.rxx
     tyy = s.lesmodel.tau.ryy
     txy = s.lesmodel.tau.rxy
@@ -137,7 +137,7 @@ end
     c = cs(s.lesmodel)
     Δ = Delta(s.lesmodel)
     α = c*c*Δ*Δ 
-    is_SandP(s.lesmodel) && (β = cbeta(s.lesmodel)*Δ*Δ)
+    is_SandP(A) && (β = cbeta(s.lesmodel)*Δ*Δ)
     if haspassivescalar(A) | hasdensity(A)
       gradrhox = s.lesmodel.scalar.gradρ.rx
       gradrhoy = s.lesmodel.scalar.gradρ.ry
@@ -151,18 +151,18 @@ end
     outy[i] = uz[i]*ωx[i] - ux[i]*ωz[i]
     outz[i] = ux[i]*ωy[i] - uy[i]*ωx[i]
 
-    if hasles(s)
+    if hasles(A)
 
       S = sqrt(2*(txx[i]^2 + tyy[i]^2 +(-txx[i]-tyy[i])^2 + 2*(txy[i]^2 + txz[i]^2 + tyz[i]^2)))
       νt = α*S
 
-      if is_Smagorinsky(s.lesmodel)
+      if is_Smagorinsky(A)
         txx[i] *= νt
         txy[i] *= νt
         txz[i] *= νt
         tyy[i] *= νt
         tyz[i] *= νt
-      elseif is_SandP(s.lesmodel)
+      elseif is_SandP(A)
         pxx = ωy[i]*txz[i] - ωz[i]*txy[i]
         #pxy = (-1/2)*ωx[i]*txz[i] + (1/2)*ωz[i]*txx[i] - ((-1/2)*ωy[i]*tyz[i] + (1/2)*ωz[i]*tyy[i])
         pxy = 0.5*(-ωx[i]*txz[i] + ωz[i]*txx[i] + ωy[i]*tyz[i] - ωz[i]*tyy[i])
@@ -182,11 +182,11 @@ end
     end
 
     if haspassivescalar(A) || hasdensity(A)
-      ωx[i] = ux[i]*ρ[i]
-      ωy[i] = uy[i]*ρ[i]
-      ωz[i] = uz[i]*ρ[i]
+      ωx[i] = -ux[i]*ρ[i]
+      ωy[i] = -uy[i]*ρ[i]
+      ωz[i] = -uz[i]*ρ[i]
 
-      if scalarmodel(s.lesmodel) === EddyDiffusion
+      if hasles(A)
         ωx[i] += νt*gradrhox[i]
         ωy[i] += νt*gradrhoy[i]
         ωz[i] += νt*gradrhoz[i]
