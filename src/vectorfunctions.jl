@@ -84,39 +84,25 @@ end
   end
 end
 
-function scalar_advection!(out::VectorField,scalar::AbstractArray,v::VectorField,s::AbstractSimulation)
-
-  _scalar_advection!(out.rx,parent(real(scalar)),v.rx,s)
-  _scalar_advection!(out.ry,parent(real(scalar)),v.ry,s)
-  _scalar_advection!(out.rz,parent(real(scalar)),v.rz,s)
-
-end
-
-@par function _scalar_advection!(out::AbstractArray{Float64,3},scalar::AbstractArray{Float64,3},v::AbstractArray{Float64,3},s::@par(AbstractSimulation))
-  @mthreads for i in 1:Lrs
-      @fastmath @inbounds out[i] = scalar[i]*v[i]
-  end
-end
-
 @par function div!(out::AbstractArray{Complex128,3},ux,uy,uz,w,mdρdz::Real, s::@par(AbstractSimulation))
-  mim::Complex128 = -im
   @mthreads for k in Kzr
     for y in Kyr, j in y
       @fastmath @inbounds @msimd for i in 1:(Kxr[k][j])
        # out[i,j,k] = mim*(kx[i]*ux[i,j,k] + ky[j]*uy[i,j,k] + kz[k]*uz[i,j,k]) + mdœÅdz*w[i,j,k]
-        out[i,j,k] = muladd(mim,muladd(kx[i], ux[i,j,k], muladd(ky[j], uy[i,j,k], kz[k]*uz[i,j,k])), mdρdz*w[i,j,k])
+        out[i,j,k] = muladd(im,muladd(kx[i], ux[i,j,k], muladd(ky[j], uy[i,j,k], kz[k]*uz[i,j,k])), mdρdz*w[i,j,k])
       end
     end
   end
 end
 
+div!(out::AbstractArray{<:Complex,3},u::VectorField,s) = div!(out,u.cx,u.cy,u.cz,s)
+
 @par function div!(out::AbstractArray{Complex128,3},ux,uy,uz, s::@par(AbstractSimulation))
-  mim::Complex128 = -im
   @mthreads for k in Kzr
     for y in Kyr, j in y
       @fastmath @inbounds @msimd for i in 1:(Kxr[k][j])
         #out[i,j,k] = -im*(kx[i]*ux[i,j,k] + ky[j]*uy[i,j,k] + kz[k]*uz[i,j,k])
-        out[i,j,k] = mim*muladd(kx[i], ux[i,j,k], muladd(ky[j], uy[i,j,k], kz[k]*uz[i,j,k]))
+        out[i,j,k] = im*muladd(kx[i], ux[i,j,k], muladd(ky[j], uy[i,j,k], kz[k]*uz[i,j,k]))
       end
     end
   end
