@@ -154,6 +154,8 @@ abstract type AbstractDensityStratification{TT,α,dρdz,g,Gdirec} end
   diffusivity(a::Type{T}) where {TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{TT,α,dρdz,g,Gdirec}} = 
     α
   @inline diffusivity(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = diffusivity(typeof(a))
+  @inline @par diffusivity(s::Type{T}) where {T<:@par(AbstractSimulation)} = diffusivity(DensityStratificationType)
+  @inline diffusivity(s::AbstractSimulation) = diffusivity(typeof(s))
 
   meangradient(a::Type{T}) where {TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{TT,α,dρdz,g,Gdirec}} = 
     dρdz
@@ -162,6 +164,8 @@ abstract type AbstractDensityStratification{TT,α,dρdz,g,Gdirec} end
   gravity(a::Type{T}) where {TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{TT,α,dρdz,g,Gdirec}} = 
     g
   @inline gravity(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = gravity(typeof(a))
+  @inline @par gravity(s::Type{T}) where {T<:@par(AbstractSimulation)} = gravity(DensityStratificationType)
+  @inline gravity(s::AbstractSimulation) = gravity(typeof(s))
 
   graddir(a::Type{T}) where {TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{TT,α,dρdz,g,Gdirec}} = 
     Gdirec
@@ -192,14 +196,17 @@ struct BoussinesqApproximation{TTimeStep, α #=Difusitivity = ν/Pr =#,
   pbs::FFTW.rFFTWPlan{Complex{Float64},1,true,3}
   ρrhs::PaddedArray{Float64,3,false}
   timestep::TTimeStep
+  reduction::Vector{Float64}
 
-  function BoussinesqApproximation{TT,α,dρdz,g,Gdirec}(ρ,timestep) where {TT,α,dρdz,g,Gdirec}
+  function BoussinesqApproximation{TT,α,dρdz,g,Gdirec}(ρ,timestep,tr) where {TT,α,dρdz,g,Gdirec}
     ρrhs = similar(ρ)
     info("Calculating FFTW in-place forward plan for scalar field")
     ps = plan_rfft!(ρrhs,flags=FFTW.MEASURE)
     info("Calculating FFTW in-place backward plan for scalar field")
     pbs = plan_brfft!(ρrhs,flags=FFTW.MEASURE) 
-    return new{TT,α,dρdz,g,Gdirec}(ρ,ps,pbs,ρrhs,timestep)
+
+    reduction = zeros(tr ? Threads.nthreads() : 1)
+    return new{TT,α,dρdz,g,Gdirec}(ρ,ps,pbs,ρrhs,timestep,reduction)
   end
 end 
 
@@ -493,7 +500,7 @@ function parameters(d::Dict)
     else
       Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr)
     end
-    densitytype = BoussinesqApproximation{typeof(densitytimestep),α,dρdz,g,gdir}(rho,densitytimestep)
+    densitytype = BoussinesqApproximation{typeof(densitytimestep),α,dρdz,g,gdir}(rho,densitytimestep,tr)
 
   else
     densitytype = NoDensityStratification()

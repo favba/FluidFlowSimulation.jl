@@ -8,6 +8,7 @@ end
 @par function calculate_rhs!(s::A) where {A<:@par(AbstractSimulation)}
   fourierspacep1!(s)
   realspace!(s)
+  has_variable_timestep(s) && set_dt!(s)
   fourierspacep2!(s)
   return nothing
 end
@@ -126,6 +127,13 @@ end
   outx = s.rhs.rx
   outy = s.rhs.ry
   outz = s.rhs.rz
+  if has_variable_timestep(A)
+    umaxhere = 0.0
+    umax = 0.0
+    if hasdensity(A)
+      ρmax = 0.0
+    end
+  end
   if haspassivescalar(A)
     ρ = parent(real(s.passivescalar.ρ))
   end
@@ -155,6 +163,12 @@ end
     outx[i] = uy[i]*ωz[i] - uz[i]*ωy[i]
     outy[i] = uz[i]*ωx[i] - ux[i]*ωz[i]
     outz[i] = ux[i]*ωy[i] - uy[i]*ωx[i]
+    
+    if has_variable_timestep(A)
+      umaxhere = ifelse(abs(ux[i])>abs(uy[i]),abs(ux[i]),abs(uy[i]))
+      umaxhere = ifelse(umaxhere>abs(uz[i]),umaxhere,abs(uz[i]))
+      umax = ifelse(umaxhere>umax,umaxhere,umax)
+    end
 
     if hasles(A)
 
@@ -190,7 +204,9 @@ end
       ωx[i] = -ux[i]*ρ[i]
       ωy[i] = -uy[i]*ρ[i]
       ωz[i] = -uz[i]*ρ[i]
-
+      if has_variable_timestep(A)
+        ρmax = ifelse(ρmax > abs(ρ[i]),ρmax,abs(ρ[i]))
+      end
       if hasles(A)
         ωx[i] += νt*gradrhox[i]
         ωy[i] += νt*gradrhoy[i]
@@ -199,6 +215,12 @@ end
     end
 
   end
+  
+  if has_variable_timestep(A) 
+    s.reduction[j] = umax
+    hasdensity(A) && (s.densitystratification.reduction[j] = ρmax)
+  end
+
   return nothing
 end
 

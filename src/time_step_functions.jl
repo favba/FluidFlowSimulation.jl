@@ -38,10 +38,8 @@
     set_dt!(t.z,dt)
   end
 
-  get_dt(t::Type{VectorTimeStep{cfl,Tx,Ty,Tz}}) where {cfl,Tx,Ty,Tz} = get_dt(Tx)
-  @inline get_dt(t::A) where {A<:VectorTimeStep} = get_dt(A)
-  @inline @par get_dt(s::Type{A}) where {A<:@par(AbstractSimulation)} = get_dt(VelocityTimeStepType)
-  @inline get_dt(s::A) where {A<:AbstractSimulation} = get_dt(A)
+  @inline get_dt(t::A) where {A<:VectorTimeStep} = get_dt(t.x)
+  @inline get_dt(s::A) where {A<:AbstractSimulation} = get_dt(s.timestep)
 
   has_variable_timestep(t::Type{VectorTimeStep{cfl,Tx,Ty,Tz}}) where {cfl,Tx,Ty,Tz} = has_variable_timestep(Tx)
   @inline has_variable_timestep(t::VectorTimeStep) = has_variable_timestep(typeof(t))
@@ -64,25 +62,13 @@
     end
   end
 
-  # function (::Type{T})(Kxr,Kyr,Kzr) where {N,T<:AbstractScalarTimeStep{N}}
-  #   if N === 0
-  #     return T()
-  #   else
-  #     arrays = Array{Float64,3}[]
-  #     for i = 1:N
-  #       push!(arrays,zeros(2Kxr[1][1],length(Kyr[1])+length(Kyr[2]),length(Kzr)))
-  #     end
-  #   end
-  #   return T(arrays...)
-  # end
-
-  #@inline function (f::(T where {T<:AbstractScalarTimeStep{N} where N}))(ρ::PaddedArray,rhs::PaddedArray,dt::Real,s::AbstractSimulation)
-  #  return f(parent(real(ρ)),parent(real(rhs)),dt,s)
-  #end
-  #
-
   struct Euller{Adptative,initdt} <: AbstractScalarTimeStep{Adptative,initdt,0}
-    dt::Ref{Float64} 
+    dt::Base.RefValue{Float64} 
+  end
+
+  function initialize!(t::Euller,rhs,s)
+    set_dt!(t,get_dt(s))
+    return nothing
   end
   
   get_dt(t::Euller{true,idt}) where {idt} = getindex(t.dt)
@@ -94,12 +80,12 @@
   struct Adams_Bashforth3rdO{Adaptative,initdt} <: AbstractScalarTimeStep{Adaptative,initdt,2}
     fm1::Array{Float64,3} #Store latest step
     fm2::Array{Float64,3} #Store 2 steps before
-    At::Ref{Float64} # 23*dt/12 for constant time stepping
-    Bt::Ref{Float64} # -16*dt/12 for constant time stepping
-    Ct::Ref{Float64} # 5*dt/12 for constant time stepping
-    dt::Ref{Float64}
-    dt2::Ref{Float64}
-    dt3::Ref{Float64}
+    At::Base.RefValue{Float64} # 23*dt/12 for constant time stepping
+    Bt::Base.RefValue{Float64} # -16*dt/12 for constant time stepping
+    Ct::Base.RefValue{Float64} # 5*dt/12 for constant time stepping
+    dt::Base.RefValue{Float64}
+    dt2::Base.RefValue{Float64}
+    dt3::Base.RefValue{Float64}
   end
 
   function Adams_Bashforth3rdO{adp,indt}(Kxr,Kyr,Kzr) where {adp,indt}
@@ -114,7 +100,16 @@
     return Adams_Bashforth3rdO{adp,indt}(fm1,fm2,at,bt,ct,dt,dt2,dt3)
   end
 
-  get_dt(t::Union{Adams_Bashforth3rdO{true,idt},Type{Adams_Bashforth3rdO{true,idt}}}) where {idt} = getindex(t.dt)
+  get_dt(t::Adams_Bashforth3rdO{true,idt}) where {idt} = getindex(t.dt)
+
+  function initialize!(t::Adams_Bashforth3rdO,rhs::AbstractArray,s::AbstractSimulation)
+    mycopy!(t.fm1,rhs,s) 
+    @inbounds copy!(t.fm2, t.fm1) 
+    setindex!(t.dt,get_dt(s))
+    setindex!(t.dt2,t.dt[])
+    setindex!(t.dt3,t.dt[])
+    return nothing
+  end
 
   function set_dt!(t::Adams_Bashforth3rdO{true,idt},dt::Real) where {idt} 
     setindex!(t.dt3,t.dt2[])
@@ -161,28 +156,32 @@
   get_Ct(t::Type{Adams_Bashforth3rdO{false,idt}}) where {idt} = 5*idt/12
   @inline get_Ct(t::A) where {indt,A<:Adams_Bashforth3rdO{false,indt}} = get_Ct(A)
 
-  @generated function initialize!(t::AbstractScalarTimeStep{N},rhs,s::AbstractSimulation) where N
-    if N === 0 
-      return :(nothing)
-    elseif N === 1
-      return :(mycopy!(t.fm1,rhs,s); return nothing)
-    else
-      blk= Expr(:block)
-      push!(blk.args,:(mycopy!(t.fm1,rhs,s)))
-      for i=2:N
-        fmn = Symbol("fm",i) 
-        fmnm1 = Symbol("fm",i-1) 
-        push!(blk.args,:(@inbounds copy!(t.$(fmn), t.$(fmnm1))))
-      end
-      push!(blk.args,:(nothing))
-      return blk
-    end
-  end
-
 #Struct End
 
 
 # Implementations
+
+  @par function set_dt!(s::@par(AbstractSimulation))
+    umax = maximum(s.reduction)
+    dx = 2π*Ly/Ny
+    cfl = get_cfl(s)
+    νt = nu(s)
+    newdt = min(cfl * dx/umax, cfl * (2νt/umax^2)/10)
+    if hasdensity(s) 
+      ρmax = maximum(s.densitystratification.reduction)
+      g = abs(gravity(s))
+      k = diffusivity(s)
+      newdt = min(newdt, 
+        cfl * sqrt(dx/(ρmax*g))/10,
+        cfl * (dx^2)/(k)/10, 
+        cfl * (((ρmax*g)^(-2/3))*(2k)^(1/3))/10,
+        cfl * (2k/umax^2)/10)
+      set_dt!(s.densitystratification.timestep,newdt)
+    end
+    set_dt!(s.timestep,newdt)
+    haspassivescalar(s) && set_dt!(s.passivescalar.timestep,newdt)
+    return nothing
+  end
 
 # Euller Start
 
