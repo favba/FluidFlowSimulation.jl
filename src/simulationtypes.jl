@@ -258,9 +258,10 @@ struct Smagorinsky{c,Δ,ScalarType<:AbstractLESScalar,TensorType} <: EddyViscosi
   pt::FFTW.rFFTWPlan{Float64,-1,true,4}
   pbt::FFTW.rFFTWPlan{Complex{Float64},1,true,4}
   scalar::ScalarType
+  reduction::Vector{Float64}
 end
 
-function Smagorinsky(c::Real,Δ::Real,scalar::Bool,dim::NTuple{3,Integer}) 
+function Smagorinsky(c::Real,Δ::Real,scalar::Bool,dim::NTuple{3,Integer},tr) 
   data = SymmetricTracelessTensor(dim)
   info("Calculating FFTW in-place forward plan for symmetric traceless tensor field")
   pt = plan_rfft!(data,1:3,flags=FFTW.MEASURE)
@@ -268,7 +269,8 @@ function Smagorinsky(c::Real,Δ::Real,scalar::Bool,dim::NTuple{3,Integer})
   pbt = plan_brfft!(data,1:3,flags=FFTW.MEASURE)
   fill!(data,0)
   scalart = scalar ? EddyDiffusion(dim...) : NoLESScalar()
-  return Smagorinsky{c,Δ,typeof(scalart),typeof(data)}(data,pt,pbt,scalart)
+  reduction = zeros(tr ? Threads.nthreads() : 1)
+  return Smagorinsky{c,Δ,typeof(scalart),typeof(data)}(data,pt,pbt,scalart,reduction)
 end
 
 Smagorinsky(c::Real,Δ::Real,dim::NTuple{3,Integer}) = Smagorinsky(c,Δ,false,dim)
@@ -511,7 +513,7 @@ function parameters(d::Dict)
       c = haskey(d,:smagorinskyConstant) ? Float64(eval(parse(d[:smagorinskyConstant]))) : 0.17 
       Δ = haskey(d,:filterWidth) ? Float64(eval(parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
       lesscalar = (haskey(d,:passiveScalar) | haskey(d,:densityStratification)) ? true : false
-      lestype = Smagorinsky(c,Δ,lesscalar,(nx,ny,nz))
+      lestype = Smagorinsky(c,Δ,lesscalar,(nx,ny,nz),tr)
     elseif d[:lesModel] == "Smagorinsky+P"
       c = haskey(d,:smagorinskyConstant) ? Float64(eval(parse(d[:smagorinskyConstant]))) : 0.17 
       cb = haskey(d,:pTensorConstant) ? Float64(eval(parse(d[:pTensorConstant]))) : 0.17 

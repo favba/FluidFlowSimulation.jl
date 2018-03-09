@@ -133,6 +133,9 @@ end
     if hasdensity(A)
       ρmax = 0.0
     end
+    if hasles(A)
+      numax = 0.0
+    end
   end
   if haspassivescalar(A)
     ρ = parent(real(s.passivescalar.ρ))
@@ -174,7 +177,9 @@ end
 
       S = sqrt(2*(txx[i]^2 + tyy[i]^2 +(-txx[i]-tyy[i])^2 + 2*(txy[i]^2 + txz[i]^2 + tyz[i]^2)))
       νt = α*S
-
+      if has_variable_timestep(A)
+        numax = ifelse(numax>νt, numax, νt)
+      end
       if is_Smagorinsky(A)
         txx[i] *= νt
         txy[i] *= νt
@@ -219,6 +224,9 @@ end
   if has_variable_timestep(A) 
     s.reduction[j] = umax
     hasdensity(A) && (s.densitystratification.reduction[j] = ρmax)
+    if hasles(A)
+      s.lesmodel.reduction[j] = numax
+    end
   end
 
   return nothing
