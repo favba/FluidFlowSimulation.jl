@@ -166,20 +166,20 @@
     dx = 2π*Ly/Ny
     cfl = get_cfl(s)
     νt = nu(s)
-    newdt = min(cfl * dx/umax, cfl * (2νt/umax^2)/10)
+    newdt = min(cfl * dx/umax, cfl * (2νt/umax^2)/2)
     if hasles(s)
       nut_u_min = minimum(s.lesmodel.reduction)
-      newdt = min(newdt,cfl*nut_u_min)
+      newdt = min(newdt,cfl*nut_u_min/2)
     end
     if hasdensity(s) 
       ρmax = maximum(s.densitystratification.reduction)
       g = abs(gravity(s))
       k = diffusivity(s)
       newdt = min(newdt, 
-        cfl * sqrt(dx/(ρmax*g))/10,
-        cfl * (dx^2)/(k)/10, 
-        cfl * (((ρmax*g)^(-2/3))*(2k)^(1/3))/10,
-        cfl * (2k/umax^2)/10)
+        cfl * sqrt(dx/(ρmax*g))/2,
+        cfl * (dx^2)/(k)/2, 
+        cfl * (((ρmax*g)^(-2/3))*(2k)^(1/3))/2,
+        cfl * (2k/umax^2)/2)
       set_dt!(s.densitystratification.timestep,newdt)
     end
     set_dt!(s.timestep,newdt)
