@@ -4,11 +4,14 @@ export run_simulation, advance_in_time!, VectorField, parameters, readglobal
 
 import FFTW
 using InplaceRealFFT
+
 function Base.unsafe_getindex(A::Tuple, I)
   Base.@_inline_meta
   @inbounds r = getindex(A, I)
   r
 end
+
+Base.eltype(x::Type{<:Ref{T}}) where {T} = @isdefined(T) ? T : Any
 
 include("ReadGlobal.jl")
 include("macros.jl")
