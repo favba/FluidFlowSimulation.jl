@@ -168,10 +168,10 @@
     #νt = nu(s)
     newdt =cfl * dx/umax
     #newdt = min(newdt, cfl * (2νt/umax^2)/2)
-    #if hasles(s)
-      #nut_max = maximum(s.lesmodel.reduction)
-      #newdt = min(newdt,cfl*((dx^2)/nut_max)/2)
-    #end
+    if hasles(s)
+      nut_max = maximum(s.lesmodel.reduction)
+      newdt = min(newdt,cfl*((dx^2)/nut_max)/2)
+    end
     if hasdensity(s) 
       #ρmax = maximum(s.densitystratification.reduction)
       #g = abs(gravity(s))
