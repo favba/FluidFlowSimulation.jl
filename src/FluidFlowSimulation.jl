@@ -11,8 +11,6 @@ function Base.unsafe_getindex(A::Tuple, I)
   r
 end
 
-Base.eltype(x::Type{<:Ref{T}}) where {T} = @isdefined(T) ? T : Any
-
 include("ReadGlobal.jl")
 include("macros.jl")
 include("fieldtypes.jl")
