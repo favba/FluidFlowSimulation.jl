@@ -173,11 +173,11 @@
       newdt = min(newdt,cfl*((dx^2)/nut_max)/2)
     end
     if hasdensity(s) 
-      #ρmax = maximum(s.densitystratification.reduction)
-      #g = abs(gravity(s))
+      ρmax = maximum(s.densitystratification.reduction)
+      g = abs(gravity(s))
       k = diffusivity(s)
       newdt = min(newdt, 
-        #cfl * sqrt(dx/(ρmax*g))/2,
+        cfl * sqrt(dx/(ρmax*g))/2,
         cfl * (dx^2)/(k)/2)#, 
         #cfl * (((ρmax*g)^(-2/3))*(2k)^(1/3))/2,
         #cfl * (2k/umax^2)/2)
