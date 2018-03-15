@@ -135,8 +135,8 @@ end
     end
     if hasles(A)
       vis = nu(s)
-      numin = 1000000000000.
-      ep = eps()
+      numax = 0.
+      # ep = eps()
     end
   end
   if haspassivescalar(A)
@@ -180,8 +180,8 @@ end
       S = sqrt(2*(txx[i]^2 + tyy[i]^2 +(-txx[i]-tyy[i])^2 + 2*(txy[i]^2 + txz[i]^2 + tyz[i]^2)))
       νt = α*S
       if has_variable_timestep(A)
-        nnu = 2*(vis+νt)/(umaxhere+ep)^2
-        numin = ifelse(numin < nnu, numin, nnu)
+        nnu = (vis+νt)
+        numax = ifelse(numax > nnu, numax, nnu)
       end
       if is_Smagorinsky(A)
         txx[i] *= νt
@@ -228,7 +228,7 @@ end
     s.reduction[j] = umax
     hasdensity(A) && (s.densitystratification.reduction[j] = ρmax)
     if hasles(A)
-      s.lesmodel.reduction[j] = numin
+      s.lesmodel.reduction[j] = numax
     end
   end
 

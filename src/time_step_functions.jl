@@ -168,8 +168,8 @@
     νt = nu(s)
     newdt = min(cfl * dx/umax, cfl * (2νt/umax^2)/2)
     if hasles(s)
-      nut_u_min = minimum(s.lesmodel.reduction)
-      newdt = min(newdt,cfl*nut_u_min/2)
+      nut_max = maximum(s.lesmodel.reduction)
+      newdt = min(newdt,cfl*((dx^2)/nut_max)/2)
     end
     if hasdensity(s) 
       ρmax = maximum(s.densitystratification.reduction)
