@@ -135,8 +135,8 @@
     dt2 = t.dt2[]
     dt3 = t.dt3[]
 
-    Bt= -dt*dt*(2*dt + 3*dt2 + 3*dt3)/(6*dt2*dt3*(dt+dt2))
-    Bt*=-(dt+dt2)
+    Bt = -dt*dt*(2*dt + 3*dt2 + 3*dt3)/(6*dt2*dt3*(dt+dt2))
+    Bt *= (dt+dt2)
     return Bt
   end
 
