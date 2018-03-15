@@ -70,7 +70,7 @@ end
   end
 end
 
-Base.complex(a::AbstractPaddedArray) = InplaceRealFFT.unsafe_complex_view(a)
+Base.complex(a::AbstractPaddedArray) = InplaceRealFFT.complex_view(a)
 struct VectorField{A<:AbstractPaddedArray{Float64, 4},SR,SC,LR,LC} <: AbstractPaddedArray{Float64,4}
   data::A
   cx::StaticView{SC,LC,A,Complex{Float64},3,1}
@@ -106,7 +106,7 @@ function VectorField(ux::AbstractString,uy::AbstractString,uz::AbstractString,nx
 end
 
 @inline Base.real(V::VectorField) = real(V.data)
-@inline InplaceRealFFT.unsafe_complex_view(V::VectorField) = InplaceRealFFT.unsafe_complex_view(V.data) 
+@inline InplaceRealFFT.complex_view(V::VectorField) = InplaceRealFFT.complex_view(V.data) 
 Base.similar(V::VectorField{A}) where {A} = VectorField{A}(similar(V.data))
 Base.copy(V::VectorField{A}) where {A} = VectorField{A}(copy(V.data))
 
@@ -153,4 +153,4 @@ SymmetricTracelessTensor(nx::Integer,ny::Integer,nz::Integer) = SymmetricTracele
 SymmetricTracelessTensor(dim::NTuple{3,Integer}) = SymmetricTracelessTensor(dim...)
 
 @inline Base.real(T::SymmetricTracelessTensor) = real(T.data)
-@inline InplaceRealFFT.unsafe_complex_view(T::SymmetricTracelessTensor) = InplaceRealFFT.unsafe_complex_view(T.data) 
+@inline InplaceRealFFT.complex_view(T::SymmetricTracelessTensor) = InplaceRealFFT.complex_view(T.data) 
