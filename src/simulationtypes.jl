@@ -447,10 +447,10 @@ function parameters(d::Dict)
       end
     end
   end
-  kxr = (reinterpret(NTuple{ny,UInt16},xr,(nz,))...)
-  kx = (kxp...)
-  ky = (kyp...)
-  kz = (kzp...)
+  kxr = (reinterpret(NTuple{ny,UInt16},xr,(nz,))...,)
+  kx = (kxp...,)
+  ky = (kyp...,)
+  kz = (kzp...,)
 
   #kxr = 1:(findfirst(x->x^2>cutoff,kx)-1)
   wly = (findfirst(x->x^2>cutoff,ky)-1)
@@ -458,7 +458,7 @@ function parameters(d::Dict)
   wlz = (findfirst(x->x^2>cutoff,kz)-1)
   rz = vcat(1:wlz,(nz-wlz+2):nz)
   #rz = vcat(1:(div(nz,3)+1),(nz-div(nz,3)+1):nz)
-  kzr = (rz...)
+  kzr = (rz...,)
   
   isfile("fftw_wisdom") && FFTW.import_wisdom("fftw_wisdom")
   
@@ -538,7 +538,7 @@ function parameters(d::Dict)
       forcey = PaddedArray((nx,ny,nz))
       Zf = calculate_Zf(kf,kh)
       if !isfile("targSpectrum.dat")
-        forcingtype = RfForcing{TF, alphac, kf, maxdk2D, (kh...),Zf}(Ef,Em,R,factor,forcex,forcey,true)
+        forcingtype = RfForcing{TF, alphac, kf, maxdk2D, (kh...,),Zf}(Ef,Em,R,factor,forcex,forcey,true)
       else
         #todo read spectrum.dat
       end

@@ -84,7 +84,7 @@ end
   end
 end
 
-@par function div!(out::AbstractArray{Complex128,3},ux,uy,uz,w,mdρdz::Real, s::@par(AbstractSimulation))
+@par function div!(out::AbstractArray{Complex{Float64},3},ux,uy,uz,w,mdρdz::Real, s::@par(AbstractSimulation))
   @mthreads for k in Kzr
     for y in Kyr, j in y
       @fastmath @inbounds @msimd for i in 1:(Kxr[k][j])
@@ -97,7 +97,7 @@ end
 
 div!(out::AbstractArray{<:Complex,3},u::VectorField,s) = div!(out,u.cx,u.cy,u.cz,s)
 
-@par function div!(out::AbstractArray{Complex128,3},ux,uy,uz, s::@par(AbstractSimulation))
+@par function div!(out::AbstractArray{Complex{Float64},3},ux,uy,uz, s::@par(AbstractSimulation))
   @mthreads for k in Kzr
     for y in Kyr, j in y
       @fastmath @inbounds @msimd for i in 1:(Kxr[k][j])
