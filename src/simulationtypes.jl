@@ -59,8 +59,10 @@ end
 
 @par nu(s::Type{T}) where {T<:@par(AbstractSimulation)} = ν
 @inline nu(s::AbstractSimulation) = nu(typeof(s))
+
 @par ngridpoints(s::Type{T}) where {T<:@par(AbstractSimulation)} = (Nrx,Ny,Nz)
 @inline ngridpoints(s::AbstractSimulation) = ngridpoints(typeof(s))
+
 @par domainlength(s::Type{T}) where {T<:@par(AbstractSimulation)} = (Lx,Ly,Lz)
 @inline domainlength(s::AbstractSimulation) = domainlength(typeof(s))
 
@@ -468,8 +470,10 @@ function parameters(d::Dict)
   idt = haskey(d,:dt) ? Float64(eval(parse(d[:dt]))) : 0.0
   vtimestep = if integrator === :Euller
       VectorTimeStep{cfl}(Euller{variableTimeStep,idt}(Ref(idt)),Euller{variableTimeStep,idt}(Ref(idt)),Euller{variableTimeStep,idt}(Ref(idt)))
-    else
+  elseif integrator === :Adams_Bashforth3rdO
       VectorTimeStep{cfl}(Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr),Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr),Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr))
+  else
+      VectorTimeStep{cfl}(ETD3rdO{variableTimeStep,idt,false}(kxr,kyr,kzr,nx,ny,nz),ETD3rdO{variableTimeStep,idt,false}(kxr,kyr,kzr,nx,ny,nz),ETD3rdO{variableTimeStep,idt,false}(kxr,kyr,kzr,ncx,ny,nz))
   end
 
   if haskey(d,:passiveScalar)
@@ -480,8 +484,10 @@ function parameters(d::Dict)
     scalardir = haskey(d,:scalarDirection) ? Symbol(d[:scalarDirection]) : :z
     scalartimestep = if integrator === :Euller
         Euller{variableTimeStep,idt}(Ref(idt))
-      else
+      elseif integrator === :Adams_Bashforth3rdO
         Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr)
+      else
+        ETD3rdO{variableTimeStep,idt,false}(kxr,kyr,kzr,ncx,ny,nz)
       end 
     scalartype = PassiveScalar{typeof(scalartimestep),α,dρdz,scalardir}(rho,scalartimestep)
   else
@@ -499,9 +505,11 @@ function parameters(d::Dict)
     gdir = haskey(d,:gravityDirection) ? Symbol(d[:gravityDirection]) : :z
     densitytimestep = if integrator === :Euller
       Euller{variableTimeStep,idt}(Ref(idt))
-    else
+    elseif integrator === :Adams_Bashforth3rdO
       Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr)
-    end
+    else
+      ETD3rdO{variableTimeStep,idt,false}(kxr,kyr,kzr,ncx,ny,nz)
+    end 
     densitytype = BoussinesqApproximation{typeof(densitytimestep),α,dρdz,g,gdir}(rho,densitytimestep,tr)
 
   else

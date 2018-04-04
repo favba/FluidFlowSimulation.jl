@@ -236,7 +236,7 @@ end
 end
 
 @par function fourierspacep2!(s::A) where {A<:@par(AbstractSimulation)}
-  add_viscosity!(s.rhs,s.u,ν,s)
+  is_implicit(typeof(s.timestep)) || add_viscosity!(s.rhs,s.u,ν,s)
   hasles(s) && add_residual_tensor!(s.rhs,s.lesmodel.tau,s)
   if hasdensity(A)
     Gdirec = graddir(s.densitystratification)
@@ -247,12 +247,12 @@ end
   if haspassivescalar(A)
     gdir = graddir(s.passivescalar) === :x ? s.u.cx : graddir(s.passivescalar) === :y ? s.u.cy : s.u.cz 
     div!(complex(s.passivescalar.ρrhs), s.aux.cx, s.aux.cy, s.aux.cz, gdir, -meangradient(s.passivescalar), s)
-    add_scalar_difusion!(complex(s.passivescalar.ρrhs),complex(s.passivescalar.ρ),diffusivity(s.passivescalar),s)
+    is_implicit(typeof(s.passivescalar.timestep)) || add_scalar_difusion!(complex(s.passivescalar.ρrhs),complex(s.passivescalar.ρ),diffusivity(s.passivescalar),s)
   end
   if hasdensity(A)
     gdir = graddir(s.densitystratification) === :x ? s.u.cx : graddir(s.densitystratification) === :y ? s.u.cy : s.u.cz 
     div!(complex(s.densitystratification.ρrhs), s.aux.cx, s.aux.cy, s.aux.cz, gdir, -meangradient(s.densitystratification), s)
-    add_scalar_difusion!(complex(s.densitystratification.ρrhs),complex(s.densitystratification.ρ),diffusivity(s.densitystratification),s)
+    is_implicit(typeof(s.densitystratification.timestep)) || add_scalar_difusion!(complex(s.densitystratification.ρrhs),complex(s.densitystratification.ρ),diffusivity(s.densitystratification),s)
   end
   return nothing
 end
@@ -355,6 +355,6 @@ end
 
 @par function time_step!(s::A) where {A<:@par(AbstractSimulation)}
   s.timestep(s.u,s.rhs,s)
-  haspassivescalar(s) && s.passivescalar.timestep(parent(real(s.passivescalar.ρ)),parent(real(s.passivescalar.ρrhs)),s)
-  hasdensity(s) && s.densitystratification.timestep(parent(real(s.densitystratification.ρ)),parent(real(s.densitystratification.ρrhs)),s)
+  haspassivescalar(s) && s.passivescalar.timestep(s.passivescalar.ρ,s.passivescalar.ρrhs,s)
+  hasdensity(s) && s.densitystratification.timestep(s.densitystratification.ρ,s.densitystratification.ρrhs,s)
 end
