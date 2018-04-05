@@ -8,22 +8,23 @@ Simulation will encapsule different structs for:
 #Traits
 @par haspassivescalar(s::Type{T}) where {T<:@par(AbstractSimulation)} =
   PassiveScalarType !== NoPassiveScalar
-
 haspassivescalar(s::AbstractSimulation) = haspassivescalar(typeof(s))
 
 @par hasdensity(s::Type{T}) where {T<:@par(AbstractSimulation)}  =
   DensityStratificationType !== NoDensityStratification
-
 hasdensity(s::AbstractSimulation) = hasdensity(typeof(s))
 
 @par hasles(s::Type{T}) where {T<:@par(AbstractSimulation)}  =
   LESModelType !== NoLESModel
-
 hasles(s::AbstractSimulation) = hasles(typeof(s))
+
 @par hasforcing(s::Type{T}) where {T<:@par(AbstractSimulation)}  =
   ForcingType !== NoForcing
-
 hasforcing(s::AbstractSimulation) = hasforcing(typeof(s))
+
+@par hashyperviscosity(s::Type{T}) where {T<:@par(AbstractSimulation)} =
+  HyperViscosityType !== NoHyperViscosity
+hashyperviscosity(s::AbstractSimulation) = hashyperviscosity(typeof(s))
 
 struct @par(Simulation) <: @par(AbstractSimulation)
   u::VectorField{PaddedArray{Float64,4,false},Tuple{Nrrx,Ny,Nz},Tuple{Nx,Ny,Nz},Lrs,Lcs}
@@ -38,8 +39,9 @@ struct @par(Simulation) <: @par(AbstractSimulation)
   densitystratification::DensityStratificationType
   lesmodel::LESModelType
   forcing::ForcingType
+  hyperviscosity::HyperViscosityType
   
-  @par function @par(Simulation)(u::VectorField{PaddedArray{Float64,4,false}},dealias::BitArray{3},timestep,passivescalar,densitystratification,lesmodel,forcing) 
+  @par function @par(Simulation)(u::VectorField{PaddedArray{Float64,4,false}},dealias::BitArray{3},timestep,passivescalar,densitystratification,lesmodel,forcing,hv) 
 
     rhs = similar(u)
     aux = similar(u)
@@ -52,19 +54,25 @@ struct @par(Simulation) <: @par(AbstractSimulation)
 
     reduction = zeros(Thr ? Threads.nthreads() : 1)
 
-    return @par(new)(u,rhs,aux,p,pb,reduction,dealias,timestep,passivescalar,densitystratification,lesmodel,forcing)
+    return @par(new)(u,rhs,aux,p,pb,reduction,dealias,timestep,passivescalar,densitystratification,lesmodel,forcing,hv)
   end
 
 end
 
-@par nu(s::Type{T}) where {T<:@par(AbstractSimulation)} = ν
+@inline @par nu(s::Type{T}) where {T<:@par(AbstractSimulation)} = ν
 @inline nu(s::AbstractSimulation) = nu(typeof(s))
 
-@par ngridpoints(s::Type{T}) where {T<:@par(AbstractSimulation)} = (Nrx,Ny,Nz)
+@inline @par ngridpoints(s::Type{T}) where {T<:@par(AbstractSimulation)} = (Nrx,Ny,Nz)
 @inline ngridpoints(s::AbstractSimulation) = ngridpoints(typeof(s))
 
-@par domainlength(s::Type{T}) where {T<:@par(AbstractSimulation)} = (Lx,Ly,Lz)
+@inline @par domainlength(s::Type{T}) where {T<:@par(AbstractSimulation)} = (Lx,Ly,Lz)
 @inline domainlength(s::AbstractSimulation) = domainlength(typeof(s))
+
+@inline @par nuh(s::Type{T}) where {T<:@par(AbstractSimulation)} = nuh(HyperViscosityType)
+@inline nuh(s::AbstractSimulation) = nuh(typeof(s))
+
+@inline @par get_hyperviscosity_exponent(s::Type{T}) where {T<:@par(AbstractSimulation)} = get_hyperviscosity_exponent(HyperViscosityType)
+@inline get_hyperviscosity_exponent(s::AbstractSimulation) = get_hyperviscosity_exponent(typeof(s))
 
 @par function Base.show(io::IO,s::@par(Simulation))
 smsg = """
@@ -83,10 +91,10 @@ Velocity time-stepping method: $(typeof(s.timestep.x))
 Dealias type: $(Dealias[1]) $(Dealias[2])
 Threaded: $Thr
 """
-smsg = join((smsg,msg(s.passivescalar),
-  msg(s.densitystratification),
-  msg(s.lesmodel),
-  msg(s.forcing)))
+smsg = join((smsg,msg.(getfield.(s,sim_fields))...))#msg(s.passivescalar),
+#  msg(s.densitystratification),
+#  msg(s.lesmodel),
+#  msg(s.forcing)))
 
 print(io,smsg)
 end
@@ -106,7 +114,7 @@ abstract type AbstractPassiveScalar{TT,α,dρdz,Gdirec} end
     Gdirec
   @inline graddir(a::AbstractPassiveScalar{TT,α,dρdz,Gdirec}) where {TT,α,dρdz,Gdirec} = graddir(typeof(a))
 
-  initialize!(a::AbstractPassiveScalar,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),s)
+  initialize!(a::AbstractPassiveScalar,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),diffusivity(a),s)
 
   statsheader(a::AbstractPassiveScalar) = "scalar,scalar^2,dscalardx^2,dscalardy^2,dscalardz^2"
 
@@ -174,7 +182,7 @@ abstract type AbstractDensityStratification{TT,α,dρdz,g,Gdirec} end
   @inline graddir(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = graddir(typeof(a))
 
 
-  initialize!(a::AbstractDensityStratification,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),s)
+  initialize!(a::AbstractDensityStratification,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),diffusivity(a),s)
 
   statsheader(a::AbstractDensityStratification) = "rho,rho^2,drhodx^2,drhody^3,drhodz^2"
 
@@ -212,7 +220,7 @@ struct BoussinesqApproximation{TTimeStep, α #=Difusitivity = ν/Pr =#,
   end
 end 
 
-initialize!(a::BoussinesqApproximation,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),s)
+initialize!(a::BoussinesqApproximation,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),diffusivity(a),s)
 
 msg(a::BoussinesqApproximation{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = """
 
@@ -391,6 +399,34 @@ getavgk(f::Type{RfForcing{Tf,α,Kf,MaxDk,AvgK, Zf}}) where {Tf,α,Kf,MaxDk,AvgK,
 getZf(f::Type{RfForcing{Tf,α,Kf,MaxDk,AvgK, Zf}}) where {Tf,α,Kf,MaxDk,AvgK, Zf} = Zf
 @inline getZf(f::RfForcing{Tf,α,Kf,MaxDk,AvgK, Zf}) where {Tf,α,Kf,MaxDk,AvgK, Zf} = getZf(typeof(f))
 
+# Hyper viscosity Type
+
+abstract type AbstractHyperViscosity end
+
+#statsheader(a::AbstractForcing) = ""
+
+struct NoHyperViscosity <: AbstractHyperViscosity end
+
+statsheader(a::AbstractHyperViscosity) = ""
+
+stats(a::AbstractHyperViscosity,s::AbstractSimulation) = ()
+
+msg(a::NoHyperViscosity) = "\nHyper viscosity: no hyperviscosity\n\n"
+
+@inline nuh(::Type{NoHyperViscosity}) = nothing
+@inline nuh(a::AbstractHyperViscosity) = nuh(typeof(a))
+
+@inline get_hyperviscosity_exponent(::Type{NoHyperViscosity}) = nothing
+@inline get_hyperviscosity_exponent(a::AbstractHyperViscosity) = get_hyperviscosity_exponent(typeof(a))
+
+struct HyperViscosity{νh,M} <: AbstractHyperViscosity
+end
+
+@inline nuh(::Type{<:HyperViscosity{n,M}}) where {n,M} = n
+@inline get_hyperviscosity_exponent(::Type{<:HyperViscosity{n,M}}) where {n,M} = M
+
+msg(a::HyperViscosity{nh,M}) where {nh,M} = "\nHyper viscosity: νh = $(nh), m = $(M)\n\n"
+
 # Initializan function =========================================================================================================================================================================================================
 
 function parameters(d::Dict)
@@ -473,7 +509,7 @@ function parameters(d::Dict)
   elseif integrator === :Adams_Bashforth3rdO
       VectorTimeStep{cfl}(Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr),Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr),Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr))
   else
-      VectorTimeStep{cfl}(ETD3rdO{variableTimeStep,idt,false}(kxr,kyr,kzr,nx,ny,nz),ETD3rdO{variableTimeStep,idt,false}(kxr,kyr,kzr,nx,ny,nz),ETD3rdO{variableTimeStep,idt,false}(kxr,kyr,kzr,ncx,ny,nz))
+      VectorTimeStep{cfl}(ETD3rdO{variableTimeStep,idt,haskey(d,:hyperViscosity) ? true : false}(kxr,kyr,kzr,nx,ny,nz),ETD3rdO{variableTimeStep,idt,haskey(d,:hyperViscosity) ? true : false}(kxr,kyr,kzr,nx,ny,nz),ETD3rdO{variableTimeStep,idt, haskey(d,:hyperViscosity) ? true : false}(kxr,kyr,kzr,ncx,ny,nz))
   end
 
   if haskey(d,:passiveScalar)
@@ -555,11 +591,19 @@ function parameters(d::Dict)
     forcingtype = NoForcing()
   end
 
+  if haskey(d,:hyperViscosity)
+    νh = parse(d[:hyperViscosity])
+    m = haskey(d,:hyperViscosityM) ? parse(d[:hyperViscosityM]) : 2
+    hyperviscositytype = HyperViscosity{νh,m}()
+  else
+    hyperviscositytype = NoHyperViscosity()
+  end
+
   s = Simulation{lx,ly,lz,ncx,ny,nz,lcs,lcv,2ncx,nx,lrs,lrv,ν,
       typeof(vtimestep),
-      typeof(scalartype),typeof(densitytype),typeof(lestype),typeof(forcingtype),
+      typeof(scalartype),typeof(densitytype),typeof(lestype),typeof(forcingtype),typeof(hyperviscositytype),
       (Dealiastype,cutoffr),
-      kxr,kyr,kzr,kx,ky,kz,tr,nt,b}(u,dealias,vtimestep,scalartype,densitytype,lestype,forcingtype)
+      kxr,kyr,kzr,kx,ky,kz,tr,nt,b}(u,dealias,vtimestep,scalartype,densitytype,lestype,forcingtype,hyperviscositytype)
   #
 
   FFTW.export_wisdom("fftw_wisdom")

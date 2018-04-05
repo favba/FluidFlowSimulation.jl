@@ -2,7 +2,7 @@ struct Euller{Adptative,initdt} <: AbstractScalarTimeStep{Adptative,initdt,0}
     dt::Base.RefValue{Float64} 
 end
 
-function initialize!(t::Euller,rhs,s)
+function initialize!(t::Euller,rhs,vis,s)
     set_dt!(t,get_dt(s))
     return nothing
 end

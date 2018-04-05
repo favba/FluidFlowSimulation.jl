@@ -45,9 +45,10 @@ get_cfl(t::Type{VectorTimeStep{cfl,Tx,Ty,Tz}}) where{cfl,Tx,Ty,Tz} =
     get_cfl(VelocityTimeStepType)
 
 function initialize!(t::VectorTimeStep,rhs::VectorField,s::AbstractSimulation)
-    initialize!(t.x,rhs.rx,s)
-    initialize!(t.y,rhs.ry,s)
-    initialize!(t.z,rhs.rz,s)
+    vis = nu(s)
+    initialize!(t.x,rhs.rx,vis,s)
+    initialize!(t.y,rhs.ry,vis,s)
+    initialize!(t.z,rhs.rz,vis,s)
 end
 
 function set_dt!(t::VectorTimeStep,dt)

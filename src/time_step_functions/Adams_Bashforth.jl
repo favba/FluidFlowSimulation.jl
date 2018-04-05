@@ -24,7 +24,7 @@ end
 get_dt(t::Adams_Bashforth3rdO{true,idt}) where {idt} = 
     getindex(t.dt)
 
-function initialize!(t::Adams_Bashforth3rdO,rhs::AbstractArray,s::AbstractSimulation)
+function initialize!(t::Adams_Bashforth3rdO,rhs::AbstractArray,vis,s::AbstractSimulation)
     mycopy!(data(t.fm1),rhs,s) 
     @inbounds copy!(t.fm2, t.fm1) 
     setindex!(t.dt,get_dt(s))

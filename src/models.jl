@@ -307,9 +307,15 @@ dealias!(rhs::AbstractArray{<:Complex,3},s::AbstractSimulation) = dealias!(rhs,s
 end
 
 function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,s::AbstractSimulation)
-  _add_viscosity!(rhs.cx,u.cx,-ν,s)
-  _add_viscosity!(rhs.cy,u.cy,-ν,s)
-  _add_viscosity!(rhs.cz,u.cz,-ν,s)
+  if hashyperviscosity(s)
+     _add_hviscosity!(rhs.cx,u.cx,s)
+     _add_hviscosity!(rhs.cy,u.cy,s)
+     _add_hviscosity!(rhs.cz,u.cz,s)
+  else
+     _add_viscosity!(rhs.cx,u.cx,-ν,s)
+     _add_viscosity!(rhs.cy,u.cy,-ν,s)
+     _add_viscosity!(rhs.cz,u.cz,-ν,s)
+  end
 end
 
 @par function _add_viscosity!(rhs::AbstractArray,u::AbstractArray,mν::Real,s::@par(AbstractSimulation))
@@ -318,6 +324,20 @@ end
       @fastmath @inbounds @msimd for i in 1:(Kxr[k][j])
         #rhs[i,j,k] = (kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])*mŒΩ*u[i,j,k] + rhs[i,j,k]
         rhs[i,j,k] = muladd(muladd(kx[i], kx[i], muladd(ky[j], ky[j], kz[k]*kz[k])), mν*u[i,j,k], rhs[i,j,k])
+      end
+    end
+  end
+end
+
+@par function _add_hviscosity!(rhs::AbstractArray,u::AbstractArray,s::@par(AbstractSimulation))
+  mν = -nu(s)
+  mνh = -nuh(s)
+  M = get_hyperviscosity_exponent(s)
+  @mthreads for k in Kzr
+    for y in Kyr, j in y
+      @fastmath @inbounds @msimd for i in 1:(Kxr[k][j])
+        modk2 = muladd(kx[i], kx[i], muladd(ky[j], ky[j], kz[k]*kz[k]))
+        rhs[i,j,k] = muladd(muladd(modk2, mν, modk2^M * mνh), u[i,j,k], rhs[i,j,k])
       end
     end
   end

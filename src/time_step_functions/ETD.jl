@@ -26,17 +26,17 @@ end
 get_dt(t::ETD3rdO{true,idt,H}) where {idt,H} = 
     getindex(t.dt)
 
-function initialize!(t::ETD3rdO,rhs::AbstractArray,s::AbstractSimulation)
+function initialize!(t::ETD3rdO,rhs::AbstractArray,vis,s::AbstractSimulation)
     mycopy!(data(t.fm1),rhs,s) 
     @inbounds copy!(t.fm2, t.fm1) 
     setindex!(t.dt,get_dt(s))
     setindex!(t.dt2,t.dt[])
     setindex!(t.dt3,t.dt[])
-    init_c!(t,t.c,-nu(s),s)
+    init_c!(t,t.c,-vis,s)
     return nothing
 end
 
-@par function init_c!(t::ETD3rdO{adp,indt,0},c::AbstractArray,mν,s::@par(AbstractSimulation)) where{adp,indt}
+@par function init_c!(t::ETD3rdO{adp,indt,false},c::AbstractArray,mν,s::@par(AbstractSimulation)) where{adp,indt}
     @mthreads for k in Kzr
         for y in Kyr, j in y
             @fastmath @inbounds @msimd for i in 1:(Kxr[k][j])
@@ -46,13 +46,15 @@ end
     end
 end
 
-@par function init_c!(t::ETD3rdO{adp,indt,N},c::AbstractArray,mν,s::@par(AbstractSimulation)) where {adp,indt,N}
-    νh::Float64 = nuh(s)
+@par function init_c!(t::ETD3rdO{adp,indt,true},c::AbstractArray,aux,s::@par(AbstractSimulation)) where {adp,indt}
+    mν::Float64 = -nu(s)
+    mνh::Float64 = -nuh(s)
+    M::Int = get_hyperviscosity_exponent(s)
     @mthreads for k in Kzr
         for y in Kyr, j in y
             @fastmath @inbounds @msimd for i in 1:(Kxr[k][j])
                 modk = muladd(kx[i], kx[i], muladd(ky[j], ky[j], kz[k]*kz[k])) 
-                c[i,j,k] = muladd(modk, mν, modk^N * νh) 
+                c[i,j,k] = muladd(modk, mν, modk^M * mνh) 
             end
         end
     end
