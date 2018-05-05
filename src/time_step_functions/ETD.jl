@@ -175,7 +175,7 @@ end
     k = Kzr[kk]
     jj::Int = 1
     for y in Kyr, j in y
-        @fastmath @msimd for i in 1:((T === Float64? 2 : 1)*Kxr[k][j])
+        @fastmath @msimd for i in 1:((T === Float64 ? 2 : 1)*Kxr[k][j])
             u[i,j,k] = muladd(At[i,j,k], rhs[i,j,k], muladd(Bt[i,j,k], rm1[i,jj,kk], muladd(Ct[i,j,k], rm2[i,jj,kk], exp(c[i,j,k]*dt)*u[i,j,k])))
             rm2[i,jj,kk] = rm1[i,jj,kk]
             rm1[i,jj,kk] = rhs[i,j,k]
