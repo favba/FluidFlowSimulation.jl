@@ -10,10 +10,10 @@
     conjFactX=1.0
     for i=1:Nx
       K = sqrt(kx[i]^2 + ky[j]^2)
-      n = round(Int, K/maxdk2d) + 1
+      n = trunc(Int, K/maxdk2d) + 1
       if n <= nshells
         magsq = abs2(ux[i,j,cplane]) + abs2(uy[i,j,cplane])
-        ee = 0.5*conjFactX * magsq / dk;
+        ee = 0.5*conjFactX * magsq / maxdk2d;
         Ef[n]+=ee;
         conjFactX=2.0;
       end
