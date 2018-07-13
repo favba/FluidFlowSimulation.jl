@@ -27,9 +27,9 @@ hasforcing(s::AbstractSimulation) = hasforcing(typeof(s))
 hashyperviscosity(s::AbstractSimulation) = hashyperviscosity(typeof(s))
 
 struct @par(Simulation) <: @par(AbstractSimulation)
-  u::VectorField{PaddedArray{Float64,4,false},Tuple{Nrrx,Ny,Nz},Tuple{Nx,Ny,Nz},Lrs,Lcs}
-  rhs::VectorField{PaddedArray{Float64,4,false},Tuple{Nrrx,Ny,Nz},Tuple{Nx,Ny,Nz},Lrs,Lcs}
-  aux::VectorField{PaddedArray{Float64,4,false},Tuple{Nrrx,Ny,Nz},Tuple{Nx,Ny,Nz},Lrs,Lcs}
+  u::VectorField{PaddedArray{Float64,4,3,false},Tuple{Nrrx,Ny,Nz},Tuple{Nx,Ny,Nz},Lrs,Lcs}
+  rhs::VectorField{PaddedArray{Float64,4,3,false},Tuple{Nrrx,Ny,Nz},Tuple{Nx,Ny,Nz},Lrs,Lcs}
+  aux::VectorField{PaddedArray{Float64,4,3,false},Tuple{Nrrx,Ny,Nz},Tuple{Nx,Ny,Nz},Lrs,Lcs}
   p::FFTW.rFFTWPlan{Float64,-1,true,4}
   pb::FFTW.rFFTWPlan{Complex{Float64},1,true,4}
   reduction::Vector{Float64}
@@ -41,7 +41,7 @@ struct @par(Simulation) <: @par(AbstractSimulation)
   forcing::ForcingType
   hyperviscosity::HyperViscosityType
   
-  @par function @par(Simulation)(u::VectorField{PaddedArray{Float64,4,false}},dealias::BitArray{3},timestep,passivescalar,densitystratification,lesmodel,forcing,hv) 
+  @par function @par(Simulation)(u::VectorField{PaddedArray{Float64,4,3,false}},dealias::BitArray{3},timestep,passivescalar,densitystratification,lesmodel,forcing,hv) 
 
     rhs = similar(u)
     aux = similar(u)
@@ -132,10 +132,10 @@ struct NoPassiveScalar <: AbstractPassiveScalar{nothing,nothing,nothing,nothing}
 
 struct PassiveScalar{TTimeStep, α #=Difusitivity = ν/Pr =#,
                   dρdz #=Linear mean profile=#, Gdirec #=Axis of mean profile =#} <: AbstractPassiveScalar{TTimeStep,α,dρdz,Gdirec}
-  ρ::PaddedArray{Float64,3,false}
+  ρ::PaddedArray{Float64,3,2,false}
   ps::FFTW.rFFTWPlan{Float64,-1,true,3}
   pbs::FFTW.rFFTWPlan{Complex{Float64},1,true,3}
-  ρrhs::PaddedArray{Float64,3,false}
+  ρrhs::PaddedArray{Float64,3,2,false}
   timestep::TTimeStep
 
   function PassiveScalar{TT,α,dρdz,Gdirec}(ρ,timestep) where {TT,α,dρdz,Gdirec}
@@ -201,10 +201,10 @@ struct NoDensityStratification <: AbstractDensityStratification{nothing,nothing,
 struct BoussinesqApproximation{TTimeStep, α #=Difusitivity = ν/Pr =#,
                    dρdz #=Linear mean profile=#, g #=This is actually g/ρ₀ =#, 
                    Gdirec#=Gravity direction =#} <: AbstractDensityStratification{TTimeStep,α,dρdz,g,Gdirec}
-  ρ::PaddedArray{Float64,3,false}
+  ρ::PaddedArray{Float64,3,2,false}
   ps::FFTW.rFFTWPlan{Float64,-1,true,3}
   pbs::FFTW.rFFTWPlan{Complex{Float64},1,true,3}
-  ρrhs::PaddedArray{Float64,3,false}
+  ρrhs::PaddedArray{Float64,3,2,false}
   timestep::TTimeStep
   reduction::Vector{Float64}
 
@@ -370,8 +370,8 @@ struct RfForcing{Tf,α,Kf,MaxDk,avgK, Zf} #= Tf = 1.0 , α = 1.0  =# <: Abstract
 #  Zf::Vector{Float64} # Cutoff function, using as parameter
   #dRdt::Vector{Float64} # Not needed if I use Euller timestep
   factor::Vector{Float64} # Factor to multiply velocity Field
-  forcex::PaddedArray{Float64,3,false} # Final force
-  forcey::PaddedArray{Float64,3,false} # Final force
+  forcex::PaddedArray{Float64,3,2,false} # Final force
+  forcey::PaddedArray{Float64,3,2,false} # Final force
   init::Bool # Tell if the initial condition spectra should be used instead of from data
 end
 

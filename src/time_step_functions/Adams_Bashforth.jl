@@ -1,6 +1,6 @@
 struct Adams_Bashforth3rdO{Adaptative,initdt} <: AbstractScalarTimeStep{Adaptative,initdt,2}
-    fm1::PaddedArray{Float64,3,false} #Store latest step
-    fm2::PaddedArray{Float64,3,false} #Store 2 steps before
+    fm1::PaddedArray{Float64,3,2,false} #Store latest step
+    fm2::PaddedArray{Float64,3,2,false} #Store 2 steps before
     At::Base.RefValue{Float64} # 23*dt/12 for constant time stepping
     Bt::Base.RefValue{Float64} # -16*dt/12 for constant time stepping
     Ct::Base.RefValue{Float64} # 5*dt/12 for constant time stepping

@@ -1,6 +1,6 @@
 struct ETD3rdO{Adaptative,initdt,Hyper} <: AbstractScalarTimeStepWithIF{Adaptative,initdt,2}
-    fm1::PaddedArray{Float64,3,false} #Store latest step
-    fm2::PaddedArray{Float64,3,false} #Store 2 steps before
+    fm1::PaddedArray{Float64,3,2,false} #Store latest step
+    fm2::PaddedArray{Float64,3,2,false} #Store 2 steps before
     c::Array{Float64,3}
     At::Array{Float64,3}
     Bt::Array{Float64,3}

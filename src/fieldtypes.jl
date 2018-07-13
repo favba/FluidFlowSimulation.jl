@@ -115,12 +115,12 @@ InplaceRealFFT.irfft!(V::VectorField{A}) where {A} = irfft!(V,1:3)
 
 
 struct SymmetricTracelessTensor{SR,SC,LR,LC} <: AbstractPaddedArray{Float64,4}
-  data::PaddedArray{Float64,4,false}
-  cxx::StaticView{SC,LC,PaddedArray{Float64,4,false},Complex{Float64},3,1}
-  cxy::StaticView{SC,LC,PaddedArray{Float64,4,false},Complex{Float64},3,2}
-  cxz::StaticView{SC,LC,PaddedArray{Float64,4,false},Complex{Float64},3,3}
-  cyy::StaticView{SC,LC,PaddedArray{Float64,4,false},Complex{Float64},3,4}
-  cyz::StaticView{SC,LC,PaddedArray{Float64,4,false},Complex{Float64},3,5}
+  data::PaddedArray{Float64,4,3,false}
+  cxx::StaticView{SC,LC,PaddedArray{Float64,4,3,false},Complex{Float64},3,1}
+  cxy::StaticView{SC,LC,PaddedArray{Float64,4,3,false},Complex{Float64},3,2}
+  cxz::StaticView{SC,LC,PaddedArray{Float64,4,3,false},Complex{Float64},3,3}
+  cyy::StaticView{SC,LC,PaddedArray{Float64,4,3,false},Complex{Float64},3,4}
+  cyz::StaticView{SC,LC,PaddedArray{Float64,4,3,false},Complex{Float64},3,5}
   rxx::StaticView{SR,LR,Array{Float64,4},Float64,3,1}
   rxy::StaticView{SR,LR,Array{Float64,4},Float64,3,2}
   rxz::StaticView{SR,LR,Array{Float64,4},Float64,3,3}
