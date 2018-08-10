@@ -26,7 +26,7 @@ get_dt(t::Adams_Bashforth3rdO{true,idt}) where {idt} =
 
 function initialize!(t::Adams_Bashforth3rdO,rhs::AbstractArray,vis,s::AbstractSimulation)
     mycopy!(data(t.fm1),rhs,s) 
-    @inbounds copy!(t.fm2, t.fm1) 
+    @inbounds copyto!(t.fm2, t.fm1) 
     setindex!(t.dt,get_dt(s))
     setindex!(t.dt2,t.dt[])
     setindex!(t.dt3,t.dt[])

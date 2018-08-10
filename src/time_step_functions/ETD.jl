@@ -28,7 +28,7 @@ get_dt(t::ETD3rdO{true,idt,H}) where {idt,H} =
 
 function initialize!(t::ETD3rdO,rhs::AbstractArray,vis,s::AbstractSimulation)
     mycopy!(data(t.fm1),rhs,s) 
-    @inbounds copy!(t.fm2, t.fm1) 
+    @inbounds copyto!(t.fm2, t.fm1) 
     setindex!(t.dt,get_dt(s))
     setindex!(t.dt2,t.dt[])
     setindex!(t.dt3,t.dt[])

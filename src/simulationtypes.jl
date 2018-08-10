@@ -47,9 +47,9 @@ struct @par(Simulation) <: @par(AbstractSimulation)
     aux = similar(u)
   
     aux = VectorField(PaddedArray(Nrx,Ny,Nz,3))
-    info("Calculating FFTW in-place forward plan for velocity field")
+    @info("Calculating FFTW in-place forward plan for velocity field")
     p = plan_rfft!(aux,1:3,flags=FFTW.MEASURE)
-    info("Calculating FFTW in-place backward plan for velocity field")
+    @info("Calculating FFTW in-place backward plan for velocity field")
     pb = plan_brfft!(aux,1:3,flags=FFTW.MEASURE)
 
     reduction = zeros(Thr ? Threads.nthreads() : 1)
@@ -140,9 +140,9 @@ struct PassiveScalar{TTimeStep, α #=Difusitivity = ν/Pr =#,
 
   function PassiveScalar{TT,α,dρdz,Gdirec}(ρ,timestep) where {TT,α,dρdz,Gdirec}
     ρrhs = similar(ρ)
-    info("Calculating FFTW in-place forward plan for scalar field")
+    @info("Calculating FFTW in-place forward plan for scalar field")
     ps = plan_rfft!(ρrhs,flags=FFTW.MEASURE)
-    info("Calculating FFTW in-place backward plan for scalar field")
+    @info("Calculating FFTW in-place backward plan for scalar field")
     pbs = plan_brfft!(ρrhs,flags=FFTW.MEASURE) 
     return new{TT,α,dρdz,Gdirec}(ρ,ps,pbs,ρrhs,timestep)
   end
@@ -210,9 +210,9 @@ struct BoussinesqApproximation{TTimeStep, α #=Difusitivity = ν/Pr =#,
 
   function BoussinesqApproximation{TT,α,dρdz,g,Gdirec}(ρ,timestep,tr) where {TT,α,dρdz,g,Gdirec}
     ρrhs = similar(ρ)
-    info("Calculating FFTW in-place forward plan for scalar field")
+    @info("Calculating FFTW in-place forward plan for scalar field")
     ps = plan_rfft!(ρrhs,flags=FFTW.MEASURE)
-    info("Calculating FFTW in-place backward plan for scalar field")
+    @info("Calculating FFTW in-place backward plan for scalar field")
     pbs = plan_brfft!(ρrhs,flags=FFTW.MEASURE) 
 
     reduction = zeros(tr ? Threads.nthreads() : 1)
@@ -273,9 +273,9 @@ end
 
 function Smagorinsky(c::Real,Δ::Real,scalar::Bool,dim::NTuple{3,Integer},tr) 
   data = SymmetricTracelessTensor(dim)
-  info("Calculating FFTW in-place forward plan for symmetric traceless tensor field")
+  @info("Calculating FFTW in-place forward plan for symmetric traceless tensor field")
   pt = plan_rfft!(data,1:3,flags=FFTW.MEASURE)
-  info("Calculating FFTW in-place backward plan for symmetric traceless tensor field")
+  @info("Calculating FFTW in-place backward plan for symmetric traceless tensor field")
   pbt = plan_brfft!(data,1:3,flags=FFTW.MEASURE)
   fill!(data,0)
   scalart = scalar ? EddyDiffusion(dim...) : NoLESScalar()
@@ -318,9 +318,9 @@ end
 
 function SandP(c::Real,cb::Real,Δ::Real,scalar::Bool,dim::NTuple{3,Integer}) 
   data = SymmetricTracelessTensor(dim)
-  info("Calculating FFTW in-place forward plan for symmetric traceless tensor field")
+  @info("Calculating FFTW in-place forward plan for symmetric traceless tensor field")
   pt = plan_rfft!(data,1:3,flags=FFTW.MEASURE)
-  info("Calculating FFTW in-place backward plan for symmetric traceless tensor field")
+  @info("Calculating FFTW in-place backward plan for symmetric traceless tensor field")
   pbt = plan_brfft!(data,1:3,flags=FFTW.MEASURE)
   fill!(data,0)
   scalart = scalar ? EddyDiffusion(dim...) : NoLESScalar()
@@ -441,14 +441,14 @@ function parameters(d::Dict)
   lrs = 2*lcs
   lrv = 2*lcv
 
-  lx = Float64(eval(parse(d[:xDomainSize])))
-  ly = Float64(eval(parse(d[:yDomainSize])))
-  lz = Float64(eval(parse(d[:zDomainSize])))
-  ν = Float64(eval(parse(d[:kinematicViscosity])))
+  lx = Float64(eval(Meta.parse(d[:xDomainSize])))
+  ly = Float64(eval(Meta.parse(d[:yDomainSize])))
+  lz = Float64(eval(Meta.parse(d[:zDomainSize])))
+  ν = Float64(eval(Meta.parse(d[:kinematicViscosity])))
 
   start = haskey(d,:start) ? d[:start] : "0"
 
-  info("Reading initial velocity field u1.$start u2.$start u3.$start")
+  @info("Reading initial velocity field u1.$start u2.$start u3.$start")
   u = VectorField("u1.$start","u2.$start","u3.$start",nx,ny,nz)
 
   kxp = reshape(rfftfreq(nx,lx),(ncx,1,1))
@@ -463,11 +463,11 @@ function parameters(d::Dict)
   b = splitrange(lrs, nt)
 
   haskey(d,:dealias) ? (Dealiastype = Symbol(d[:dealias])) : (Dealiastype = :sphere)
-  haskey(d,:cutoff) ? (cutoffr = Float64(eval(parse(d[:cutoff])))) : (cutoffr = 15/16)
+  haskey(d,:cutoff) ? (cutoffr = Float64(eval(Meta.parse(d[:cutoff])))) : (cutoffr = 15/16)
 
   cutoff = (cutoffr*kxp[end])^2
 
-  dealias = BitArray(ncx,ny,nz)
+  dealias = BitArray(undef,(ncx,ny,nz))
   if Dealiastype == :sphere
     @. dealias = (kxp^2 + kyp^2 + kzp^2) > cutoff
   elseif Dealiastype == :cube
@@ -485,7 +485,7 @@ function parameters(d::Dict)
       end
     end
   end
-  kxr = (reinterpret(NTuple{ny,UInt16},xr,(nz,))...,)
+  kxr = (reshape(reinterpret(NTuple{ny,UInt16},xr),(nz,))...,)
   kx = (kxp...,)
   ky = (kyp...,)
   kz = (kzp...,)
@@ -500,10 +500,10 @@ function parameters(d::Dict)
   
   isfile("fftw_wisdom") && FFTW.import_wisdom("fftw_wisdom")
   
-  integrator = haskey(d,:velocityTimeStep) ? parse(d[:velocityTimeStep]) : Adams_Bashforth3rdO
-  variableTimeStep = haskey(d,:variableTimestepFlag) ? Bool(parse(d[:variableTimestepFlag])) : true
-  cfl = haskey(d,:cfl) ? Float64(parse(d[:cfl])) : 0.18
-  idt = haskey(d,:dt) ? Float64(eval(parse(d[:dt]))) : 0.0
+  integrator = haskey(d,:velocityTimeStep) ? Symbol(d[:velocityTimeStep]) : Adams_Bashforth3rdO
+  variableTimeStep = haskey(d,:variableTimestepFlag) ? parse(Bool,d[:variableTimestepFlag]) : true
+  cfl = haskey(d,:cfl) ? parse(Float64,d[:cfl]) : 0.18
+  idt = haskey(d,:dt) ? Float64(eval(Meta.parse(d[:dt]))) : 0.0
   vtimestep = if integrator === :Euller
       VectorTimeStep{cfl}(Euller{variableTimeStep,idt}(Ref(idt)),Euller{variableTimeStep,idt}(Ref(idt)),Euller{variableTimeStep,idt}(Ref(idt)))
   elseif integrator === :Adams_Bashforth3rdO
@@ -513,9 +513,9 @@ function parameters(d::Dict)
   end
 
   if haskey(d,:passiveScalar)
-    α = ν/Float64(eval(parse(d[:scalarPr])))
-    dρdz = Float64(eval(parse(d[:scalarGradient])))
-    info("Reading initial scalar field scalar.$start")
+    α = ν/Float64(eval(Meta.parse(d[:scalarPr])))
+    dρdz = Float64(eval(Meta.parse(d[:scalarGradient])))
+    @info("Reading initial scalar field scalar.$start")
     rho = isfile("scalar.$start") ? PaddedArray("scalar.$start",(nx,ny,nz),true) : PaddedArray(zeros(nx,ny,nz)) 
     scalardir = haskey(d,:scalarDirection) ? Symbol(d[:scalarDirection]) : :z
     scalartimestep = if integrator === :Euller
@@ -533,10 +533,10 @@ function parameters(d::Dict)
   if haskey(d,:densityStratification) 
 
     haskey(d,:gravityDirection) ? (gdir = Symbol(d[:gravityDirection])) : (gdir = :z)
-    α = ν/Float64(eval(parse(d[:Pr])))
-    dρdz = Float64(eval(parse(d[:densityGradient])))
-    g = Float64(eval(parse(d[:zAcceleration])))/Float64(eval(parse(d[:referenceDensity])))
-    info("Reading initial density field rho.$start")
+    α = ν/Float64(eval(Meta.parse(d[:Pr])))
+    dρdz = Float64(eval(Meta.parse(d[:densityGradient])))
+    g = Float64(eval(Meta.parse(d[:zAcceleration])))/Float64(eval(Meta.parse(d[:referenceDensity])))
+    @info("Reading initial density field rho.$start")
     rho = isfile("rho.$start") ? PaddedArray("rho.$start",(nx,ny,nz),true) : PaddedArray(zeros(nx,ny,nz)) 
     gdir = haskey(d,:gravityDirection) ? Symbol(d[:gravityDirection]) : :z
     densitytimestep = if integrator === :Euller
@@ -554,14 +554,14 @@ function parameters(d::Dict)
 
   if haskey(d,:lesModel)
     if d[:lesModel] == "Smagorinsky"
-      c = haskey(d,:smagorinskyConstant) ? Float64(eval(parse(d[:smagorinskyConstant]))) : 0.17 
-      Δ = haskey(d,:filterWidth) ? Float64(eval(parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
+      c = haskey(d,:smagorinskyConstant) ? Float64(eval(Meta.parse(d[:smagorinskyConstant]))) : 0.17 
+      Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
       lesscalar = (haskey(d,:passiveScalar) | haskey(d,:densityStratification)) ? true : false
       lestype = Smagorinsky(c,Δ,lesscalar,(nx,ny,nz),tr)
     elseif d[:lesModel] == "Smagorinsky+P"
-      c = haskey(d,:smagorinskyConstant) ? Float64(eval(parse(d[:smagorinskyConstant]))) : 0.17 
-      cb = haskey(d,:pTensorConstant) ? Float64(eval(parse(d[:pTensorConstant]))) : 0.17 
-      Δ = haskey(d,:filterWidth) ? Float64(eval(parse(d[:filterWidth]))) : lx*2π/nx  
+      c = haskey(d,:smagorinskyConstant) ? Float64(eval(Meta.parse(d[:smagorinskyConstant]))) : 0.17 
+      cb = haskey(d,:pTensorConstant) ? Float64(eval(Meta.parse(d[:pTensorConstant]))) : 0.17 
+      Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : lx*2π/nx  
       lesscalar = (haskey(d,:passiveScalar) | haskey(d,:densityStratification)) ? true : false
       lestype = SandP(c,cb,Δ,lesscalar,(nx,ny,nz))
     end
@@ -607,7 +607,7 @@ function parameters(d::Dict)
   #
 
   FFTW.export_wisdom("fftw_wisdom")
-  info(s)
+  @info(s)
   return s
 end
 

@@ -35,7 +35,7 @@ function run_simulation()
 end
 
 @par function run_simulation(s::@par(AbstractSimulation),init::Int,itime::Real,dtStats::Integer,dtOutput::Integer,totalnsteps::Integer)
-  info("Simulation started.")
+  @info("Simulation started.")
 
   initialize!(s,init)
 
