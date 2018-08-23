@@ -10,16 +10,16 @@ struct ETD3rdO{Adaptative,initdt,Hyper} <: AbstractScalarTimeStepWithIF{Adaptati
     dt3::Base.RefValue{Float64}
 end
 
-function ETD3rdO{adp,indt,Hyper}(Kxr,Kyr,Kzr,nx,ny,nz) where {adp,indt,Hyper}
+function ETD3rdO{adp,indt,Hyper}() where {adp,indt,Hyper}
     dt = Ref(indt)
     dt2 = Ref(indt)
     dt3 = Ref(indt)
-    c = zeros(nx,ny,nz)
+    c = zeros(Nrx,Ny,Nz)
     At = zero(c)
     Bt = zero(c)
     Ct = zero(c)
-    fm1 = PaddedArray(2Kxr[1][1],length(Kyr[1])+length(Kyr[2]),length(Kzr))
-    fm2 = PaddedArray(2Kxr[1][1],length(Kyr[1])+length(Kyr[2]),length(Kzr))
+    fm1 = PaddedArray(Nx,Ny,Nz)
+    fm2 = PaddedArray(Nx,Ny,Nz)
     return ETD3rdO{adp,indt,Hyper}(fm1,fm2,c,At,Bt,Ct,dt,dt2,dt3)
 end
 
@@ -28,7 +28,7 @@ get_dt(t::ETD3rdO{true,idt,H}) where {idt,H} =
 
 function initialize!(t::ETD3rdO,rhs::AbstractArray,vis,s::AbstractSimulation)
     mycopy!(data(t.fm1),rhs,s) 
-    @inbounds copyto!(t.fm2, t.fm1) 
+    mycopy!(data(t.fm2), data(t.fm1), s) 
     setindex!(t.dt,get_dt(s))
     setindex!(t.dt2,t.dt[])
     setindex!(t.dt3,t.dt[])
@@ -37,9 +37,9 @@ function initialize!(t::ETD3rdO,rhs::AbstractArray,vis,s::AbstractSimulation)
 end
 
 @par function init_c!(t::ETD3rdO{adp,indt,false},c::AbstractArray,mν,s::@par(AbstractSimulation)) where{adp,indt}
-    @mthreads for k in Kzr
-        for y in Kyr, j in y
-            @fastmath @inbounds @msimd for i in 1:(Kxr[k][j])
+    @mthreads for k in 1:Nz
+        for j in 1:Ny
+            @fastmath @inbounds @msimd for i in 1:Nx
                 c[i,j,k] = muladd(kx[i], kx[i], muladd(ky[j], ky[j], kz[k]*kz[k]))*mν
             end
         end
@@ -50,9 +50,9 @@ end
     mν::Float64 = -nu(s)
     mνh::Float64 = -nuh(s)
     M::Int = get_hyperviscosity_exponent(s)
-    @mthreads for k in Kzr
-        for y in Kyr, j in y
-            @fastmath @inbounds @msimd for i in 1:(Kxr[k][j])
+    @mthreads for k in 1:Nz
+        for j in 1:Ny
+            @fastmath @inbounds @msimd for i in 1:Nx
                 modk = muladd(kx[i], kx[i], muladd(ky[j], ky[j], kz[k]*kz[k])) 
                 c[i,j,k] = muladd(modk, mν, modk^M * mνh) 
             end
@@ -159,66 +159,59 @@ end
 end
 
 @par function (f::ETD3rdO)(ρ::AbstractArray{<:Complex,3},ρrhs::AbstractArray{<:Complex,3}, s::@par(AbstractSimulation))
-    @mthreads for kk = 1:length(Kzr)
+    @mthreads for kk = 1:Nz
         _tETD3rdO!(kk, ρ,ρrhs,f.fm1,f.fm2,f,s)
     end
     return nothing
 end
 
-@inline @par function _tETD3rdO!(kk::Integer, u::AbstractArray{T,3}, rhs::AbstractArray, rm1::AbstractArray, rm2::AbstractArray, f, s::@par(AbstractSimulation)) where {T}
-@inbounds begin
-    At = T === Float64 ? data(f.At) : f.At
-    Bt = T === Float64 ? data(f.Bt) : f.Bt
-    Ct = T === Float64 ? data(f.Ct) : f.Ct
-    c = T === Float64 ? data(f.c) : f.c
-    dt = get_dt(f)
-    k = Kzr[kk]
-    jj::Int = 1
-    for y in Kyr, j in y
-        @fastmath @msimd for i in 1:((T === Float64 ? 2 : 1)*Kxr[k][j])
-            u[i,j,k] = muladd(At[i,j,k], rhs[i,j,k], muladd(Bt[i,j,k], rm1[i,jj,kk], muladd(Ct[i,j,k], rm2[i,jj,kk], exp(c[i,j,k]*dt)*u[i,j,k])))
-            rm2[i,jj,kk] = rm1[i,jj,kk]
-            rm1[i,jj,kk] = rhs[i,j,k]
-        end
-        jj+=1
-    end
-end
-end
-
-# with forcing
-@par function (f::ETD3rdO)(ρ::AbstractArray{<:Complex,3},ρrhs::AbstractArray{<:Complex,3}, forcing::AbstractArray{<:Complex,3}, s::@par(AbstractSimulation))
-    @mthreads for kk = 1:length(Kzr)
-        _tETD3rdO!(kk, ρ,ρrhs, forcing, f.fm1,f.fm2,f,s)
-    end
-    return nothing
-end
-
-@inline @par function _tETD3rdO!(kk::Integer, u::AbstractArray{Complex{Float64},3}, rhs::AbstractArray, forcing, rm1::AbstractArray, rm2::AbstractArray, f,s::@par(AbstractSimulation)) 
+@inline @par function _tETD3rdO!(k::Integer, u::AbstractArray{T,3}, rhs::AbstractArray, rm1::AbstractArray, rm2::AbstractArray, f, s::@par(AbstractSimulation)) where {T}
 @inbounds begin
     At = f.At
     Bt = f.Bt
     Ct = f.Ct
     c = f.c
     dt = get_dt(f)
-    @inbounds k = Kzr[kk]
-    jj::Int = 1
+    for j in 1:Ny
+        @fastmath @msimd for i in 1:Nx
+            u[i,j,k] = muladd(At[i,j,k], rhs[i,j,k], muladd(Bt[i,j,k], rm1[i,j,k], muladd(Ct[i,j,k], rm2[i,j,k], exp(c[i,j,k]*dt)*u[i,j,k])))
+            rm2[i,j,k] = rm1[i,j,k]
+            rm1[i,j,k] = rhs[i,j,k]
+        end
+    end
+end
+end
+
+# with forcing
+@par function (f::ETD3rdO)(ρ::AbstractArray{<:Complex,3},ρrhs::AbstractArray{<:Complex,3}, forcing::AbstractArray{<:Complex,3}, s::@par(AbstractSimulation))
+    @mthreads for kk = 1:Nz
+        _tETD3rdO!(kk, ρ,ρrhs, forcing, f.fm1,f.fm2,f,s)
+    end
+    return nothing
+end
+
+@inline @par function _tETD3rdO!(k::Integer, u::AbstractArray{Complex{Float64},3}, rhs::AbstractArray, forcing, rm1::AbstractArray, rm2::AbstractArray, f,s::@par(AbstractSimulation)) 
+@inbounds begin
+    At = f.At
+    Bt = f.Bt
+    Ct = f.Ct
+    c = f.c
+    dt = get_dt(f)
     if (6 < k < Nz-k+1)
-        for y in Kyr, j in y
-            @fastmath @msimd for i in 1:(Kxr[k][j])
-                u[i,j,k] = muladd(At[i,j,k], rhs[i,j,k], muladd(Bt[i,j,k], rm1[i,jj,kk], muladd(Ct[i,j,k], rm2[i,jj,kk], exp(c[i,j,k]*dt)*u[i,j,k])))
-                rm2[i,jj,kk] = rm1[i,jj,kk]
-                rm1[i,jj,kk] = rhs[i,j,k]
+        for j in 1:Ny
+            @fastmath @msimd for i in 1:Nx
+                u[i,j,k] = muladd(At[i,j,k], rhs[i,j,k], muladd(Bt[i,j,k], rm1[i,j,k], muladd(Ct[i,j,k], rm2[i,j,k], exp(c[i,j,k]*dt)*u[i,j,k])))
+                rm2[i,j,k] = rm1[i,j,k]
+                rm1[i,j,k] = rhs[i,j,k]
             end
-        jj+=1
         end
     else
-        for y in Kyr, j in y
-            @fastmath @msimd for i in 1:(Kxr[k][j])
-                u[i,j,k] = muladd(At[i,j,k], rhs[i,j,k], muladd(Bt[i,j,k], rm1[i,jj,kk], muladd(Ct[i,j,k], rm2[i,jj,kk],muladd(exp(c[i,j,k]*dt), u[i,j,k], forcing[i,j,k]))))
-                rm2[i,jj,kk] = rm1[i,jj,kk]
-                rm1[i,jj,kk] = rhs[i,j,k]
+        for j in 1:Ny
+            @fastmath @msimd for i in 1:Nx
+                u[i,j,k] = muladd(At[i,j,k], rhs[i,j,k], muladd(Bt[i,j,k], rm1[i,j,k], muladd(Ct[i,j,k], rm2[i,j,k],muladd(exp(c[i,j,k]*dt), u[i,j,k], forcing[i,j,k]))))
+                rm2[i,j,k] = rm1[i,j,k]
+                rm1[i,j,k] = rhs[i,j,k]
             end
-        jj+=1
         end
     end
 end

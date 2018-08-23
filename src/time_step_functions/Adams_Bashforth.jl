@@ -9,15 +9,15 @@ struct Adams_Bashforth3rdO{Adaptative,initdt} <: AbstractScalarTimeStep{Adaptati
     dt3::Base.RefValue{Float64}
 end
 
-function Adams_Bashforth3rdO{adp,indt}(Kxr,Kyr,Kzr) where {adp,indt}
+function Adams_Bashforth3rdO{adp,indt}() where {adp,indt}
     at = Ref(23*indt/12)
     bt = Ref(-16*indt/12)
     ct = Ref(5*indt/12)
     dt = Ref(indt)
     dt2 = Ref(indt)
     dt3 = Ref(indt)
-    fm1 = PaddedArray{Float64}(2Kxr[1][1],length(Kyr[1])+length(Kyr[2]),length(Kzr))
-    fm2 = PaddedArray{Float64}(2Kxr[1][1],length(Kyr[1])+length(Kyr[2]),length(Kzr))
+    fm1 = PaddedArray{Float64}(Nrx,Ny,Nz)
+    fm2 = PaddedArray{Float64}(Nrx,Ny,Nz)
     return Adams_Bashforth3rdO{adp,indt}(fm1,fm2,at,bt,ct,dt,dt2,dt3)
 end
 
@@ -25,8 +25,8 @@ get_dt(t::Adams_Bashforth3rdO{true,idt}) where {idt} =
     getindex(t.dt)
 
 function initialize!(t::Adams_Bashforth3rdO,rhs::AbstractArray,vis,s::AbstractSimulation)
-    mycopy!(data(t.fm1),rhs,s) 
-    @inbounds copyto!(t.fm2, t.fm1) 
+    mycopy!(data(t.fm1), rhs,s) 
+    mycopy!(data(t.fm2), data(t.fm1),s) 
     setindex!(t.dt,get_dt(s))
     setindex!(t.dt2,t.dt[])
     setindex!(t.dt3,t.dt[])
@@ -88,66 +88,59 @@ get_Ct(t::Type{Adams_Bashforth3rdO{false,idt}}) where {idt} =
     get_Ct(A)
 
 @par function (f::Adams_Bashforth3rdO)(ρ::AbstractArray{<:Complex,3},ρrhs::AbstractArray{<:Complex,3}, s::@par(AbstractSimulation))
-    @mthreads for kk = 1:length(Kzr)
+    @mthreads for kk = 1:Nz
         _tAdams_Bashforth3rdO!(kk, ρ,ρrhs,f.fm1,f.fm2,f,s)
     end
     return nothing
 end
 
-@inline @par function _tAdams_Bashforth3rdO!(kk::Integer, u::AbstractArray{Complex{Float64},3}, rhs::AbstractArray, rm1::AbstractArray, rm2::AbstractArray, f, s::@par(AbstractSimulation)) 
+@inline @par function _tAdams_Bashforth3rdO!(k::Integer, u::AbstractArray{Complex{Float64},3}, rhs::AbstractArray, rm1::AbstractArray, rm2::AbstractArray, f, s::@par(AbstractSimulation)) 
 @inbounds begin
     At = get_At(f)
     Bt = get_Bt(f)
     Ct = get_Ct(f)
-    k = Kzr[kk]
-    jj::Int = 1
-    for y in Kyr, j in y
-        @fastmath @msimd for i in 1:(Kxr[k][j])
+    for j in 1:Ny
+        @msimd for i in 1:Nx
             #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
             #u[i,j,k] = muladd(muladd(23, rhs[i,j,k], muladd(-16, rm1[i,jj,kk], 5rm2[i,jj,kk])), dt12, u[i,j,k])
-            u[i,j,k] = muladd(At, rhs[i,j,k], muladd(Bt, rm1[i,jj,kk], muladd(Ct, rm2[i,jj,kk], u[i,j,k])))
-            rm2[i,jj,kk] = rm1[i,jj,kk]
-            rm1[i,jj,kk] = rhs[i,j,k]
+            u[i,j,k] = muladd(At, rhs[i,j,k], muladd(Bt, rm1[i,j,k], muladd(Ct, rm2[i,j,k], u[i,j,k])))
+            rm2[i,j,k] = rm1[i,j,k]
+            rm1[i,j,k] = rhs[i,j,k]
         end
-        jj+=1
     end
 end
 end
 
 # with forcing
 @par function (f::Adams_Bashforth3rdO)(ρ::AbstractArray{<:Complex,3},ρrhs::AbstractArray{<:Complex,3}, forcing::AbstractArray{<:Complex,3}, s::@par(AbstractSimulation))
-    @mthreads for kk = 1:length(Kzr)
+    @mthreads for kk = 1:Nz
         _tAdams_Bashforth3rdO!(kk, ρ,ρrhs, forcing, f.fm1,f.fm2,f,s)
     end
     return nothing
 end
 
-@inline @par function _tAdams_Bashforth3rdO!(kk::Integer, u::AbstractArray{Complex{Float64},3}, rhs::AbstractArray, forcing, rm1::AbstractArray, rm2::AbstractArray, f,s::@par(AbstractSimulation)) 
+@inline @par function _tAdams_Bashforth3rdO!(k::Integer, u::AbstractArray{Complex{Float64},3}, rhs::AbstractArray, forcing, rm1::AbstractArray, rm2::AbstractArray, f,s::@par(AbstractSimulation)) 
 @inbounds begin
     At = get_At(f)
     Bt = get_Bt(f)
     Ct = get_Ct(f)
-    @inbounds k = Kzr[kk]
-    jj::Int = 1
     if (6 < k < Nz-k+1)
-        for y in Kyr, j in y
-            @fastmath @msimd for i in 1:(Kxr[k][j])
+        for j in 1:Ny
+            @msimd for i in 1:Nx
                 #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
-                u[i,j,k] = muladd(At, rhs[i,j,k], muladd(Bt, rm1[i,jj,kk], muladd(Ct, rm2[i,jj,kk], u[i,j,k])))
-                rm2[i,jj,kk] = rm1[i,jj,kk]
-                rm1[i,jj,kk] = rhs[i,j,k]
+                u[i,j,k] = muladd(At, rhs[i,j,k], muladd(Bt, rm1[i,j,k], muladd(Ct, rm2[i,j,k], u[i,j,k])))
+                rm2[i,j,k] = rm1[i,j,k]
+                rm1[i,j,k] = rhs[i,j,k]
             end
-        jj+=1
         end
     else
-        for y in Kyr, j in y
-            @fastmath @msimd for i in 1:(Kxr[k][j])
+        for j in 1:Ny
+            @msimd for i in 1:Nx
                 #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
-                u[i,j,k] = muladd(At, rhs[i,j,k], muladd(Bt, rm1[i,jj,kk], muladd(Ct, rm2[i,jj,kk], u[i,j,k]))) + forcing[i,j,k]
-                rm2[i,jj,kk] = rm1[i,jj,kk]
-                rm1[i,jj,kk] = rhs[i,j,k]
+                u[i,j,k] = muladd(At, rhs[i,j,k], muladd(Bt, rm1[i,j,k], muladd(Ct, rm2[i,j,k], u[i,j,k]))) + forcing[i,j,k]
+                rm2[i,j,k] = rm1[i,j,k]
+                rm1[i,j,k] = rhs[i,j,k]
             end
-        jj+=1
         end
     end
 end

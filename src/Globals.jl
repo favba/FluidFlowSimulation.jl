@@ -3,7 +3,7 @@ module Globals
 
 using ..ReadGlobal
 
-export Lx,Ly,Lz,Nx,Ny,Nz,Lcs,Lcv,Nrrx,Nrx,Lrs,Lrv,ν,Dealias,Kxr,Kyr,Kzr,kx,ky,kz,Thr,Nt,RealRanges
+export Lx,Ly,Lz,Nx,Ny,Nz,Lcs,Lcv,Nrrx,Nrx,Lrs,Lrv,ν,Dealias,kx,ky,kz,Thr,Nt,RealRanges
 
 function splitrange(lr,nt)
     a = UnitRange{Int}[]
@@ -68,37 +68,8 @@ end
     haskey(d,:cutoff) ? (cutoffr = Float64(eval(Meta.parse(d[:cutoff])))) : (cutoffr = 15/16)
     const global Dealias = (Dealiastype,cutoffr) 
 
-    cutoff = (cutoffr*kxp[end])^2
-
-    const global dealias = BitArray(undef,(Nx,Ny,Nz))
-    if Dealiastype == :sphere
-      @. dealias = (kxp^2 + kyp^2 + kzp^2) > cutoff
-    elseif Dealiastype == :cube
-      @. dealias = (kxp^2 > cutoff) | (kyp^2 > cutoff) | (kzp^2 > cutoff)
-    end 
-
-    xr = zeros(UInt16,(Ny,Nz))
-    for k = 1:Nz
-      for j = 1:Ny
-        for i = 1:Nx
-          if dealias[i,j,k]
-            xr[j,k] = i-1
-            break
-          end
-        end
-      end
-    end
-    const global Kxr = (reshape(reinterpret(NTuple{Ny,UInt16},xr),(Nz,))...,)
     const global kx = (kxp...,)
     const global ky = (kyp...,)
     const global kz = (kzp...,)
   
-    #kxr = 1:(findfirst(x->x^2>cutoff,kx)-1)
-    wly = (findfirst(x->x^2>cutoff,ky)-1)
-    const global Kyr = (1:wly,(Ny-wly+2):Ny)
-    wlz = (findfirst(x->x^2>cutoff,kz)-1)
-    rz = vcat(1:wlz,(Nz-wlz+2):Nz)
-    #rz = vcat(1:(div(nz,3)+1),(nz-div(nz,3)+1):nz)
-    const global Kzr = (rz...,)
-
 end

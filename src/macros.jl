@@ -36,7 +36,6 @@ const sim_par = (:VelocityTimeStepType,:PassiveScalarType,:DensityStratification
 # Nrx size of x direction in Real Space skipping padding. The same as 1:(:nx) in global file
 # Nrrx size of x direction in Real Space NOT skipping padding.
 # Lrs = (Nrx+2)*Ny*Nz; Lrv = 3*Nrx
-# Kxr,Kyr,Kzr vector of places that are not dealiased in Fourier Space, therefore only places that needs computation
 # kx,ky,kz wavenumber vectors.
 # Gdirec can be :x, :y, :z and gives the gravity direction. Odly, only if :z seems to work
 # Thr is true or false for threads.

@@ -16,27 +16,21 @@ function fftfreq(n::Integer,s::Real)::Vector{Float64}
 end
 
 @inbounds @par function mycopy!(rm::AbstractArray{T,3},rhs::AbstractArray{T,3},s::@par(AbstractSimulation)) where T<:Complex
-  @mthreads for kk in 1:length(Kzr)
-    k = Kzr[kk]
-    jj::Int = 1
-    for y in Kyr, j in y
-      for i in 1:(Kxr[k][j])
-        rm[i,jj,kk] = rhs[i,j,k]
+  @mthreads for k in 1:Nz
+    for j in 1:Ny
+      for i in 1:Nx
+        @inbounds rm[i,j,k] = rhs[i,j,k]
       end
-    jj+=1
     end
   end
 end
 
 @inbounds @par function mycopy!(rm::AbstractArray{T,3},rhs::AbstractArray{T,3},s::@par(AbstractSimulation)) where T<:Real
-  @mthreads for kk in 1:length(Kzr)
-    k = Kzr[kk]
-    jj::Int = 1
-    for y in Kyr, j in y
-      for i in 1:(2Kxr[k][j])
-        rm[i,jj,kk] = rhs[i,j,k]
+  @mthreads for k in 1:Nz
+    for j in 1:Ny
+      for i in 1:(2Nx)
+        @inbounds rm[i,j,k] = rhs[i,j,k]
       end
-    jj+=1
     end
   end
 end
@@ -48,9 +42,9 @@ end
 end
 
 @par function _mycopy!(out::AbstractArray{Complex{Float64},3},inp::AbstractArray{Complex{Float64},3},s::@par(AbstractSimulation))
-  @mthreads for k in Kzr
-    for y in Kyr, j in y
-      for i in 1:(Kxr[k][j])
+  @mthreads for k in 1:Nz
+    for j in 1:Ny
+      for i in 1:Nx
         @inbounds out[i,j,k] = inp[i,j,k]
       end
     end
@@ -79,9 +73,9 @@ end
 
 @inline @par function my_scale_fourier!(field::AbstractArray{<:Real,3},s::@par(AbstractSimulation))
   x = 1/(Nrx*Ny*Nz)
-  @mthreads for k in Kzr
-    for y in Kyr, j in y
-      @inbounds @fastmath @msimd for i in 1:(2(Kxr[k][j]))
+  @mthreads for k in 1:Nz
+    for j in 1:Ny
+      @inbounds @msimd for i in 1:(2Nx)
         field[i,j,k] = x*field[i,j,k]
       end
     end

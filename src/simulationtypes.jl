@@ -474,30 +474,10 @@ function parameters(d::Dict)
     @. dealias = (kxp^2 > cutoff) | (kyp^2 > cutoff) | (kzp^2 > cutoff)
   end
 
-  xr = zeros(UInt16,(ny,nz))
-  for k = 1:nz
-    for j = 1:ny
-      for i = 1:ncx
-        if dealias[i,j,k]
-          xr[j,k] = i-1
-          break
-        end
-      end
-    end
-  end
-  kxr = (reshape(reinterpret(NTuple{ny,UInt16},xr),(nz,))...,)
   kx = (kxp...,)
   ky = (kyp...,)
   kz = (kzp...,)
 
-  #kxr = 1:(findfirst(x->x^2>cutoff,kx)-1)
-  wly = (findfirst(x->x^2>cutoff,ky)-1)
-  kyr = (1:wly,(ny-wly+2):ny)
-  wlz = (findfirst(x->x^2>cutoff,kz)-1)
-  rz = vcat(1:wlz,(nz-wlz+2):nz)
-  #rz = vcat(1:(div(nz,3)+1),(nz-div(nz,3)+1):nz)
-  kzr = (rz...,)
-  
   isfile("fftw_wisdom") && FFTW.import_wisdom("fftw_wisdom")
   
   integrator = haskey(d,:velocityTimeStep) ? Symbol(d[:velocityTimeStep]) : Adams_Bashforth3rdO
@@ -507,9 +487,9 @@ function parameters(d::Dict)
   vtimestep = if integrator === :Euller
       VectorTimeStep{cfl}(Euller{variableTimeStep,idt}(Ref(idt)),Euller{variableTimeStep,idt}(Ref(idt)),Euller{variableTimeStep,idt}(Ref(idt)))
   elseif integrator === :Adams_Bashforth3rdO
-      VectorTimeStep{cfl}(Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr),Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr),Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr))
+      VectorTimeStep{cfl}(Adams_Bashforth3rdO{variableTimeStep,idt}(),Adams_Bashforth3rdO{variableTimeStep,idt}(),Adams_Bashforth3rdO{variableTimeStep,idt}())
   else
-      VectorTimeStep{cfl}(ETD3rdO{variableTimeStep,idt,haskey(d,:hyperViscosity) ? true : false}(kxr,kyr,kzr,nx,ny,nz),ETD3rdO{variableTimeStep,idt,haskey(d,:hyperViscosity) ? true : false}(kxr,kyr,kzr,nx,ny,nz),ETD3rdO{variableTimeStep,idt, haskey(d,:hyperViscosity) ? true : false}(kxr,kyr,kzr,ncx,ny,nz))
+      VectorTimeStep{cfl}(ETD3rdO{variableTimeStep,idt,haskey(d,:hyperViscosity) ? true : false}(),ETD3rdO{variableTimeStep,idt,haskey(d,:hyperViscosity) ? true : false}(),ETD3rdO{variableTimeStep,idt, haskey(d,:hyperViscosity) ? true : false}())
   end
 
   if haskey(d,:passiveScalar)
@@ -521,9 +501,9 @@ function parameters(d::Dict)
     scalartimestep = if integrator === :Euller
         Euller{variableTimeStep,idt}(Ref(idt))
       elseif integrator === :Adams_Bashforth3rdO
-        Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr)
+        Adams_Bashforth3rdO{variableTimeStep,idt}()
       else
-        ETD3rdO{variableTimeStep,idt,false}(kxr,kyr,kzr,ncx,ny,nz)
+        ETD3rdO{variableTimeStep,idt,false}()
       end 
     scalartype = PassiveScalar{typeof(scalartimestep),α,dρdz,scalardir}(rho,scalartimestep)
   else
@@ -542,9 +522,9 @@ function parameters(d::Dict)
     densitytimestep = if integrator === :Euller
       Euller{variableTimeStep,idt}(Ref(idt))
     elseif integrator === :Adams_Bashforth3rdO
-      Adams_Bashforth3rdO{variableTimeStep,idt}(kxr,kyr,kzr)
+      Adams_Bashforth3rdO{variableTimeStep,idt}()
     else
-      ETD3rdO{variableTimeStep,idt,false}(kxr,kyr,kzr,ncx,ny,nz)
+      ETD3rdO{variableTimeStep,idt,false}()
     end 
     densitytype = BoussinesqApproximation{typeof(densitytimestep),α,dρdz,g,gdir}(rho,densitytimestep,tr)
 
@@ -611,5 +591,4 @@ end
 
 parameters() = parameters(readglobal())
 
-@par sizecomp(s::@par(AbstractSimulation)) = (Kxr,Kyr,Kzr)
 @par wavenumber(s::@par(AbstractSimulation)) = (kx,ky,kz)
