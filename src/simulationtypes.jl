@@ -91,7 +91,7 @@ Velocity time-stepping method: $(typeof(s.timestep.x))
 Dealias type: $(Dealias[1]) $(Dealias[2])
 Threaded: $Thr
 """
-smsg = join((smsg,msg.(getfield.(s,sim_fields))...))#msg(s.passivescalar),
+smsg = join((smsg,msg.(getfield.(Ref(s),sim_fields))...))#msg(s.passivescalar),
 #  msg(s.densitystratification),
 #  msg(s.lesmodel),
 #  msg(s.forcing)))
@@ -592,8 +592,8 @@ function parameters(d::Dict)
   end
 
   if haskey(d,:hyperViscosity)
-    νh = parse(d[:hyperViscosity])
-    m = haskey(d,:hyperViscosityM) ? parse(d[:hyperViscosityM]) : 2
+    νh = parse(Float64,d[:hyperViscosity])
+    m = haskey(d,:hyperViscosityM) ? parse(Int,d[:hyperViscosityM]) : 2
     hyperviscositytype = HyperViscosity{νh,m}()
   else
     hyperviscositytype = NoHyperViscosity()
@@ -607,7 +607,7 @@ function parameters(d::Dict)
   #
 
   FFTW.export_wisdom("fftw_wisdom")
-  @info(show(s))
+  @info(s)
   return s
 end
 
