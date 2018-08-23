@@ -109,7 +109,7 @@ end
 @inline function rfft!(field,p,s::AbstractSimulation)
   p*field
   my_scale_fourier!(field,s)
-  dealias!(field,s)
+  #dealias!(field,s)
   return nothing
 end
 
