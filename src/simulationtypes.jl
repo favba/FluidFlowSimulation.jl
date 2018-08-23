@@ -599,11 +599,9 @@ function parameters(d::Dict)
     hyperviscositytype = NoHyperViscosity()
   end
 
-  s = Simulation{lx,ly,lz,ncx,ny,nz,lcs,lcv,2ncx,nx,lrs,lrv,ν,
-      typeof(vtimestep),
-      typeof(scalartype),typeof(densitytype),typeof(lestype),typeof(forcingtype),typeof(hyperviscositytype),
-      (Dealiastype,cutoffr),
-      kxr,kyr,kzr,kx,ky,kz,tr,nt,b}(u,dealias,vtimestep,scalartype,densitytype,lestype,forcingtype,hyperviscositytype)
+  s = Simulation{typeof(vtimestep),
+      typeof(scalartype),typeof(densitytype),typeof(lestype),typeof(forcingtype),
+      typeof(hyperviscositytype)}(u,dealias,vtimestep,scalartype,densitytype,lestype,forcingtype,hyperviscositytype)
   #
 
   FFTW.export_wisdom("fftw_wisdom")

@@ -1,4 +1,4 @@
-__precompile__()
+__precompile__(false)
 module FluidFlowSimulation
 export run_simulation, advance_in_time!, VectorField, parameters, readglobal
 
@@ -12,6 +12,11 @@ function Base.unsafe_getindex(A::Tuple, I)
 end
 
 include("ReadGlobal.jl")
+include("Globals.jl")
+
+using .ReadGlobal
+using .Globals
+
 include("macros.jl")
 include("fieldtypes.jl")
 include("simulationtypes.jl")
@@ -24,7 +29,6 @@ include("stats.jl")
 include("output.jl")
 include("models.jl")
 
-using .ReadGlobal
 
 function run_simulation()
   par = readglobal()

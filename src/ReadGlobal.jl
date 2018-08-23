@@ -1,3 +1,4 @@
+__precompile__()
 module ReadGlobal
 export readglobal, getdimsize, checkinput
 

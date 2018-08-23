@@ -30,7 +30,7 @@ macro gen(ex)
   return esc(:(@generated $ex2))
 end
 
-const sim_par = (:Lx,:Ly,:Lz,:Nx,:Ny,:Nz,:Lcs,:Lcv,:Nrrx,:Nrx,:Lrs,:Lrv,:ν,:VelocityTimeStepType,:PassiveScalarType,:DensityStratificationType,:LESModelType,:ForcingType,:HyperViscosityType,:Dealias,:Kxr,:Kyr,:Kzr,:kx,:ky,:kz,:Thr,:Nt,:RealRanges)
+const sim_par = (:VelocityTimeStepType,:PassiveScalarType,:DensityStratificationType,:LESModelType,:ForcingType,:HyperViscosityType)
 # Nx,Ny,Nz size of the grid in Fourier Space
 # Lcs = Nx*Ny*Nz; Lcv = Lcs*3
 # Nrx size of x direction in Real Space skipping padding. The same as 1:(:nx) in global file
