@@ -77,7 +77,7 @@ end
   result = fill!(s.reduction,0.0)
   @mthreads for k in 1:Nz
     for j in 1:Ny
-      @fastmath @inbounds @msimd for i in 1:Nrx
+      @inbounds @msimd for i in 1:Nrx
         result[Threads.threadid()] += f(x[i,j,k])::T
       end
     end
@@ -100,7 +100,7 @@ end
    result = fill!(s.reduction,0.0)
    @mthreads for k in 1:Nz
      for j in 1:Ny
-       @fastmath @inbounds @msimd for i in 1:Nrx
+       @inbounds @msimd for i in 1:Nrx
          result[Threads.threadid()] += getind(f,x,i,j,k)::T
        end
      end
