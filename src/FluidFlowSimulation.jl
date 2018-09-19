@@ -4,6 +4,7 @@ export run_simulation, advance_in_time!, VectorField, parameters, readglobal
 
 import FFTW
 using InplaceRealFFT
+using LinearAlgebra
 
 function Base.unsafe_getindex(A::Tuple, I)
   Base.@_inline_meta
@@ -11,6 +12,7 @@ function Base.unsafe_getindex(A::Tuple, I)
   r
 end
 
+include("Tensors/Tensors.jl")
 include("ReadGlobal.jl")
 include("Globals.jl")
 

@@ -2,8 +2,9 @@ __precompile__(false)
 module Globals
 
 using ..ReadGlobal
+using ..Tensors
 
-export Lx,Ly,Lz,Nx,Ny,Nz,Lcs,Lcv,Nrrx,Nrx,Lrs,Lrv,ν,Dealias,kx,ky,kz,Thr,Nt,RealRanges
+export Lx,Ly,Lz,Nx,Ny,Nz,Lcs,Lcv,Nrrx,Nrx,Lrs,Lrv,ν,Dealias,kx,ky,kz,Thr,Nt,RealRanges,K
 
 function splitrange(lr,nt)
     a = UnitRange{Int}[]
@@ -71,5 +72,14 @@ end
     const global kx = (kxp...,)
     const global ky = (kyp...,)
     const global kz = (kzp...,)
-  
+
+struct Kvec<:AbstractArray{Float64,3} end
+
+Base.IndexStyle(a::Type{Kvec}) = Base.IndexCartesian()
+@inline Base.getindex(a::Kvec,I::Vararg{Int,3}) = Vec{Float64}(kx[I[1]],ky[I[2]],kz[I[3]])
+
+Base.size(a::Kvec) = (Nx,Ny,Nz)
+
+const global K = Kvec()
+
 end
