@@ -68,6 +68,16 @@ end
     haskey(d,:cutoff) ? (cutoffr = Float64(eval(Meta.parse(d[:cutoff])))) : (cutoffr = 15/16)
     const global Dealias = (Dealiastype,cutoffr) 
 
+    cutoff = (cutoffr*kxp[end])^2
+
+    const global dealias = BitArray(undef,(Nx,Ny,Nz))
+
+    if Dealiastype == :sphere
+        @. dealias = (kxp^2 + kyp^2 + kzp^2) > cutoff
+    elseif Dealiastype == :cube
+        @. dealias = (kxp^2 > cutoff) | (kyp^2 > cutoff) | (kzp^2 > cutoff)
+    end
+
     const global kx = (kxp...,)
     const global ky = (kyp...,)
     const global kz = (kzp...,)

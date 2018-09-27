@@ -1,4 +1,8 @@
+name = "FluidFlowSimulation"
+uuid = "9187d7ca-c1f2-11e8-163d-8b5bdbf96bbb"
+
 [deps]
+DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
 FluidFields = "390a1fbe-c11f-11e8-0e71-0f874e7fb199"
 FluidTensors = "9c362f20-be79-11e8-0b20-338637273ba1"

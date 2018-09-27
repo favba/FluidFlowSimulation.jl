@@ -91,13 +91,13 @@ end
   my_scale_fourier!(field.rz,s)
 end
 
-@inline function my_scale_fourier!(field::SymmetricTracelessTensor,s)
-  my_scale_fourier!(field.rxx,s)
-  my_scale_fourier!(field.rxy,s)
-  my_scale_fourier!(field.rxz,s)
-  my_scale_fourier!(field.ryy,s)
-  my_scale_fourier!(field.ryz,s)
-end
+#@inline function my_scale_fourier!(field::SymmetricTracelessTensor,s)
+  #my_scale_fourier!(field.rxx,s)
+  #my_scale_fourier!(field.rxy,s)
+  #my_scale_fourier!(field.rxz,s)
+  #my_scale_fourier!(field.ryy,s)
+  #my_scale_fourier!(field.ryz,s)
+#end
 
 @inline function irfft!(field,p,s::AbstractSimulation)
   p*field

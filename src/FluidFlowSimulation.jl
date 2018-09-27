@@ -2,8 +2,7 @@ __precompile__(false)
 module FluidFlowSimulation
 export run_simulation, advance_in_time!, VectorField, parameters, readglobal
 
-import FFTW
-using InplaceRealFFT
+using FFTW, InplaceRealFFT, FluidTensors, FluidFields
 
 function Base.unsafe_getindex(A::Tuple, I)
   Base.@_inline_meta
@@ -18,7 +17,6 @@ using .ReadGlobal
 using .Globals
 
 include("macros.jl")
-include("fieldtypes.jl")
 include("simulationtypes.jl")
 include("spectrum.jl")
 include("forcing.jl")

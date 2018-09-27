@@ -7,66 +7,48 @@ Simulation will encapsule different structs for:
 
 #Traits
 @par haspassivescalar(s::Type{T}) where {T<:@par(AbstractSimulation)} =
-  PassiveScalarType !== NoPassiveScalar
+    PassiveScalarType !== NoPassiveScalar
 haspassivescalar(s::AbstractSimulation) = haspassivescalar(typeof(s))
 
 @par hasdensity(s::Type{T}) where {T<:@par(AbstractSimulation)}  =
-  DensityStratificationType !== NoDensityStratification
+    DensityStratificationType !== NoDensityStratification
 hasdensity(s::AbstractSimulation) = hasdensity(typeof(s))
 
 @par hasles(s::Type{T}) where {T<:@par(AbstractSimulation)}  =
-  LESModelType !== NoLESModel
+    LESModelType !== NoLESModel
 hasles(s::AbstractSimulation) = hasles(typeof(s))
 
 @par hasforcing(s::Type{T}) where {T<:@par(AbstractSimulation)}  =
-  ForcingType !== NoForcing
+    ForcingType !== NoForcing
 hasforcing(s::AbstractSimulation) = hasforcing(typeof(s))
 
 @par hashyperviscosity(s::Type{T}) where {T<:@par(AbstractSimulation)} =
-  HyperViscosityType !== NoHyperViscosity
+    HyperViscosityType !== NoHyperViscosity
 hashyperviscosity(s::AbstractSimulation) = hashyperviscosity(typeof(s))
 
 struct @par(Simulation) <: @par(AbstractSimulation)
-  u::VectorField{PaddedArray{Float64,4,3,false},Tuple{Nrrx,Ny,Nz},Tuple{Nx,Ny,Nz},Lrs,Lcs}
-  rhs::VectorField{PaddedArray{Float64,4,3,false},Tuple{Nrrx,Ny,Nz},Tuple{Nx,Ny,Nz},Lrs,Lcs}
-  aux::VectorField{PaddedArray{Float64,4,3,false},Tuple{Nrrx,Ny,Nz},Tuple{Nx,Ny,Nz},Lrs,Lcs}
-  p::FFTW.rFFTWPlan{Float64,-1,true,4}
-  pb::FFTW.rFFTWPlan{Complex{Float64},1,true,4}
-  reduction::Vector{Float64}
-  dealias::BitArray{3}
-  timestep::VelocityTimeStepType
-  passivescalar::PassiveScalarType
-  densitystratification::DensityStratificationType
-  lesmodel::LESModelType
-  forcing::ForcingType
-  hyperviscosity::HyperViscosityType
+    u::VectorField{Float64,3,2,false}
+    rhs::VectorField{Float64,3,2,false}
+    aux::VectorField{Float64,3,2,false}
+    reduction::Vector{Float64}
+    timestep::VelocityTimeStepType
+    passivescalar::PassiveScalarType
+    densitystratification::DensityStratificationType
+    lesmodel::LESModelType
+    forcing::ForcingType
+    hyperviscosity::HyperViscosityType
   
-  @par function @par(Simulation)(u::VectorField{PaddedArray{Float64,4,3,false}},dealias::BitArray{3},timestep,passivescalar,densitystratification,lesmodel,forcing,hv) 
+    @par function @par(Simulation)(u::VectorField,timestep,passivescalar,densitystratification,lesmodel,forcing,hv) 
 
-    rhs = similar(u)
-    aux = similar(u)
+        rhs = similar(u)
+        aux = similar(u)
   
-    aux = VectorField(PaddedArray(Nrx,Ny,Nz,3))
-    @info("Calculating FFTW in-place forward plan for velocity field")
-    p = plan_rfft!(aux,1:3,flags=FFTW.MEASURE)
-    @info("Calculating FFTW in-place backward plan for velocity field")
-    pb = plan_brfft!(aux,1:3,flags=FFTW.MEASURE)
+        reduction = zeros(Thr ? Threads.nthreads() : 1)
 
-    reduction = zeros(Thr ? Threads.nthreads() : 1)
-
-    return @par(new)(u,rhs,aux,p,pb,reduction,dealias,timestep,passivescalar,densitystratification,lesmodel,forcing,hv)
-  end
+        return @par(new)(u,rhs,aux,reduction,timestep,passivescalar,densitystratification,lesmodel,forcing,hv)
+    end
 
 end
-
-@inline @par nu(s::Type{T}) where {T<:@par(AbstractSimulation)} = ν
-@inline nu(s::AbstractSimulation) = nu(typeof(s))
-
-@inline @par ngridpoints(s::Type{T}) where {T<:@par(AbstractSimulation)} = (Nrx,Ny,Nz)
-@inline ngridpoints(s::AbstractSimulation) = ngridpoints(typeof(s))
-
-@inline @par domainlength(s::Type{T}) where {T<:@par(AbstractSimulation)} = (Lx,Ly,Lz)
-@inline domainlength(s::AbstractSimulation) = domainlength(typeof(s))
 
 @inline @par nuh(s::Type{T}) where {T<:@par(AbstractSimulation)} = nuh(HyperViscosityType)
 @inline nuh(s::AbstractSimulation) = nuh(typeof(s))
@@ -102,50 +84,44 @@ end
 # Simulaiton with Scalar fields ===================================================================================================================================================
 abstract type AbstractPassiveScalar{TT,α,dρdz,Gdirec} end
 
-  diffusivity(a::Type{T}) where {TT,α,dρdz,Gdirec,T<:AbstractPassiveScalar{TT,α,dρdz,Gdirec}} = 
-    α
-  @inline diffusivity(a::AbstractPassiveScalar) = diffusivity(typeof(a)) 
+    diffusivity(a::Type{T}) where {TT,α,dρdz,Gdirec,T<:AbstractPassiveScalar{TT,α,dρdz,Gdirec}} = 
+        α
+    @inline diffusivity(a::AbstractPassiveScalar) = diffusivity(typeof(a)) 
 
-  meangradient(a::Type{T}) where {TT,α,dρdz,Gdirec,T<:AbstractPassiveScalar{TT,α,dρdz,Gdirec}} = 
-    dρdz
-  @inline meangradient(a::AbstractPassiveScalar{TT,α,dρdz,Gdirec}) where {TT,α,dρdz,Gdirec} = meangradient(typeof(a))
+    meangradient(a::Type{T}) where {TT,α,dρdz,Gdirec,T<:AbstractPassiveScalar{TT,α,dρdz,Gdirec}} = 
+        dρdz
+    @inline meangradient(a::AbstractPassiveScalar{TT,α,dρdz,Gdirec}) where {TT,α,dρdz,Gdirec} = meangradient(typeof(a))
 
-  graddir(a::Type{T}) where {TT,α,dρdz,Gdirec,T<:AbstractPassiveScalar{TT,α,dρdz,Gdirec}} = 
-    Gdirec
-  @inline graddir(a::AbstractPassiveScalar{TT,α,dρdz,Gdirec}) where {TT,α,dρdz,Gdirec} = graddir(typeof(a))
+    graddir(a::Type{T}) where {TT,α,dρdz,Gdirec,T<:AbstractPassiveScalar{TT,α,dρdz,Gdirec}} = 
+        Gdirec
+    @inline graddir(a::AbstractPassiveScalar{TT,α,dρdz,Gdirec}) where {TT,α,dρdz,Gdirec} = graddir(typeof(a))
 
-  initialize!(a::AbstractPassiveScalar,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),diffusivity(a),s)
+    initialize!(a::AbstractPassiveScalar,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),diffusivity(a),s)
 
-  statsheader(a::AbstractPassiveScalar) = "scalar,scalar^2,dscalardx^2,dscalardy^2,dscalardz^2"
+    statsheader(a::AbstractPassiveScalar) = "scalar,scalar^2,dscalardx^2,dscalardy^2,dscalardz^2"
 
-  stats(a::AbstractPassiveScalar,s::AbstractSimulation) = scalar_stats(a,s)
+    stats(a::AbstractPassiveScalar,s::AbstractSimulation) = scalar_stats(a,s)
 
 struct NoPassiveScalar <: AbstractPassiveScalar{nothing,nothing,nothing,nothing} end
 
-  initialize!(a::NoPassiveScalar,s::AbstractSimulation) = nothing
+    initialize!(a::NoPassiveScalar,s::AbstractSimulation) = nothing
 
-  statsheader(a::NoPassiveScalar) = ""
+    statsheader(a::NoPassiveScalar) = ""
 
-  stats(a::NoPassiveScalar,s::AbstractSimulation) = ()
+    stats(a::NoPassiveScalar,s::AbstractSimulation) = ()
 
-  msg(a::NoPassiveScalar) = "\nPassive Scalar: No passive scalar\n"
+    msg(a::NoPassiveScalar) = "\nPassive Scalar: No passive scalar\n"
 
 struct PassiveScalar{TTimeStep, α #=Difusitivity = ν/Pr =#,
                   dρdz #=Linear mean profile=#, Gdirec #=Axis of mean profile =#} <: AbstractPassiveScalar{TTimeStep,α,dρdz,Gdirec}
-  ρ::PaddedArray{Float64,3,2,false}
-  ps::FFTW.rFFTWPlan{Float64,-1,true,3}
-  pbs::FFTW.rFFTWPlan{Complex{Float64},1,true,3}
-  ρrhs::PaddedArray{Float64,3,2,false}
-  timestep::TTimeStep
+    ρ::ScalarField{Float64,3,2,false}
+    ρrhs::ScalarField{Float64,3,2,false}
+    timestep::TTimeStep
 
-  function PassiveScalar{TT,α,dρdz,Gdirec}(ρ,timestep) where {TT,α,dρdz,Gdirec}
-    ρrhs = similar(ρ)
-    @info("Calculating FFTW in-place forward plan for scalar field")
-    ps = plan_rfft!(ρrhs,flags=FFTW.MEASURE)
-    @info("Calculating FFTW in-place backward plan for scalar field")
-    pbs = plan_brfft!(ρrhs,flags=FFTW.MEASURE) 
-    return new{TT,α,dρdz,Gdirec}(ρ,ps,pbs,ρrhs,timestep)
-  end
+    function PassiveScalar{TT,α,dρdz,Gdirec}(ρ,timestep) where {TT,α,dρdz,Gdirec}
+        ρrhs = similar(ρ)
+        return new{TT,α,dρdz,Gdirec}(ρ,ρrhs,timestep)
+    end
 end 
 
 msg(a::PassiveScalar{TT,α,dρdz,Gdirec}) where {TT,α,dρdz,Gdirec} = """
@@ -161,63 +137,56 @@ Scalar time-stepping method: $(TT)
 
 abstract type AbstractDensityStratification{TT,α,dρdz,g,Gdirec} end
 
-  diffusivity(a::Type{T}) where {TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{TT,α,dρdz,g,Gdirec}} = 
-    α
-  @inline diffusivity(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = diffusivity(typeof(a))
-  @inline @par diffusivity(s::Type{T}) where {T<:@par(AbstractSimulation)} = diffusivity(DensityStratificationType)
-  @inline diffusivity(s::AbstractSimulation) = diffusivity(typeof(s))
+    diffusivity(a::Type{T}) where {TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{TT,α,dρdz,g,Gdirec}} = 
+        α
+    @inline diffusivity(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = diffusivity(typeof(a))
+    @inline @par diffusivity(s::Type{T}) where {T<:@par(AbstractSimulation)} = diffusivity(DensityStratificationType)
+    @inline diffusivity(s::AbstractSimulation) = diffusivity(typeof(s))
 
-  meangradient(a::Type{T}) where {TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{TT,α,dρdz,g,Gdirec}} = 
-    dρdz
-  @inline meangradient(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = meangradient(typeof(a))
+    meangradient(a::Type{T}) where {TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{TT,α,dρdz,g,Gdirec}} = 
+        dρdz
+    @inline meangradient(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = meangradient(typeof(a))
 
-  gravity(a::Type{T}) where {TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{TT,α,dρdz,g,Gdirec}} = 
-    g
-  @inline gravity(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = gravity(typeof(a))
-  @inline @par gravity(s::Type{T}) where {T<:@par(AbstractSimulation)} = gravity(DensityStratificationType)
-  @inline gravity(s::AbstractSimulation) = gravity(typeof(s))
+    gravity(a::Type{T}) where {TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{TT,α,dρdz,g,Gdirec}} = 
+        g
+    @inline gravity(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = gravity(typeof(a))
+    @inline @par gravity(s::Type{T}) where {T<:@par(AbstractSimulation)} = gravity(DensityStratificationType)
+    @inline gravity(s::AbstractSimulation) = gravity(typeof(s))
 
-  graddir(a::Type{T}) where {TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{TT,α,dρdz,g,Gdirec}} = 
-    Gdirec
-  @inline graddir(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = graddir(typeof(a))
+    graddir(a::Type{T}) where {TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{TT,α,dρdz,g,Gdirec}} = 
+        Gdirec
+    @inline graddir(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = graddir(typeof(a))
 
 
-  initialize!(a::AbstractDensityStratification,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),diffusivity(a),s)
+    initialize!(a::AbstractDensityStratification,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),diffusivity(a),s)
 
-  statsheader(a::AbstractDensityStratification) = "rho,rho^2,drhodx^2,drhody^3,drhodz^2"
+    statsheader(a::AbstractDensityStratification) = "rho,rho^2,drhodx^2,drhody^3,drhodz^2"
 
-  stats(a::AbstractDensityStratification,s::AbstractSimulation) = scalar_stats(a,s)
+    stats(a::AbstractDensityStratification,s::AbstractSimulation) = scalar_stats(a,s)
 
 struct NoDensityStratification <: AbstractDensityStratification{nothing,nothing,nothing,nothing,nothing} end
 
-  initialize!(a::NoDensityStratification,s::AbstractSimulation) = nothing
+    initialize!(a::NoDensityStratification,s::AbstractSimulation) = nothing
 
-  statsheader(a::NoDensityStratification) = ""
+    statsheader(a::NoDensityStratification) = ""
 
-  stats(a::NoDensityStratification,s::AbstractSimulation) = ()
+    stats(a::NoDensityStratification,s::AbstractSimulation) = ()
 
-  msg(a::NoDensityStratification) = "\nDensity Stratification: No density stratification\n"
+    msg(a::NoDensityStratification) = "\nDensity Stratification: No density stratification\n"
 
 struct BoussinesqApproximation{TTimeStep, α #=Difusitivity = ν/Pr =#,
                    dρdz #=Linear mean profile=#, g #=This is actually g/ρ₀ =#, 
                    Gdirec#=Gravity direction =#} <: AbstractDensityStratification{TTimeStep,α,dρdz,g,Gdirec}
-  ρ::PaddedArray{Float64,3,2,false}
-  ps::FFTW.rFFTWPlan{Float64,-1,true,3}
-  pbs::FFTW.rFFTWPlan{Complex{Float64},1,true,3}
-  ρrhs::PaddedArray{Float64,3,2,false}
-  timestep::TTimeStep
-  reduction::Vector{Float64}
+    ρ::ScalarField{Float64,3,2,false}
+    ρrhs::ScalarField{Float64,3,2,false}
+    timestep::TTimeStep
+    reduction::Vector{Float64}
 
-  function BoussinesqApproximation{TT,α,dρdz,g,Gdirec}(ρ,timestep,tr) where {TT,α,dρdz,g,Gdirec}
-    ρrhs = similar(ρ)
-    @info("Calculating FFTW in-place forward plan for scalar field")
-    ps = plan_rfft!(ρrhs,flags=FFTW.MEASURE)
-    @info("Calculating FFTW in-place backward plan for scalar field")
-    pbs = plan_brfft!(ρrhs,flags=FFTW.MEASURE) 
-
-    reduction = zeros(tr ? Threads.nthreads() : 1)
-    return new{TT,α,dρdz,g,Gdirec}(ρ,ps,pbs,ρrhs,timestep,reduction)
-  end
+    function BoussinesqApproximation{TT,α,dρdz,g,Gdirec}(ρ,timestep,tr) where {TT,α,dρdz,g,Gdirec}
+        ρrhs = similar(ρ)
+        reduction = zeros(tr ? Threads.nthreads() : 1)
+        return new{TT,α,dρdz,g,Gdirec}(ρ,ρrhs,timestep,reduction)
+    end
 end 
 
 initialize!(a::BoussinesqApproximation,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),diffusivity(a),s)
@@ -237,50 +206,44 @@ Density time-stepping method: $(TT)
 
 abstract type AbstractLESModel end
 
-is_Smagorinsky(a) = false
-is_SandP(a) = false
-lesscalarmodel(a) = NoLESScalar
+    is_Smagorinsky(a) = false
+    is_SandP(a) = false
+    lesscalarmodel(a) = NoLESScalar
 
 struct NoLESModel <: AbstractLESModel end
 
-statsheader(a::NoLESModel) = ""
+    statsheader(a::NoLESModel) = ""
 
-stats(a::NoLESModel,s::AbstractSimulation) = ()
+    stats(a::NoLESModel,s::AbstractSimulation) = ()
 
-msg(a::NoLESModel) = "\nLES model: No LES model\n"
+    msg(a::NoLESModel) = "\nLES model: No LES model\n"
 
 abstract type AbstractLESScalar end
 
 struct NoLESScalar <: AbstractLESScalar end
 
 struct EddyDiffusion{VecType} <: AbstractLESScalar 
-  gradρ::VecType
+    gradρ::VecType
 end
 
-EddyDiffusion(nx,ny,nz) = EddyDiffusion(VectorField(PaddedArray(zeros(nx,ny,nz,3))))
+    EddyDiffusion(nx,ny,nz) = EddyDiffusion(VectorField(PaddedArray(zeros(nx,ny,nz,3))))
 
 # Smagorinsky Model Start ======================================================
 
 abstract type EddyViscosityModel <: AbstractLESModel end
 
 struct Smagorinsky{c,Δ,ScalarType<:AbstractLESScalar,TensorType} <: EddyViscosityModel
-  tau::TensorType
-  pt::FFTW.rFFTWPlan{Float64,-1,true,4}
-  pbt::FFTW.rFFTWPlan{Complex{Float64},1,true,4}
-  scalar::ScalarType
-  reduction::Vector{Float64}
+    tau::TensorType
+    scalar::ScalarType
+    reduction::Vector{Float64}
 end
 
 function Smagorinsky(c::Real,Δ::Real,scalar::Bool,dim::NTuple{3,Integer},tr) 
-  data = SymmetricTracelessTensor(dim)
-  @info("Calculating FFTW in-place forward plan for symmetric traceless tensor field")
-  pt = plan_rfft!(data,1:3,flags=FFTW.MEASURE)
-  @info("Calculating FFTW in-place backward plan for symmetric traceless tensor field")
-  pbt = plan_brfft!(data,1:3,flags=FFTW.MEASURE)
-  fill!(data,0)
-  scalart = scalar ? EddyDiffusion(dim...) : NoLESScalar()
-  reduction = zeros(tr ? Threads.nthreads() : 1)
-  return Smagorinsky{c,Δ,typeof(scalart),typeof(data)}(data,pt,pbt,scalart,reduction)
+    data = SymmetricTracelessTensor(dim)
+    fill!(data,0)
+    scalart = scalar ? EddyDiffusion(dim...) : NoLESScalar()
+    reduction = zeros(tr ? Threads.nthreads() : 1)
+    return Smagorinsky{c,Δ,typeof(scalart),typeof(data)}(data,scalart,reduction)
 end
 
 Smagorinsky(c::Real,Δ::Real,dim::NTuple{3,Integer}) = Smagorinsky(c,Δ,false,dim)
@@ -310,21 +273,15 @@ msg(a::Smagorinsky) = "\nLES model: Smagorinsky\nConstant: $(cs(a))\nFilter Widt
 # Smagorinsky+P Model Start ======================================================
 
 struct SandP{cs,cβ,Δ,ScalarType<:AbstractLESScalar,TensorType} <: AbstractLESModel
-  tau::TensorType
-  pt::FFTW.rFFTWPlan{Float64,-1,true,4}
-  pbt::FFTW.rFFTWPlan{Complex{Float64},1,true,4}
-  scalar::ScalarType
+    tau::TensorType
+    scalar::ScalarType
 end
 
 function SandP(c::Real,cb::Real,Δ::Real,scalar::Bool,dim::NTuple{3,Integer}) 
-  data = SymmetricTracelessTensor(dim)
-  @info("Calculating FFTW in-place forward plan for symmetric traceless tensor field")
-  pt = plan_rfft!(data,1:3,flags=FFTW.MEASURE)
-  @info("Calculating FFTW in-place backward plan for symmetric traceless tensor field")
-  pbt = plan_brfft!(data,1:3,flags=FFTW.MEASURE)
-  fill!(data,0)
-  scalart = scalar ? EddyDiffusion(dim...) : NoLESScalar()
-  return SandP{c,cb,Δ,typeof(scalart),typeof(data)}(data,pt,pbt,scalart)
+    data = SymmetricTracelessTensor(dim)
+    fill!(data,0)
+    scalart = scalar ? EddyDiffusion(dim...) : NoLESScalar()
+    return SandP{c,cb,Δ,typeof(scalart),typeof(data)}(data,scalart)
 end
 
 is_SandP(a::Union{<:SandP,Type{<:SandP}}) = true
@@ -355,49 +312,49 @@ abstract type AbstractForcing end
 
 #statsheader(a::AbstractForcing) = ""
 
-struct NoForcing <: AbstractForcing end
+    struct NoForcing <: AbstractForcing end
 
-statsheader(a::NoForcing) = ""
+    statsheader(a::NoForcing) = ""
 
-stats(a::NoForcing,s::AbstractSimulation) = ()
+    stats(a::NoForcing,s::AbstractSimulation) = ()
 
-msg(a::NoForcing) = "\nForcing: No forcing\n"
+    msg(a::NoForcing) = "\nForcing: No forcing\n"
 
 struct RfForcing{Tf,α,Kf,MaxDk,avgK, Zf} #= Tf = 1.0 , α = 1.0  =# <: AbstractForcing
-  Ef::Vector{Float64} # Velocity Field Spectrum
-  Em::Vector{Float64} # Target Spectrum
-  R::Vector{Float64} # Solution to ODE
-#  Zf::Vector{Float64} # Cutoff function, using as parameter
-  #dRdt::Vector{Float64} # Not needed if I use Euller timestep
-  factor::Vector{Float64} # Factor to multiply velocity Field
-  forcex::PaddedArray{Float64,3,2,false} # Final force
-  forcey::PaddedArray{Float64,3,2,false} # Final force
-  init::Bool # Tell if the initial condition spectra should be used instead of from data
+    Ef::Vector{Float64} # Velocity Field Spectrum
+    Em::Vector{Float64} # Target Spectrum
+    R::Vector{Float64} # Solution to ODE
+  #  Zf::Vector{Float64} # Cutoff function, using as parameter
+    #dRdt::Vector{Float64} # Not needed if I use Euller timestep
+    factor::Vector{Float64} # Factor to multiply velocity Field
+    forcex::PaddedArray{Float64,3,2,false} # Final force
+    forcey::PaddedArray{Float64,3,2,false} # Final force
+    init::Bool # Tell if the initial condition spectra should be used instead of from data
 end
 
-statsheader(a::RfForcing) = ""
+    statsheader(a::RfForcing) = ""
 
-stats(a::RfForcing,s::AbstractSimulation) = ()
+    stats(a::RfForcing,s::AbstractSimulation) = ()
 
-msg(a::RfForcing) = "\nForcing:  Rf forcing\nTf: $(getTf(a))\nalphac: $(getalpha(a))\nKf: $(getKf(a))\n"
+    msg(a::RfForcing) = "\nForcing:  Rf forcing\nTf: $(getTf(a))\nalphac: $(getalpha(a))\nKf: $(getKf(a))\n"
 
-getTf(f::Type{RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}}) where {Tf,α,Kf,MaxDk,avgK, Zf} = Tf
-@inline getTf(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = getTf(typeof(f))
+    getTf(f::Type{RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}}) where {Tf,α,Kf,MaxDk,avgK, Zf} = Tf
+    @inline getTf(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = getTf(typeof(f))
 
-getalpha(f::Type{RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}}) where {Tf,α,Kf,MaxDk,avgK, Zf} = α
-@inline getalpha(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = getalpha(typeof(f))
+    getalpha(f::Type{RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}}) where {Tf,α,Kf,MaxDk,avgK, Zf} = α
+    @inline getalpha(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = getalpha(typeof(f))
 
-getKf(f::Type{RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}}) where {Tf,α,Kf,MaxDk,avgK, Zf} = Kf
-@inline getKf(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = getKf(typeof(f))
+    getKf(f::Type{RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}}) where {Tf,α,Kf,MaxDk,avgK, Zf} = Kf
+    @inline getKf(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = getKf(typeof(f))
 
-getmaxdk(f::Type{RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}}) where {Tf,α,Kf,MaxDk,avgK, Zf} = MaxDk
-@inline getmaxdk(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = getmaxdk(typeof(f))
+    getmaxdk(f::Type{RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}}) where {Tf,α,Kf,MaxDk,avgK, Zf} = MaxDk
+    @inline getmaxdk(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = getmaxdk(typeof(f))
 
-getavgk(f::Type{RfForcing{Tf,α,Kf,MaxDk,AvgK, Zf}}) where {Tf,α,Kf,MaxDk,AvgK, Zf} = AvgK
-@inline getavgk(f::RfForcing{Tf,α,Kf,MaxDk,AvgK, Zf}) where {Tf,α,Kf,MaxDk,AvgK, Zf} = getavgk(typeof(f))
+    getavgk(f::Type{RfForcing{Tf,α,Kf,MaxDk,AvgK, Zf}}) where {Tf,α,Kf,MaxDk,AvgK, Zf} = AvgK
+    @inline getavgk(f::RfForcing{Tf,α,Kf,MaxDk,AvgK, Zf}) where {Tf,α,Kf,MaxDk,AvgK, Zf} = getavgk(typeof(f))
 
-getZf(f::Type{RfForcing{Tf,α,Kf,MaxDk,AvgK, Zf}}) where {Tf,α,Kf,MaxDk,AvgK, Zf} = Zf
-@inline getZf(f::RfForcing{Tf,α,Kf,MaxDk,AvgK, Zf}) where {Tf,α,Kf,MaxDk,AvgK, Zf} = getZf(typeof(f))
+    getZf(f::Type{RfForcing{Tf,α,Kf,MaxDk,AvgK, Zf}}) where {Tf,α,Kf,MaxDk,AvgK, Zf} = Zf
+    @inline getZf(f::RfForcing{Tf,α,Kf,MaxDk,AvgK, Zf}) where {Tf,α,Kf,MaxDk,AvgK, Zf} = getZf(typeof(f))
 
 # Hyper viscosity Type
 
@@ -407,186 +364,185 @@ abstract type AbstractHyperViscosity end
 
 struct NoHyperViscosity <: AbstractHyperViscosity end
 
-statsheader(a::AbstractHyperViscosity) = ""
+    statsheader(a::AbstractHyperViscosity) = ""
 
-stats(a::AbstractHyperViscosity,s::AbstractSimulation) = ()
+    stats(a::AbstractHyperViscosity,s::AbstractSimulation) = ()
 
-msg(a::NoHyperViscosity) = "\nHyper viscosity: no hyperviscosity\n\n"
+    msg(a::NoHyperViscosity) = "\nHyper viscosity: no hyperviscosity\n\n"
 
-@inline nuh(::Type{NoHyperViscosity}) = nothing
-@inline nuh(a::AbstractHyperViscosity) = nuh(typeof(a))
+    @inline nuh(::Type{NoHyperViscosity}) = nothing
+    @inline nuh(a::AbstractHyperViscosity) = nuh(typeof(a))
 
-@inline get_hyperviscosity_exponent(::Type{NoHyperViscosity}) = nothing
-@inline get_hyperviscosity_exponent(a::AbstractHyperViscosity) = get_hyperviscosity_exponent(typeof(a))
+    @inline get_hyperviscosity_exponent(::Type{NoHyperViscosity}) = nothing
+    @inline get_hyperviscosity_exponent(a::AbstractHyperViscosity) = get_hyperviscosity_exponent(typeof(a))
 
 struct HyperViscosity{νh,M} <: AbstractHyperViscosity
 end
 
-@inline nuh(::Type{<:HyperViscosity{n,M}}) where {n,M} = n
-@inline get_hyperviscosity_exponent(::Type{<:HyperViscosity{n,M}}) where {n,M} = M
+    @inline nuh(::Type{<:HyperViscosity{n,M}}) where {n,M} = n
+    @inline get_hyperviscosity_exponent(::Type{<:HyperViscosity{n,M}}) where {n,M} = M
 
-msg(a::HyperViscosity{nh,M}) where {nh,M} = "\nHyper viscosity: νh = $(nh), m = $(M)\n\n"
+    msg(a::HyperViscosity{nh,M}) where {nh,M} = "\nHyper viscosity: νh = $(nh), m = $(M)\n\n"
 
 # Initializan function =========================================================================================================================================================================================================
 
 function parameters(d::Dict)
 
-  nx = parse(Int,d[:nx])
-  ny = parse(Int,d[:ny])
-  nz = parse(Int,d[:nz])
+    nx = parse(Int,d[:nx])
+    ny = parse(Int,d[:ny])
+    nz = parse(Int,d[:nz])
 
-  ncx = div(nx,2)+1
-  lcs = ncx*ny*nz
-  lcv = 3*lcs
-  lrs = 2*lcs
-  lrv = 2*lcv
+    ncx = div(nx,2)+1
+    lcs = ncx*ny*nz
+    lcv = 3*lcs
+    lrs = 2*lcs
+    lrv = 2*lcv
 
-  lx = Float64(eval(Meta.parse(d[:xDomainSize])))
-  ly = Float64(eval(Meta.parse(d[:yDomainSize])))
-  lz = Float64(eval(Meta.parse(d[:zDomainSize])))
-  ν = Float64(eval(Meta.parse(d[:kinematicViscosity])))
+    lx = Float64(eval(Meta.parse(d[:xDomainSize])))
+    ly = Float64(eval(Meta.parse(d[:yDomainSize])))
+    lz = Float64(eval(Meta.parse(d[:zDomainSize])))
+    ν = Float64(eval(Meta.parse(d[:kinematicViscosity])))
 
-  start = haskey(d,:start) ? d[:start] : "0"
+    start = haskey(d,:start) ? d[:start] : "0"
 
-  @info("Reading initial velocity field u1.$start u2.$start u3.$start")
-  u = VectorField("u1.$start","u2.$start","u3.$start",nx,ny,nz)
+    @info("Reading initial velocity field u1.$start u2.$start u3.$start")
+    u = VectorField(nx,ny,nz)
+    read!("u1.$start",u.rr.x)
+    read!("u2.$start",u.rr.y)
+    read!("u3.$start",u.rr.z)
 
-  kxp = reshape(rfftfreq(nx,lx),(ncx,1,1))
-  kyp = reshape(fftfreq(ny,ly),(1,ny,1))
-  kzp = reshape(fftfreq(nz,lz),(1,1,nz))
+    kxp = reshape(rfftfreq(nx,lx),(ncx,1,1))
+    kyp = reshape(fftfreq(ny,ly),(1,ny,1))
+    kzp = reshape(fftfreq(nz,lz),(1,1,nz))
 
-  haskey(d,:threaded) ? (tr = parse(Bool,d[:threaded])) : (tr = true)
+    haskey(d,:threaded) ? (tr = parse(Bool,d[:threaded])) : (tr = true)
 
-  tr && FFTW.set_num_threads(Threads.nthreads())
-  nt = tr ? Threads.nthreads() : 1 
+    tr && FFTW.set_num_threads(Threads.nthreads())
+    nt = tr ? Threads.nthreads() : 1 
 
-  b = splitrange(lrs, nt)
+    b = Globals.splitrange(lrs, nt)
 
-  haskey(d,:dealias) ? (Dealiastype = Symbol(d[:dealias])) : (Dealiastype = :sphere)
-  haskey(d,:cutoff) ? (cutoffr = Float64(eval(Meta.parse(d[:cutoff])))) : (cutoffr = 15/16)
+    haskey(d,:dealias) ? (Dealiastype = Symbol(d[:dealias])) : (Dealiastype = :sphere)
+    haskey(d,:cutoff) ? (cutoffr = Float64(eval(Meta.parse(d[:cutoff])))) : (cutoffr = 15/16)
 
-  cutoff = (cutoffr*kxp[end])^2
+    cutoff = (cutoffr*kxp[end])^2
 
-  dealias = BitArray(undef,(ncx,ny,nz))
-  if Dealiastype == :sphere
-    @. dealias = (kxp^2 + kyp^2 + kzp^2) > cutoff
-  elseif Dealiastype == :cube
-    @. dealias = (kxp^2 > cutoff) | (kyp^2 > cutoff) | (kzp^2 > cutoff)
-  end
+#    dealias = BitArray(undef,(ncx,ny,nz))
+    #if Dealiastype == :sphere
+        #@. dealias = (kxp^2 + kyp^2 + kzp^2) > cutoff
+    #elseif Dealiastype == :cube
+        #@. dealias = (kxp^2 > cutoff) | (kyp^2 > cutoff) | (kzp^2 > cutoff)
+    #end
 
-  kx = (kxp...,)
-  ky = (kyp...,)
-  kz = (kzp...,)
-
-  isfile("fftw_wisdom") && FFTW.import_wisdom("fftw_wisdom")
+    isfile("fftw_wisdom") && FFTW.import_wisdom("fftw_wisdom")
   
-  integrator = haskey(d,:velocityTimeStep) ? Symbol(d[:velocityTimeStep]) : Adams_Bashforth3rdO
-  variableTimeStep = haskey(d,:variableTimestepFlag) ? parse(Bool,d[:variableTimestepFlag]) : true
-  cfl = haskey(d,:cfl) ? parse(Float64,d[:cfl]) : 0.18
-  idt = haskey(d,:dt) ? Float64(eval(Meta.parse(d[:dt]))) : 0.0
-  vtimestep = if integrator === :Euller
-      VectorTimeStep{cfl}(Euller{variableTimeStep,idt}(Ref(idt)),Euller{variableTimeStep,idt}(Ref(idt)),Euller{variableTimeStep,idt}(Ref(idt)))
-  elseif integrator === :Adams_Bashforth3rdO
-      VectorTimeStep{cfl}(Adams_Bashforth3rdO{variableTimeStep,idt}(),Adams_Bashforth3rdO{variableTimeStep,idt}(),Adams_Bashforth3rdO{variableTimeStep,idt}())
-  else
-      VectorTimeStep{cfl}(ETD3rdO{variableTimeStep,idt,haskey(d,:hyperViscosity) ? true : false}(),ETD3rdO{variableTimeStep,idt,haskey(d,:hyperViscosity) ? true : false}(),ETD3rdO{variableTimeStep,idt, haskey(d,:hyperViscosity) ? true : false}())
-  end
-
-  if haskey(d,:passiveScalar)
-    α = ν/Float64(eval(Meta.parse(d[:scalarPr])))
-    dρdz = Float64(eval(Meta.parse(d[:scalarGradient])))
-    @info("Reading initial scalar field scalar.$start")
-    rho = isfile("scalar.$start") ? PaddedArray("scalar.$start",(nx,ny,nz),true) : PaddedArray(zeros(nx,ny,nz)) 
-    scalardir = haskey(d,:scalarDirection) ? Symbol(d[:scalarDirection]) : :z
-    scalartimestep = if integrator === :Euller
-        Euller{variableTimeStep,idt}(Ref(idt))
-      elseif integrator === :Adams_Bashforth3rdO
-        Adams_Bashforth3rdO{variableTimeStep,idt}()
-      else
-        ETD3rdO{variableTimeStep,idt,false}()
-      end 
-    scalartype = PassiveScalar{typeof(scalartimestep),α,dρdz,scalardir}(rho,scalartimestep)
-  else
-    scalartype = NoPassiveScalar()
-  end
-
-  if haskey(d,:densityStratification) 
-
-    haskey(d,:gravityDirection) ? (gdir = Symbol(d[:gravityDirection])) : (gdir = :z)
-    α = ν/Float64(eval(Meta.parse(d[:Pr])))
-    dρdz = Float64(eval(Meta.parse(d[:densityGradient])))
-    g = Float64(eval(Meta.parse(d[:zAcceleration])))/Float64(eval(Meta.parse(d[:referenceDensity])))
-    @info("Reading initial density field rho.$start")
-    rho = isfile("rho.$start") ? PaddedArray("rho.$start",(nx,ny,nz),true) : PaddedArray(zeros(nx,ny,nz)) 
-    gdir = haskey(d,:gravityDirection) ? Symbol(d[:gravityDirection]) : :z
-    densitytimestep = if integrator === :Euller
-      Euller{variableTimeStep,idt}(Ref(idt))
+    integrator = haskey(d,:velocityTimeStep) ? Symbol(d[:velocityTimeStep]) : :Adams_Bashforth3rdO
+    variableTimeStep = haskey(d,:variableTimestepFlag) ? parse(Bool,d[:variableTimestepFlag]) : true
+    cfl = haskey(d,:cfl) ? parse(Float64,d[:cfl]) : 0.18
+    idt = haskey(d,:dt) ? Float64(eval(Meta.parse(d[:dt]))) : 0.0
+    vtimestep = if integrator === :Euller
+        VectorTimeStep{cfl}(Euller{variableTimeStep,idt}(Ref(idt)),Euller{variableTimeStep,idt}(Ref(idt)),Euller{variableTimeStep,idt}(Ref(idt)))
     elseif integrator === :Adams_Bashforth3rdO
-      Adams_Bashforth3rdO{variableTimeStep,idt}()
+        VectorTimeStep{cfl}(Adams_Bashforth3rdO{variableTimeStep,idt}(),Adams_Bashforth3rdO{variableTimeStep,idt}(),Adams_Bashforth3rdO{variableTimeStep,idt}())
     else
-      ETD3rdO{variableTimeStep,idt,false}()
-    end 
-    densitytype = BoussinesqApproximation{typeof(densitytimestep),α,dρdz,g,gdir}(rho,densitytimestep,tr)
-
-  else
-    densitytype = NoDensityStratification()
-  end
-
-  if haskey(d,:lesModel)
-    if d[:lesModel] == "Smagorinsky"
-      c = haskey(d,:smagorinskyConstant) ? Float64(eval(Meta.parse(d[:smagorinskyConstant]))) : 0.17 
-      Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
-      lesscalar = (haskey(d,:passiveScalar) | haskey(d,:densityStratification)) ? true : false
-      lestype = Smagorinsky(c,Δ,lesscalar,(nx,ny,nz),tr)
-    elseif d[:lesModel] == "Smagorinsky+P"
-      c = haskey(d,:smagorinskyConstant) ? Float64(eval(Meta.parse(d[:smagorinskyConstant]))) : 0.17 
-      cb = haskey(d,:pTensorConstant) ? Float64(eval(Meta.parse(d[:pTensorConstant]))) : 0.17 
-      Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : lx*2π/nx  
-      lesscalar = (haskey(d,:passiveScalar) | haskey(d,:densityStratification)) ? true : false
-      lestype = SandP(c,cb,Δ,lesscalar,(nx,ny,nz))
+        VectorTimeStep{cfl}(ETD3rdO{variableTimeStep,idt,haskey(d,:hyperViscosity) ? true : false}(),ETD3rdO{variableTimeStep,idt,haskey(d,:hyperViscosity) ? true : false}(),ETD3rdO{variableTimeStep,idt, haskey(d,:hyperViscosity) ? true : false}())
     end
-  else
-  lestype = NoLESModel()
-  end
-  if haskey(d,:forcing)
-    if d[:forcing] == "rfForcing"
-      TF = parse(Float64,d[:TF])
-      alphac = parse(Float64,d[:alphac])
-      kf = parse(Float64,d[:kf])
-      nShells2D, maxdk2D, numPtsInShell2D, kh = compute_shells2D(kx,ky,ncx,ny)
-      Ef = zeros(length(kh))
-      Em = zeros(length(kh))
-      R = zeros(length(kh))
-      factor = zeros(length(kh))
-      forcex = PaddedArray((nx,ny,nz))
-      forcey = PaddedArray((nx,ny,nz))
-      Zf = calculate_Zf(kf,kh)
-      if !isfile("targSpectrum.dat")
-        forcingtype = RfForcing{TF, alphac, kf, maxdk2D, (kh...,),Zf}(Ef,Em,R,factor,forcex,forcey,true)
-      else
-        #todo read spectrum.dat
-      end
+
+    if haskey(d,:passiveScalar)
+        α = ν/Float64(eval(Meta.parse(d[:scalarPr])))
+        dρdz = Float64(eval(Meta.parse(d[:scalarGradient])))
+        @info("Reading initial scalar field scalar.$start")
+        rho = isfile("scalar.$start") ? PaddedArray("scalar.$start",(nx,ny,nz),true) : PaddedArray(zeros(nx,ny,nz)) 
+        scalardir = haskey(d,:scalarDirection) ? Symbol(d[:scalarDirection]) : :z
+        scalartimestep = if integrator === :Euller
+            Euller{variableTimeStep,idt}(Ref(idt))
+        elseif integrator === :Adams_Bashforth3rdO
+            Adams_Bashforth3rdO{variableTimeStep,idt}()
+        else
+            ETD3rdO{variableTimeStep,idt,false}()
+        end 
+        scalartype = PassiveScalar{typeof(scalartimestep),α,dρdz,scalardir}(rho,scalartimestep)
+    else
+        scalartype = NoPassiveScalar()
     end
-  else
-    forcingtype = NoForcing()
-  end
 
-  if haskey(d,:hyperViscosity)
-    νh = parse(Float64,d[:hyperViscosity])
-    m = haskey(d,:hyperViscosityM) ? parse(Int,d[:hyperViscosityM]) : 2
-    hyperviscositytype = HyperViscosity{νh,m}()
-  else
-    hyperviscositytype = NoHyperViscosity()
-  end
+    if haskey(d,:densityStratification) 
 
-  s = Simulation{typeof(vtimestep),
-      typeof(scalartype),typeof(densitytype),typeof(lestype),typeof(forcingtype),
-      typeof(hyperviscositytype)}(u,dealias,vtimestep,scalartype,densitytype,lestype,forcingtype,hyperviscositytype)
+        haskey(d,:gravityDirection) ? (gdir = Symbol(d[:gravityDirection])) : (gdir = :z)
+        α = ν/Float64(eval(Meta.parse(d[:Pr])))
+        dρdz = Float64(eval(Meta.parse(d[:densityGradient])))
+        g = Float64(eval(Meta.parse(d[:zAcceleration])))/Float64(eval(Meta.parse(d[:referenceDensity])))
+        @info("Reading initial density field rho.$start")
+        rho = isfile("rho.$start") ? PaddedArray("rho.$start",(nx,ny,nz),true) : PaddedArray(zeros(nx,ny,nz)) 
+        gdir = haskey(d,:gravityDirection) ? Symbol(d[:gravityDirection]) : :z
+        densitytimestep = if integrator === :Euller
+            Euller{variableTimeStep,idt}(Ref(idt))
+        elseif integrator === :Adams_Bashforth3rdO
+            Adams_Bashforth3rdO{variableTimeStep,idt}()
+        else
+            ETD3rdO{variableTimeStep,idt,false}()
+        end 
+        densitytype = BoussinesqApproximation{typeof(densitytimestep),α,dρdz,g,gdir}(rho,densitytimestep,tr)
+
+    else
+        densitytype = NoDensityStratification()
+    end
+
+    if haskey(d,:lesModel)
+        if d[:lesModel] == "Smagorinsky"
+            c = haskey(d,:smagorinskyConstant) ? Float64(eval(Meta.parse(d[:smagorinskyConstant]))) : 0.17 
+            Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
+            lesscalar = (haskey(d,:passiveScalar) | haskey(d,:densityStratification)) ? true : false
+            lestype = Smagorinsky(c,Δ,lesscalar,(nx,ny,nz),tr)
+        elseif d[:lesModel] == "Smagorinsky+P"
+            c = haskey(d,:smagorinskyConstant) ? Float64(eval(Meta.parse(d[:smagorinskyConstant]))) : 0.17 
+            cb = haskey(d,:pTensorConstant) ? Float64(eval(Meta.parse(d[:pTensorConstant]))) : 0.17 
+            Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : lx*2π/nx  
+            lesscalar = (haskey(d,:passiveScalar) | haskey(d,:densityStratification)) ? true : false
+            lestype = SandP(c,cb,Δ,lesscalar,(nx,ny,nz))
+        end
+    else
+        lestype = NoLESModel()
+    end
+    if haskey(d,:forcing)
+        if d[:forcing] == "rfForcing"
+            TF = parse(Float64,d[:TF])
+            alphac = parse(Float64,d[:alphac])
+            kf = parse(Float64,d[:kf])
+            nShells2D, maxdk2D, numPtsInShell2D, kh = compute_shells2D(kx,ky,ncx,ny)
+            Ef = zeros(length(kh))
+            Em = zeros(length(kh))
+            R = zeros(length(kh))
+            factor = zeros(length(kh))
+            forcex = PaddedArray((nx,ny,nz))
+            forcey = PaddedArray((nx,ny,nz))
+            Zf = calculate_Zf(kf,kh)
+            if !isfile("targSpectrum.dat")
+                forcingtype = RfForcing{TF, alphac, kf, maxdk2D, (kh...,),Zf}(Ef,Em,R,factor,forcex,forcey,true)
+            else
+            #todo read spectrum.dat
+            end
+        end
+    else
+        forcingtype = NoForcing()
+    end
+
+    if haskey(d,:hyperViscosity)
+        νh = parse(Float64,d[:hyperViscosity])
+        m = haskey(d,:hyperViscosityM) ? parse(Int,d[:hyperViscosityM]) : 2
+        hyperviscositytype = HyperViscosity{νh,m}()
+    else
+        hyperviscositytype = NoHyperViscosity()
+    end
+
+    s = Simulation{typeof(vtimestep),
+        typeof(scalartype),typeof(densitytype),typeof(lestype),typeof(forcingtype),
+        typeof(hyperviscositytype)}(u,vtimestep,scalartype,densitytype,lestype,forcingtype,hyperviscositytype)
   #
 
-  FFTW.export_wisdom("fftw_wisdom")
-  @info(s)
-  return s
+    FFTW.export_wisdom("fftw_wisdom")
+    @info(s)
+    return s
 end
 
 parameters() = parameters(readglobal())
