@@ -1,9 +1,9 @@
 __precompile__(false)
 module Globals
 
-using ..ReadGlobal
+using ..ReadGlobal, FluidTensors
 
-export Lx,Ly,Lz,Nx,Ny,Nz,Lcs,Lcv,Nrrx,Nrx,Lrs,Lrv,ν,Dealias,kx,ky,kz,Thr,Nt,RealRanges
+export Lx,Ly,Lz,Nx,Ny,Nz,Lcs,Lcv,Nrrx,Nrx,Lrs,Lrv,ν,Dealias,kx,ky,kz,Thr,Nt,RealRanges,dealias,K
 
 function splitrange(lr,nt)
     a = UnitRange{Int}[]
@@ -81,5 +81,8 @@ end
     const global kx = (kxp...,)
     const global ky = (kyp...,)
     const global kz = (kzp...,)
-  
+
+    s = (Nx,Ny,Nz)
+    const global K = VecArray(HomogeneousArray{1}(kx,s),HomogeneousArray{2}(ky,s),HomogeneousArray{3}(kz,s))
+
 end
