@@ -5,113 +5,80 @@ _flatten(result::Tuple, x::Tuple) = _flatten(_append(result, first(x)), Base.tai
 _flatten(result::Tuple, x::Tuple{}) = result
 
 function rfftfreq(n::Integer,s::Real)::Vector{Float64}
-  Float64[(n/2 - i)/s for i = n/2:-1:0]
+    Float64[(n/2 - i)/s for i = n/2:-1:0]
 end
 
 function fftfreq(n::Integer,s::Real)::Vector{Float64}
-  if iseven(n)
-    return vcat(Float64[(n/2 - i)/s for i = n/2:-1:1],Float64[-i/s for i = n/2:-1:1])
-  else return vcat(Float64[(n/2 - i)/s for i = n/2:-1:0],Float64[-i/s for i = (n-1)/2:-1:1])
-  end
-end
-
-@inbounds @par function mycopy!(rm::AbstractArray{T,3},rhs::AbstractArray{T,3},s::@par(AbstractSimulation)) where T<:Complex
-  @mthreads for k in 1:Nz
-    for j in 1:Ny
-      for i in 1:Nx
-        @inbounds rm[i,j,k] = rhs[i,j,k]
-      end
+    if iseven(n)
+        return vcat(Float64[(n/2 - i)/s for i = n/2:-1:1],Float64[-i/s for i = n/2:-1:1])
+    else return vcat(Float64[(n/2 - i)/s for i = n/2:-1:0],Float64[-i/s for i = (n-1)/2:-1:1])
     end
-  end
 end
 
-@inbounds @par function mycopy!(rm::AbstractArray{T,3},rhs::AbstractArray{T,3},s::@par(AbstractSimulation)) where T<:Real
-  @mthreads for k in 1:Nz
-    for j in 1:Ny
-      for i in 1:(2Nx)
-        @inbounds rm[i,j,k] = rhs[i,j,k]
-      end
+function mycopy!(out::Array{<:Real,N},inp::Array{<:Real,N}) where N
+    Threads.@threads for l in RealRanges
+        for i in l
+            @inbounds out[i] = inp[i]
+        end
     end
-  end
 end
 
-@par function mycopy!(out::VectorField,inp::VectorField,s::@par(AbstractSimulation))
-  _mycopy!(out.cx,inp.cx,s)
-  _mycopy!(out.cy,inp.cy,s)
-  _mycopy!(out.cz,inp.cz,s)
-end
+mycopy!(o::ScalarField,i::ScalarField) = mycopy!(o.field.data,i.field.data)
 
-@par function _mycopy!(out::AbstractArray{Complex{Float64},3},inp::AbstractArray{Complex{Float64},3},s::@par(AbstractSimulation))
-  @mthreads for k in 1:Nz
-    for j in 1:Ny
-      for i in 1:Nx
-        @inbounds out[i,j,k] = inp[i,j,k]
-      end
+mycopy!(o::VectorField,i::VectorField) = (mycopy!(o.rr.x,i.rr.x);
+                                          mycopy!(o.rr.y,i.rr.y);
+                                          mycopy!(o.rr.z,i.rr.z))
+
+mycopy!(o::SymTrTenField,i::SymTrTenField) = (mycopy!(o.rr.xx,i.rr.xx);
+                                              mycopy!(o.rr.xy,i.rr.xy);
+                                              mycopy!(o.rr.xz,i.rr.xz);
+                                              mycopy!(o.rr.yy,i.rr.yy);
+                                              mycopy!(o.rr.yz,i.rr.yz))
+
+@inline @par function myscale!(field::AbstractArray{<:Real,N}) where N
+    @mthreads for l in RealRanges
+        x = 1/(Nrx*Ny*Nz)
+        @msimd for i in l
+            @inbounds field[i] = x*field[i]
+        end
     end
-  end
-end
-
-@inline @par function my_scale_real!(field::AbstractArray{<:Real,3},s::@par(AbstractSimulation))
-  x = 1/(Nrx*Ny*Nz)
-  @mthreads for k in 1:Nz
-    for j in 1:Ny
-      @msimd for i in 1:Nrx
-        @inbounds field[i,j,k] = x*field[i,j,k]
-      end
-    end
-  end
 end 
 
-@inline my_scale_real!(field::PaddedArray,s) = my_scale_real!(parent(real(field)),s)
+myscale!(o::ScalarField) = myscale!(o.field.data)
 
-@inline function my_scale_real!(field::VectorField,s)
-  my_scale_real!(field.rx,s)
-  my_scale_real!(field.ry,s)
-  my_scale_real!(field.rz,s)
+myscale!(o::VectorField) = (myscale!(o.rr.x);
+                            myscale!(o.rr.y);
+                            myscale!(o.rr.z))
+
+myscale!(o::SymTrTenField) = (myscale!(o.rr.xx);
+                              myscale!(o.rr.xy);
+                              myscale!(o.rr.xz);
+                              myscale!(o.rr.yy);
+                              myscale!(o.rr.yz))
+
+function rfft_and_scale!(field)
+    rfft!(field)
+    myscale!(field)
+    return nothing
 end
 
-
-@inline @par function my_scale_fourier!(field::AbstractArray{<:Real,3},s::@par(AbstractSimulation))
-  x = 1/(Nrx*Ny*Nz)
-  @mthreads for k in 1:Nz
-    for j in 1:Ny
-      @inbounds @msimd for i in 1:(2Nx)
-        field[i,j,k] = x*field[i,j,k]
-      end
-    end
-  end
-end 
-
-
-@inline my_scale_fourier!(field::PaddedArray,s) = my_scale_fourier!(parent(real(field)),s)
-
-@inline function my_scale_fourier!(field::VectorField,s)
-  my_scale_fourier!(field.rx,s)
-  my_scale_fourier!(field.ry,s)
-  my_scale_fourier!(field.rz,s)
+function dealias!(f::AbstractArray{T,3}) where {T<:Complex}
+    @mthreads for i = 1:Lcs
+        @inbounds begin
+            dealias[i] && (f[i] = zero(T))
+        end
+   end
 end
 
-#@inline function my_scale_fourier!(field::SymmetricTracelessTensor,s)
-  #my_scale_fourier!(field.rxx,s)
-  #my_scale_fourier!(field.rxy,s)
-  #my_scale_fourier!(field.rxz,s)
-  #my_scale_fourier!(field.ryy,s)
-  #my_scale_fourier!(field.ryz,s)
-#end
+dealias!(o::VectorField) = (dealias!(o.c.x);
+                            dealias!(o.c.y);
+                            dealias!(o.c.z))
 
-@inline function irfft!(field,p,s::AbstractSimulation)
-  p*field
-  #Not doing scaling in real space anymore.
-  #my_scale_real!(field,s)
-  return nothing
-end
-
-@inline function rfft!(field,p,s::AbstractSimulation)
-  p*field
-  my_scale_fourier!(field,s)
-  #dealias!(field,s)
-  return nothing
-end
+dealias!(o::SymTrTenField) = (dealias!(o.c.xx);
+                              dealias!(o.c.xy);
+                              dealias!(o.c.xz);
+                              dealias!(o.c.yy);
+                              dealias!(o.c.yz))
 
 
 function splitrange(lr,nt)
