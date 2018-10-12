@@ -62,9 +62,10 @@ end
     rfft_and_scale!(s.rhs)
     # fix for erros on u×ω calculation
     s.rhs[1] = zero(Vec{ComplexF64})
-
     dealias!(s.rhs)
+    
     rfft_and_scale!(s.u)
+
     if haspassivescalar(A) 
         rfft_and_scale!(s.aux)
         dealias!(s.aux)
@@ -172,15 +173,74 @@ end
     return nothing
 end
 
-@par function fourierspacep2!(s::A) where {A<:@par(AbstractSimulation)}
-    is_implicit(typeof(s.timestep)) || add_viscosity!(s.rhs,s.u,ν,s)
-    hasles(s) && add_residual_tensor!(s.rhs,s.lesmodel.tau,s)
-    if hasdensity(A)
-        Gdirec = graddir(s.densitystratification)
-        gdir = Gdirec === :x ? s.rhs.cx : Gdirec === :y ? s.rhs.cy : s.rhs.cz 
-        addgravity!(gdir, complex(s.densitystratification.ρ), -gravity(s.densitystratification), s)
+@par function fourierspacep2_velocity!(s::A) where {A<:@par(AbstractSimulation)}
+    @mthreads for k in Base.OneTo(Nz)
+        fourierspacep2_velocity!(k,s)
     end
-    pressure_projection!(s.rhs.cx,s.rhs.cy,s.rhs.cz,s)
+    return nothing
+end
+
+@inline @par function fourierspacep2_velocity!(k,s::A) where {A<:@par(AbstractSimulation)}
+    u = s.u.c
+    rhsv = s.rhs.c
+
+    if !isimplicit(A)
+        mν = -nu(A)
+        if hashyperviscosity(A)
+            mνh = -nuh(A)
+            M = get_hyperviscosity_exponent(A)
+        end
+    end
+
+    if hasles(A)
+        τ = s.lesmodel.tau.c
+    end
+
+    if hasdensity(A)
+        ρ = s.densitystratification.ρ.c
+        g = gravity(s.densitystratification)
+    end
+
+    @inbounds for j in Base.OneTo(Ny)
+        @msimd for i in Base.OneTo(Nx) 
+
+            v = u[i,j,k]
+            rhs = rhsv[i,j,k]
+            kh = K[i,j,k]
+            K2 = kh⋅kh
+
+            if !is_implicit(A)
+                if hashyperviscosity(A)
+                    rhs += (K2*mν + (K2^M)*mνh)*v
+                else
+                    rhs += (K2*mν)*v
+                end
+            end
+
+            if hasles(A)
+                rhs += (im*kh)⋅τ[i,j,k]
+            end
+
+            if hasdensity(A)
+                rhs += ρ[i,j,k]*g
+            end
+            
+            p1 = -(kh⋅rhs)/K2
+            rhsv[i,j,k] = p1*kh + rhs
+        end
+    end
+end
+
+@par function fourierspacep2!(s::A) where {A<:@par(AbstractSimulation)}
+    #is_implicit(typeof(s.timestep)) || add_viscosity!(s.rhs,s.u,ν,s)
+    #hasles(s) && add_residual_tensor!(s.rhs,s.lesmodel.tau,s)
+    #if hasdensity(A)
+        #Gdirec = graddir(s.densitystratification)
+        #gdir = Gdirec === :x ? s.rhs.cx : Gdirec === :y ? s.rhs.cy : s.rhs.cz 
+        #addgravity!(gdir, complex(s.densitystratification.ρ), -gravity(s.densitystratification), s)
+    #end
+    #pressure_projection!(s.rhs.cx,s.rhs.cy,s.rhs.cz,s)
+    fourierspacep2_velocity!(s)
     if haspassivescalar(A)
         gdir = graddir(s.passivescalar) === :x ? s.u.cx : graddir(s.passivescalar) === :y ? s.u.cy : s.u.cz 
         div!(complex(s.passivescalar.ρrhs), s.aux.cx, s.aux.cy, s.aux.cz, gdir, -meangradient(s.passivescalar), s)
@@ -221,13 +281,13 @@ end
 
 function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,s::AbstractSimulation)
     if hashyperviscosity(s)
-         _add_hviscosity!(rhs.cx,u.cx,s)
-         _add_hviscosity!(rhs.cy,u.cy,s)
-         _add_hviscosity!(rhs.cz,u.cz,s)
+        _add_hviscosity!(rhs.cx,u.cx,s)
+        _add_hviscosity!(rhs.cy,u.cy,s)
+        _add_hviscosity!(rhs.cz,u.cz,s)
     else
-         _add_viscosity!(rhs.cx,u.cx,-ν,s)
-         _add_viscosity!(rhs.cy,u.cy,-ν,s)
-         _add_viscosity!(rhs.cz,u.cz,-ν,s)
+        _add_viscosity!(rhs.cx,u.cx,-ν,s)
+        _add_viscosity!(rhs.cy,u.cy,-ν,s)
+        _add_viscosity!(rhs.cz,u.cz,-ν,s)
     end
 end
 

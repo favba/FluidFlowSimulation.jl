@@ -1,6 +1,6 @@
 struct Adams_Bashforth3rdO{Adaptative,initdt} <: AbstractScalarTimeStep{Adaptative,initdt,2}
-    fm1::PaddedArray{Float64,3,2,false} #Store latest step
-    fm2::PaddedArray{Float64,3,2,false} #Store 2 steps before
+    fm1::ScalarField{Float64,3,2,false} #Store latest step
+    fm2::ScalarField{Float64,3,2,false} #Store 2 steps before
     At::Base.RefValue{Float64} # 23*dt/12 for constant time stepping
     Bt::Base.RefValue{Float64} # -16*dt/12 for constant time stepping
     Ct::Base.RefValue{Float64} # 5*dt/12 for constant time stepping
@@ -16,8 +16,8 @@ function Adams_Bashforth3rdO{adp,indt}() where {adp,indt}
     dt = Ref(indt)
     dt2 = Ref(indt)
     dt3 = Ref(indt)
-    fm1 = PaddedArray{Float64}(Nrx,Ny,Nz)
-    fm2 = PaddedArray{Float64}(Nrx,Ny,Nz)
+    fm1 = ScalarField{Float64}(Nrx,Ny,Nz)
+    fm2 = ScalarField{Float64}(Nrx,Ny,Nz)
     return Adams_Bashforth3rdO{adp,indt}(fm1,fm2,at,bt,ct,dt,dt2,dt3)
 end
 
@@ -99,8 +99,8 @@ end
     At = get_At(f)
     Bt = get_Bt(f)
     Ct = get_Ct(f)
-    for j in 1:Ny
-        @msimd for i in 1:Nx
+    for j in Base.OneTo(Ny)
+        @msimd for i in Base.OneTo(Nx)
             #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
             #u[i,j,k] = muladd(muladd(23, rhs[i,j,k], muladd(-16, rm1[i,jj,kk], 5rm2[i,jj,kk])), dt12, u[i,j,k])
             u[i,j,k] = muladd(At, rhs[i,j,k], muladd(Bt, rm1[i,j,k], muladd(Ct, rm2[i,j,k], u[i,j,k])))
@@ -125,8 +125,8 @@ end
     Bt = get_Bt(f)
     Ct = get_Ct(f)
     if (6 < k < Nz-k+1)
-        for j in 1:Ny
-            @msimd for i in 1:Nx
+        for j in Base.OneTo(Ny)
+            @msimd for i in Base.OneTo(Nx)
                 #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
                 u[i,j,k] = muladd(At, rhs[i,j,k], muladd(Bt, rm1[i,j,k], muladd(Ct, rm2[i,j,k], u[i,j,k])))
                 rm2[i,j,k] = rm1[i,j,k]
@@ -134,8 +134,8 @@ end
             end
         end
     else
-        for j in 1:Ny
-            @msimd for i in 1:Nx
+        for j in Base.OneTo(Ny)
+            @msimd for i in Base.OneTo(Nx)
                 #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
                 u[i,j,k] = muladd(At, rhs[i,j,k], muladd(Bt, rm1[i,j,k], muladd(Ct, rm2[i,j,k], u[i,j,k]))) + forcing[i,j,k]
                 rm2[i,j,k] = rm1[i,j,k]

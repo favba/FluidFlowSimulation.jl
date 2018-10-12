@@ -471,7 +471,14 @@ function parameters(d::Dict)
         haskey(d,:gravityDirection) ? (gdir = Symbol(d[:gravityDirection])) : (gdir = :z)
         α = ν/Float64(eval(Meta.parse(d[:Pr])))
         dρdz = Float64(eval(Meta.parse(d[:densityGradient])))
-        g = Float64(eval(Meta.parse(d[:zAcceleration])))/Float64(eval(Meta.parse(d[:referenceDensity])))
+        gval = Float64(eval(Meta.parse(d[:zAcceleration])))/Float64(eval(Meta.parse(d[:referenceDensity])))
+        if gdir === :z
+            g = Vec(0.0,0.0,gval)
+        elseif gdir === :y
+            g = Vec(0.0,gval,0.0)
+        elseif gdir === :x
+            g = Vec(gval,0.0,0.0)
+        end
         @info("Reading initial density field rho.$start")
         rho = isfile("rho.$start") ? PaddedArray("rho.$start",(nx,ny,nz),true) : PaddedArray(zeros(nx,ny,nz)) 
         gdir = haskey(d,:gravityDirection) ? Symbol(d[:gravityDirection]) : :z

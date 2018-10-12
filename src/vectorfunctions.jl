@@ -1,109 +1,109 @@
 @par function cross!(outx::AbstractArray{T},outy::AbstractArray{T},outz::AbstractArray{T},
-  ux::AbstractArray{T},uy::AbstractArray{T},uz::AbstractArray{T},
-  vx::AbstractArray{T},vy::AbstractArray{T},vz::AbstractArray{T},
-  s::@par(AbstractSimulation)) where {T<:Complex}
-  @mthreads for k in 1:Nz
-    for j in 1:Ny
-      @inbounds @msimd for i in 1:Nx
-        outx[i,j,k] = uy[i,j,k]*vz[i,j,k] - uz[i,j,k]*vy[i,j,k]
-        outy[i,j,k] = uz[i,j,k]*vx[i,j,k] - ux[i,j,k]*vz[i,j,k]
-        outz[i,j,k] = ux[i,j,k]*vy[i,j,k] - uy[i,j,k]*vx[i,j,k]
-      end
+                     ux::AbstractArray{T},uy::AbstractArray{T},uz::AbstractArray{T},
+                     vx::AbstractArray{T},vy::AbstractArray{T},vz::AbstractArray{T},
+                     s::@par(AbstractSimulation)) where {T<:Complex}
+    @mthreads for k in 1:Nz
+        for j in 1:Ny
+            @inbounds @msimd for i in 1:Nx
+                outx[i,j,k] = uy[i,j,k]*vz[i,j,k] - uz[i,j,k]*vy[i,j,k]
+                outy[i,j,k] = uz[i,j,k]*vx[i,j,k] - ux[i,j,k]*vz[i,j,k]
+                outz[i,j,k] = ux[i,j,k]*vy[i,j,k] - uy[i,j,k]*vx[i,j,k]
+            end
+        end
     end
-  end
 end
 
 @par function crossk!(outx,outy,outz,vx,vy,vz,s::@par(AbstractSimulation)) 
-  @mthreads for k in 1:Nz
-    for j in 1:Ny
-      @inbounds @msimd for i in 1:Nx  
-        outx[i,j,k] = im*(ky[j]*vz[i,j,k] - kz[k]*vy[i,j,k])
-        outy[i,j,k] = im*(kz[k]*vx[i,j,k] - kx[i]*vz[i,j,k])
-        outz[i,j,k] = im*(kx[i]*vy[i,j,k] - ky[j]*vx[i,j,k])
-      end
-    end
-  end  
+    @mthreads for k in 1:Nz
+        for j in 1:Ny
+            @inbounds @msimd for i in 1:Nx  
+                outx[i,j,k] = im*(ky[j]*vz[i,j,k] - kz[k]*vy[i,j,k])
+                outy[i,j,k] = im*(kz[k]*vx[i,j,k] - kx[i]*vz[i,j,k])
+                outz[i,j,k] = im*(kx[i]*vy[i,j,k] - ky[j]*vx[i,j,k])
+            end
+        end
+    end  
 end
 
 function ccross!(out::VectorField,u::VectorField,v::VectorField,s::AbstractSimulation)
-  cross!(out.cx,out.cy,out.cz,u.cx,u.cy,u.cz,v.cx,v.cy,v.cz,s)
-  return out
+    cross!(out.cx,out.cy,out.cz,u.cx,u.cy,u.cz,v.cx,v.cy,v.cz,s)
+    return out
 end
 
 function curl!(out::VectorField,u::VectorField,s::AbstractSimulation)
-  crossk!(out.cx,out.cy,out.cz,u.cx,u.cy,u.cz,s)
-  return out
+    crossk!(out.cx,out.cy,out.cz,u.cx,u.cy,u.cz,s)
+    return out
 end
 
 @par function grad!(out::VectorField,f::AbstractArray{<:Complex,3},s::@par(AbstractSimulation))
-  outx = out.cx
-  outy = out.cy
-  outz = out.cz
-  @mthreads for k in 1:Nz
-    for j in 1:Ny
-      @inbounds @msimd for i in 1:Nx
-        outx[i,j,k] = f[i,j,k]*im*kx[i]
-        outy[i,j,k] = f[i,j,k]*im*ky[j]
-        outz[i,j,k] = f[i,j,k]*im*kz[k]
-      end
+    outx = out.c.x
+    outy = out.c.y
+    outz = out.c.z
+    @mthreads for k in 1:Nz
+        for j in 1:Ny
+            @inbounds @msimd for i in 1:Nx
+                outx[i,j,k] = f[i,j,k]*im*kx[i]
+                outy[i,j,k] = f[i,j,k]*im*ky[j]
+                outz[i,j,k] = f[i,j,k]*im*kz[k]
+            end
+        end
     end
-  end
-  #dx!(out.cx,f,s)
-  #dy!(out.cy,f,s)
-  #dz!(out.cz,f,s)
-  #dealias!(out,s)
+    #dx!(out.cx,f,s)
+    #dy!(out.cy,f,s)
+    #dz!(out.cz,f,s)
+    #dealias!(out,s)
 end
 
 @par function dx!(out::AbstractArray{<:Complex,3},f::AbstractArray{<:Complex,3},s::@par(AbstractSimulation)) 
-  @mthreads for k in 1:Nz
-    for j in 1:Ny
-      @inbounds @msimd for i in 1:Nx
-        out[i,j,k] = f[i,j,k]*im*kx[i]
-      end
+    @mthreads for k in 1:Nz
+        for j in 1:Ny
+            @inbounds @msimd for i in 1:Nx
+                out[i,j,k] = f[i,j,k]*im*kx[i]
+            end
+        end
     end
-  end
 end
 
 @par function dy!(out::AbstractArray{<:Complex,3},f::AbstractArray{<:Complex,3},s::@par(AbstractSimulation)) 
-  @mthreads for k in 1:Nz
-    for j in 1:Ny
-      @inbounds @msimd for i in 1:Nx
-        out[i,j,k] = f[i,j,k]*im*ky[j]
-      end
+    @mthreads for k in 1:Nz
+        for j in 1:Ny
+            @inbounds @msimd for i in 1:Nx
+                out[i,j,k] = f[i,j,k]*im*ky[j]
+            end
+        end
     end
-  end
 end
 
 @par function dz!(out::AbstractArray{<:Complex,3},f::AbstractArray{<:Complex,3},s::@par(AbstractSimulation)) 
-  @mthreads for k in 1:Nz
-    for j in 1:Ny
-      @inbounds @msimd for i in 1:Nx
-        out[i,j,k] = f[i,j,k]*im*kz[k]
-      end
+    @mthreads for k in 1:Nz
+        for j in 1:Ny
+            @inbounds @msimd for i in 1:Nx
+                out[i,j,k] = f[i,j,k]*im*kz[k]
+            end
+        end
     end
-  end
 end
 
 @par function div!(out::AbstractArray{Complex{Float64},3},ux,uy,uz,w,mdρdz::Real, s::@par(AbstractSimulation))
-  @mthreads for k in 1:Nz
-    for j in 1:Ny
-      @inbounds @msimd for i in 1:Nx
-       # out[i,j,k] = mim*(kx[i]*ux[i,j,k] + ky[j]*uy[i,j,k] + kz[k]*uz[i,j,k]) + mdœÅdz*w[i,j,k]
-        out[i,j,k] = muladd(im,muladd(kx[i], ux[i,j,k], muladd(ky[j], uy[i,j,k], kz[k]*uz[i,j,k])), mdρdz*w[i,j,k])
-      end
+    @mthreads for k in 1:Nz
+        for j in 1:Ny
+            @inbounds @msimd for i in 1:Nx
+               # out[i,j,k] = mim*(kx[i]*ux[i,j,k] + ky[j]*uy[i,j,k] + kz[k]*uz[i,j,k]) + mdœÅdz*w[i,j,k]
+                out[i,j,k] = muladd(im,muladd(kx[i], ux[i,j,k], muladd(ky[j], uy[i,j,k], kz[k]*uz[i,j,k])), mdρdz*w[i,j,k])
+            end
+        end
     end
-  end
 end
 
 div!(out::AbstractArray{<:Complex,3},u::VectorField,s) = div!(out,u.cx,u.cy,u.cz,s)
 
 @par function div!(out::AbstractArray{Complex{Float64},3},ux,uy,uz, s::@par(AbstractSimulation))
-  @mthreads for k in 1:Nz
-    for j in 1:Ny
-      @inbounds @msimd for i in 1:Nx
-        #out[i,j,k] = -im*(kx[i]*ux[i,j,k] + ky[j]*uy[i,j,k] + kz[k]*uz[i,j,k])
-        out[i,j,k] = im*muladd(kx[i], ux[i,j,k], muladd(ky[j], uy[i,j,k], kz[k]*uz[i,j,k]))
-      end
+    @mthreads for k in 1:Nz
+        for j in 1:Ny
+            @inbounds @msimd for i in 1:Nx
+                #out[i,j,k] = -im*(kx[i]*ux[i,j,k] + ky[j]*uy[i,j,k] + kz[k]*uz[i,j,k])
+                out[i,j,k] = im*muladd(kx[i], ux[i,j,k], muladd(ky[j], uy[i,j,k], kz[k]*uz[i,j,k]))
+            end
+        end
     end
-  end
 end

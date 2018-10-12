@@ -1,6 +1,6 @@
 struct ETD3rdO{Adaptative,initdt,Hyper} <: AbstractScalarTimeStepWithIF{Adaptative,initdt,2}
-    fm1::PaddedArray{Float64,3,2,false} #Store latest step
-    fm2::PaddedArray{Float64,3,2,false} #Store 2 steps before
+    fm1::ScalarField{Float64,3,2,false} #Store latest step
+    fm2::ScalarField{Float64,3,2,false} #Store 2 steps before
     c::Array{Float64,3}
     At::Array{Float64,3}
     Bt::Array{Float64,3}
@@ -18,8 +18,8 @@ function ETD3rdO{adp,indt,Hyper}() where {adp,indt,Hyper}
     At = zero(c)
     Bt = zero(c)
     Ct = zero(c)
-    fm1 = PaddedArray(Nx,Ny,Nz)
-    fm2 = PaddedArray(Nx,Ny,Nz)
+    fm1 = ScalarField(Nx,Ny,Nz)
+    fm2 = ScalarField(Nx,Ny,Nz)
     return ETD3rdO{adp,indt,Hyper}(fm1,fm2,c,At,Bt,Ct,dt,dt2,dt3)
 end
 

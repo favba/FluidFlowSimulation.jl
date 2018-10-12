@@ -46,9 +46,9 @@ get_cfl(t::Type{VectorTimeStep{cfl,Tx,Ty,Tz}}) where{cfl,Tx,Ty,Tz} =
 
 function initialize!(t::VectorTimeStep,rhs::VectorField,s::AbstractSimulation)
     vis = nu(s)
-    initialize!(t.x,rhs.rx,vis,s)
-    initialize!(t.y,rhs.ry,vis,s)
-    initialize!(t.z,rhs.rz,vis,s)
+    initialize!(t.x,rhs.rr.x,vis,s)
+    initialize!(t.y,rhs.rr.y,vis,s)
+    initialize!(t.z,rhs.rr.z,vis,s)
 end
 
 function set_dt!(t::VectorTimeStep,dt)
