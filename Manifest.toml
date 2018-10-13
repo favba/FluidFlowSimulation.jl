@@ -9,21 +9,21 @@ uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
 [[BinaryProvider]]
 deps = ["Libdl", "Pkg", "SHA", "Test"]
-git-tree-sha1 = "48c147e63431adbcee69bc40b04c3f0fec0a4982"
+git-tree-sha1 = "38be61810f280c3c478f5c38aaf387f8f9199275"
 uuid = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
-version = "0.5.0"
+version = "0.5.1"
 
 [[Compat]]
 deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
-git-tree-sha1 = "ff2595695fc4f14427358ce2593f867085c45dcb"
+git-tree-sha1 = "2d9e14d19bad3f9ad5cc5e4cffabc3cfa59de825"
 uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
-version = "1.2.0"
+version = "1.3.0"
 
 [[Conda]]
 deps = ["Compat", "JSON", "VersionParsing"]
-git-tree-sha1 = "85b5bf3ffcf4f39abe019dab1dd00a0aead8d882"
+git-tree-sha1 = "fb86fe40cb5b35990e368709bfdc1b46dbb99dac"
 uuid = "8f4d0f93-b110-5947-807f-2305c1781a2d"
-version = "1.0.2"
+version = "1.1.1"
 
 [[Dates]]
 deps = ["Printf"]
@@ -45,7 +45,7 @@ version = "0.2.4"
 
 [[FluidFields]]
 deps = ["FFTW", "FluidTensors", "InplaceRealFFT", "LinearAlgebra"]
-git-tree-sha1 = "545b02b3729c61e8049b91c473c86281c042bef2"
+git-tree-sha1 = "da4c39a723abd134119e1338ea4bcf2b61b213ba"
 repo-rev = "master"
 repo-url = "git@github.com:favba/FluidFields.jl.git"
 uuid = "390a1fbe-c11f-11e8-0e71-0f874e7fb199"
@@ -53,7 +53,7 @@ version = "0.1.0"
 
 [[FluidTensors]]
 deps = ["LinearAlgebra"]
-git-tree-sha1 = "3704df84ed8c33e7380e2e949a98e999f0c91e71"
+git-tree-sha1 = "eb9b528e21102654b26bbfc3f6822e295b29276e"
 repo-rev = "master"
 repo-url = "git@github.com:favba/FluidTensors.jl.git"
 uuid = "9c362f20-be79-11e8-0b20-338637273ba1"
