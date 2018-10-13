@@ -27,8 +27,8 @@ get_dt(t::ETD3rdO{true,idt,H}) where {idt,H} =
     getindex(t.dt)
 
 function initialize!(t::ETD3rdO,rhs::AbstractArray,vis,s::AbstractSimulation)
-    mycopy!(data(t.fm1),rhs,s) 
-    mycopy!(data(t.fm2), data(t.fm1), s) 
+    mycopy!(data(t.fm1),rhs) 
+    mycopy!(data(t.fm2), data(t.fm1)) 
     setindex!(t.dt,get_dt(s))
     setindex!(t.dt2,t.dt[])
     setindex!(t.dt3,t.dt[])
@@ -80,7 +80,7 @@ end
     c0,c1,c2,c3 = get_cts(t)
 
     if l[end]*t.dt[] <= 1.0
-        ind1 = linearindices(At)
+        ind1 = Base.OneTo(length(At))
         ind2 = 1:0
     else
         i = findfirst(x -> x*dt >= 1., l) - 1
@@ -159,7 +159,7 @@ end
 end
 
 @par function (f::ETD3rdO)(ρ::AbstractArray{<:Complex,3},ρrhs::AbstractArray{<:Complex,3}, s::@par(AbstractSimulation))
-    @mthreads for kk = 1:Nz
+    @mthreads for kk = ZRANGE
         _tETD3rdO!(kk, ρ,ρrhs,f.fm1,f.fm2,f,s)
     end
     return nothing
@@ -184,7 +184,7 @@ end
 
 # with forcing
 @par function (f::ETD3rdO)(ρ::AbstractArray{<:Complex,3},ρrhs::AbstractArray{<:Complex,3}, forcing::AbstractArray{<:Complex,3}, s::@par(AbstractSimulation))
-    @mthreads for kk = 1:Nz
+    @mthreads for kk = ZRANGE
         _tETD3rdO!(kk, ρ,ρrhs, forcing, f.fm1,f.fm2,f,s)
     end
     return nothing
@@ -197,7 +197,7 @@ end
     Ct = f.Ct
     c = f.c
     dt = get_dt(f)
-    if (6 < k < Nz-k+1)
+    if (6 < k < NZ-k+1)
         for j in YRANGE
             @fastmath @msimd for i in XRANGE
                 u[i,j,k] = muladd(At[i,j,k], rhs[i,j,k], muladd(Bt[i,j,k], rm1[i,j,k], muladd(Ct[i,j,k], rm2[i,j,k], exp(c[i,j,k]*dt)*u[i,j,k])))

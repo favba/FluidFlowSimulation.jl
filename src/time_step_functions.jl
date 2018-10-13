@@ -102,9 +102,9 @@ include("time_step_functions/ETD.jl")
     umax = maximum(s.reduction)
     dx = 2π*LY/NY
     cfl = get_cfl(s)
-    #νt = nu(s)
+    νt = ν
     newdt =cfl * dx/umax
-    #newdt = min(newdt, cfl * (2νt/umax^2)/2)
+    # is_implicit(s) || (newdt = min(newdt, (2νt/umax^2)/2))
     if hasles(s)
         nut_max = maximum(s.lesmodel.reduction)
         newdt = min(newdt,cfl*((dx^2)/nut_max)/2)
