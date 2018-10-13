@@ -14,7 +14,7 @@ end
 end
 
 @par function fourierspacep1!(s::A) where {A<:@par(AbstractSimulation)}
-    @mthreads for k in Base.OneTo(Nz)
+    @mthreads for k in ZRANGE
         fourierspacep1!(k,s)
     end
     return nothing
@@ -30,8 +30,8 @@ end
             ∇ρ = s.lesmodel.scalar.gradρ.c
         end
     end
-    @inbounds for j in Base.OneTo(Ny)
-        @msimd for i in Base.OneTo(Nx) 
+    @inbounds for j in YRANGE
+        @msimd for i in XRANGE 
             v = u[i,j,k]
             ∇ = im*K[i,j,k]  
             aux[i,j,k] = ∇ × v
@@ -91,7 +91,7 @@ end
 
 @par function realspacecalculation!(s::A) where {A<:@par(AbstractSimulation)}
     @assert !(hasdensity(A) & haspassivescalar(A))
-    @mthreads for j in 1:Nt
+    @mthreads for j in TRANGE
         realspacecalculation!(s,j)
     end
     return nothing
@@ -130,7 +130,7 @@ end
         end
     end
 
-    @inbounds @msimd for i in RealRanges[j]
+    @inbounds @msimd for i in REAL_RANGES[j]
         v = u[i]
         w = ω[i]
         out[i] = v × w
@@ -174,7 +174,7 @@ end
 end
 
 @par function fourierspacep2_velocity!(s::A) where {A<:@par(AbstractSimulation)}
-    @mthreads for k in Base.OneTo(Nz)
+    @mthreads for k in ZRANGE
         fourierspacep2_velocity!(k,s)
     end
     return nothing
@@ -184,8 +184,8 @@ end
     u = s.u.c
     rhsv = s.rhs.c
 
-    if !isimplicit(A)
-        mν = -nu(A)
+    if !is_implicit(A)
+        mν = -ν
         if hashyperviscosity(A)
             mνh = -nuh(A)
             M = get_hyperviscosity_exponent(A)
@@ -197,12 +197,16 @@ end
     end
 
     if hasdensity(A)
-        ρ = s.densitystratification.ρ.c
+        ρ = s.densitystratification.ρ.field
         g = gravity(s.densitystratification)
     end
+    
+    if k == 1
+        a = rhsv[1]
+    end
 
-    @inbounds for j in Base.OneTo(Ny)
-        @msimd for i in Base.OneTo(Nx) 
+    @inbounds for j in YRANGE
+        @msimd for i in XRANGE 
 
             v = u[i,j,k]
             rhs = rhsv[i,j,k]
@@ -229,6 +233,13 @@ end
             rhsv[i,j,k] = p1*kh + rhs
         end
     end
+
+    if k == 1 
+        if hasdensity(A)
+            a += ρ[1] * g
+        end
+        rhsv[1] = a
+    end
 end
 
 @par function fourierspacep2!(s::A) where {A<:@par(AbstractSimulation)}
@@ -239,64 +250,64 @@ end
         #gdir = Gdirec === :x ? s.rhs.cx : Gdirec === :y ? s.rhs.cy : s.rhs.cz 
         #addgravity!(gdir, complex(s.densitystratification.ρ), -gravity(s.densitystratification), s)
     #end
-    #pressure_projection!(s.rhs.cx,s.rhs.cy,s.rhs.cz,s)
+    #pressure_projection!(s.rhs.c.x,s.rhs.c.y,s.rhs.c.z,s)
     fourierspacep2_velocity!(s)
     if haspassivescalar(A)
-        gdir = graddir(s.passivescalar) === :x ? s.u.cx : graddir(s.passivescalar) === :y ? s.u.cy : s.u.cz 
-        div!(complex(s.passivescalar.ρrhs), s.aux.cx, s.aux.cy, s.aux.cz, gdir, -meangradient(s.passivescalar), s)
+        gdir = graddir(s.passivescalar) === :x ? s.u.c.x : graddir(s.passivescalar) === :y ? s.u.c.y : s.u.c.z 
+        div!(complex(s.passivescalar.ρrhs), s.aux.c.x, s.aux.c.y, s.aux.c.z, gdir, -meangradient(s.passivescalar), s)
         is_implicit(typeof(s.passivescalar.timestep)) || add_scalar_difusion!(complex(s.passivescalar.ρrhs),complex(s.passivescalar.ρ),diffusivity(s.passivescalar),s)
     end
     if hasdensity(A)
-        gdir = graddir(s.densitystratification) === :x ? s.u.cx : graddir(s.densitystratification) === :y ? s.u.cy : s.u.cz 
-        div!(complex(s.densitystratification.ρrhs), s.aux.cx, s.aux.cy, s.aux.cz, gdir, -meangradient(s.densitystratification), s)
+        gdir = graddir(s.densitystratification) === :x ? s.u.c.x : graddir(s.densitystratification) === :y ? s.u.c.y : s.u.c.z 
+        div!(complex(s.densitystratification.ρrhs), s.aux.c.x, s.aux.c.y, s.aux.c.z, gdir, -meangradient(s.densitystratification), s)
         is_implicit(typeof(s.densitystratification.timestep)) || add_scalar_difusion!(complex(s.densitystratification.ρrhs),complex(s.densitystratification.ρ),diffusivity(s.densitystratification),s)
     end
     return nothing
 end
 
-@par function add_residual_tensor!(rhs::VectorField,τ::SymmetricTracelessTensor,s::@par(AbstractSimulation))
-    @mthreads for k in 1:Nz
-        add_residual_tensor!(rhs,τ,k,s)
-    end
-end
-
-@inline @par function add_residual_tensor!(rhs::VectorField,tau::SymmetricTracelessTensor,k::Int,s::@par(AbstractSimulation))
-    rx = rhs.cx
-    ry = rhs.cy
-    rz = rhs.cz
-    txx = tau.cxx
-    txy = tau.cxy
-    txz = tau.cxz
-    tyy = tau.cyy
-    tyz = tau.cyz
-    @inbounds for j in 1:Ny
-        @msimd for i in 1:Nx
-            rx[i,j,k] += im*(kx[i]*txx[i,j,k] + ky[j]*txy[i,j,k] + kz[k]*txz[i,j,k])
-            ry[i,j,k] += im*(kx[i]*txy[i,j,k] + ky[j]*tyy[i,j,k] + kz[k]*tyz[i,j,k])
-            rz[i,j,k] += im*(kx[i]*txz[i,j,k] + ky[j]*tyz[i,j,k] + kz[k]*(-txx[i,j,k]-tyy[i,j,k]))
-        end
-    end
-end
+#@par function add_residual_tensor!(rhs::VectorField,τ::SymmetricTracelessTensor,s::@par(AbstractSimulation))
+#    @mthreads for k in 1:Nz
+#        add_residual_tensor!(rhs,τ,k,s)
+#    end
+#end
+#
+#@inline @par function add_residual_tensor!(rhs::VectorField,tau::SymmetricTracelessTensor,k::Int,s::@par(AbstractSimulation))
+#    rx = rhs.cx
+#    ry = rhs.cy
+#    rz = rhs.cz
+#    txx = tau.cxx
+#    txy = tau.cxy
+#    txz = tau.cxz
+#    tyy = tau.cyy
+#    tyz = tau.cyz
+#    @inbounds for j in 1:Ny
+#        @msimd for i in 1:Nx
+#            rx[i,j,k] += im*(kx[i]*txx[i,j,k] + ky[j]*txy[i,j,k] + kz[k]*txz[i,j,k])
+#            ry[i,j,k] += im*(kx[i]*txy[i,j,k] + ky[j]*tyy[i,j,k] + kz[k]*tyz[i,j,k])
+#            rz[i,j,k] += im*(kx[i]*txz[i,j,k] + ky[j]*tyz[i,j,k] + kz[k]*(-txx[i,j,k]-tyy[i,j,k]))
+#        end
+#    end
+#end
 
 
 function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,s::AbstractSimulation)
     if hashyperviscosity(s)
-        _add_hviscosity!(rhs.cx,u.cx,s)
-        _add_hviscosity!(rhs.cy,u.cy,s)
-        _add_hviscosity!(rhs.cz,u.cz,s)
+        _add_hviscosity!(rhs.c.x,u.c.x,s)
+        _add_hviscosity!(rhs.c.y,u.c.y,s)
+        _add_hviscosity!(rhs.c.z,u.c.z,s)
     else
-        _add_viscosity!(rhs.cx,u.cx,-ν,s)
-        _add_viscosity!(rhs.cy,u.cy,-ν,s)
-        _add_viscosity!(rhs.cz,u.cz,-ν,s)
+        _add_viscosity!(rhs.c.x,u.c.x,-ν,s)
+        _add_viscosity!(rhs.c.y,u.c.y,-ν,s)
+        _add_viscosity!(rhs.c.z,u.c.z,-ν,s)
     end
 end
 
 @par function _add_viscosity!(rhs::AbstractArray,u::AbstractArray,mν::Real,s::@par(AbstractSimulation))
-    @mthreads for k in 1:Nz
-        for j in 1:Ny
-            @inbounds @msimd for i in 1:Nx
+    @mthreads for k in ZRANGE
+        for j in YRANGE
+            @inbounds @msimd for i in XRANGE
                 #rhs[i,j,k] = (kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])*mŒΩ*u[i,j,k] + rhs[i,j,k]
-                rhs[i,j,k] = muladd(muladd(kx[i], kx[i], muladd(ky[j], ky[j], kz[k]*kz[k])), mν*u[i,j,k], rhs[i,j,k])
+                rhs[i,j,k] = muladd(muladd(KX[i], KX[i], muladd(KY[j], KY[j], KZ[k]*KZ[k])), mν*u[i,j,k], rhs[i,j,k])
             end
         end
     end
@@ -306,10 +317,10 @@ end
     mν = -nu(s)
     mνh = -nuh(s)
     M = get_hyperviscosity_exponent(s)
-    @mthreads for k in 1:Nz
-        for j in 1:Ny
-            @inbounds @msimd for i in 1:Nx
-                modk2 = muladd(kx[i], kx[i], muladd(ky[j], ky[j], kz[k]*kz[k]))
+    @mthreads for k in ZRANGE
+        for j in YRANGE
+            @inbounds @msimd for i in XRANGE
+                modk2 = muladd(KX[i], KX[i], muladd(KY[j], KY[j], KZ[k]*KZ[k]))
                 rhs[i,j,k] = muladd(muladd(modk2, mν, modk2^M * mνh), u[i,j,k], rhs[i,j,k])
             end
         end
@@ -322,14 +333,14 @@ end
 
  @par function pressure_projection!(rhsx,rhsy,rhsz,s::@par(AbstractSimulation))
     @inbounds a = (rhsx[1],rhsy[1],rhsz[1])
-    @mthreads for k in 1:Nz
-        for j in 1:Ny
-            @inbounds @msimd for i in 1:Nx
+    @mthreads for k in ZRANGE
+        for j in YRANGE
+            @inbounds @msimd for i in XRANGE
                 #p1 = -(kx[i]*rhsx[i,j,k] + ky[j]*rhsy[i,j,k] + kz[k]*rhsz[i,j,k])/(kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])
-                p1 = -muladd(kx[i], rhsx[i,j,k], muladd(ky[j], rhsy[i,j,k], kz[k]*rhsz[i,j,k]))/muladd(kx[i], kx[i], muladd(ky[j], ky[j],  kz[k]*kz[k]))
-                rhsx[i,j,k] = muladd(kx[i],p1,rhsx[i,j,k])
-                rhsy[i,j,k] = muladd(ky[j],p1,rhsy[i,j,k])
-                rhsz[i,j,k] = muladd(kz[k],p1,rhsz[i,j,k])
+                p1 = -muladd(KX[i], rhsx[i,j,k], muladd(KY[j], rhsy[i,j,k], KZ[k]*rhsz[i,j,k]))/muladd(KX[i], KX[i], muladd(KY[j], KY[j],  KZ[k]*KZ[k]))
+                rhsx[i,j,k] = muladd(KX[i],p1,rhsx[i,j,k])
+                rhsy[i,j,k] = muladd(KY[j],p1,rhsy[i,j,k])
+                rhsz[i,j,k] = muladd(KZ[k],p1,rhsz[i,j,k])
             end
         end
     end
@@ -337,9 +348,9 @@ end
 end
 
 @par function addgravity!(rhs,ρ,g::Real,s::@par(AbstractSimulation))
-    @mthreads for k in 1:Nz
-        for j in 1:Ny
-            @inbounds @msimd for i in 1:Nx
+    @mthreads for k in ZRANGE
+        for j in YRANGE
+            @inbounds @msimd for i in XRANGE
                 rhs[i,j,k] = muladd(ρ[i,j,k],g,rhs[i,j,k])
             end
         end

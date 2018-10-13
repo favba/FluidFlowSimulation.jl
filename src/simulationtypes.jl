@@ -43,7 +43,7 @@ struct @par(Simulation) <: @par(AbstractSimulation)
         rhs = similar(u)
         aux = similar(u)
   
-        reduction = zeros(Thr ? Threads.nthreads() : 1)
+        reduction = zeros(THR ? Threads.nthreads() : 1)
 
         return @par(new)(u,rhs,aux,reduction,timestep,passivescalar,densitystratification,lesmodel,forcing,hv)
     end
@@ -60,18 +60,18 @@ end
 smsg = """
 Fluid Flow Simulation
 
-nx: $(Nrx)
-ny: $Ny
-nz: $Nz
-x domain size: $(Lx)*2π
-y domain size: $(Ly)*2π
-z domain size: $(Lz)*2π
+nx: $(NRX)
+ny: $NY
+nz: $NZ
+x domain size: $(LX)*2π
+y domain size: $(LY)*2π
+z domain size: $(LZ)*2π
 
 Kinematic Viscosity: $(ν)
 
 Velocity time-stepping method: $(typeof(s.timestep.x))
-Dealias type: $(Dealias[1]) $(Dealias[2])
-Threaded: $Thr
+Dealias type: $(DEALIAS_TYPE[1]) $(DEALIAS_TYPE[2])
+Threaded: $THR
 """
 smsg = join((smsg,msg.(getfield.(Ref(s),sim_fields))...))#msg(s.passivescalar),
 #  msg(s.densitystratification),
@@ -226,7 +226,7 @@ struct EddyDiffusion{VecType} <: AbstractLESScalar
     gradρ::VecType
 end
 
-    EddyDiffusion(nx,ny,nz) = EddyDiffusion(VectorField(PaddedArray(zeros(nx,ny,nz,3))))
+    EddyDiffusion(nx,ny,nz) = EddyDiffusion(VectorField(nx,ny,nz))
 
 # Smagorinsky Model Start ======================================================
 
@@ -239,8 +239,8 @@ struct Smagorinsky{c,Δ,ScalarType<:AbstractLESScalar,TensorType} <: EddyViscosi
 end
 
 function Smagorinsky(c::Real,Δ::Real,scalar::Bool,dim::NTuple{3,Integer},tr) 
-    data = SymmetricTracelessTensor(dim)
-    fill!(data,0)
+    data = SymTrTenField(dim...)
+    #fill!(data,0)
     scalart = scalar ? EddyDiffusion(dim...) : NoLESScalar()
     reduction = zeros(tr ? Threads.nthreads() : 1)
     return Smagorinsky{c,Δ,typeof(scalart),typeof(data)}(data,scalart,reduction)
@@ -480,7 +480,7 @@ function parameters(d::Dict)
             g = Vec(gval,0.0,0.0)
         end
         @info("Reading initial density field rho.$start")
-        rho = isfile("rho.$start") ? PaddedArray("rho.$start",(nx,ny,nz),true) : PaddedArray(zeros(nx,ny,nz)) 
+        rho = isfile("rho.$start") ? ScalarField("rho.$start",(nx,ny,nz)) : ScalarField(PaddedArray(nx,ny,nz)) 
         gdir = haskey(d,:gravityDirection) ? Symbol(d[:gravityDirection]) : :z
         densitytimestep = if integrator === :Euller
             Euller{variableTimeStep,idt}(Ref(idt))
@@ -553,5 +553,3 @@ function parameters(d::Dict)
 end
 
 parameters() = parameters(readglobal())
-
-@par wavenumber(s::@par(AbstractSimulation)) = (kx,ky,kz)

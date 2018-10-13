@@ -16,7 +16,8 @@ function fftfreq(n::Integer,s::Real)::Vector{Float64}
 end
 
 function mycopy!(out::Array{<:Real,N},inp::Array{<:Real,N}) where N
-    Threads.@threads for l in RealRanges
+    @mthreads for j in TRANGE
+        l = REAL_RANGES[j]
         for i in l
             @inbounds out[i] = inp[i]
         end
@@ -36,8 +37,9 @@ mycopy!(o::SymTrTenField,i::SymTrTenField) = (mycopy!(o.rr.xx,i.rr.xx);
                                               mycopy!(o.rr.yz,i.rr.yz))
 
 @inline @par function myscale!(field::AbstractArray{<:Real,N}) where N
-    @mthreads for l in RealRanges
-        x = 1/(Nrx*Ny*Nz)
+    @mthreads for j in TRANGE
+        l = REAL_RANGES[j]
+        x = 1/(NRX*NY*NZ)
         @msimd for i in l
             @inbounds field[i] = x*field[i]
         end
@@ -63,9 +65,9 @@ function rfft_and_scale!(field)
 end
 
 function dealias!(f::AbstractArray{T,3}) where {T<:Complex}
-    @mthreads for i = 1:Lcs
+    @mthreads for i in RANGEC
         @inbounds begin
-            dealias[i] && (f[i] = zero(T))
+            DEALIAS[i] && (f[i] = zero(T))
         end
    end
 end
@@ -82,53 +84,53 @@ dealias!(o::SymTrTenField) = (dealias!(o.c.xx);
 
 
 function splitrange(lr,nt)
-  a = UnitRange{Int}[]
-  sizehint!(a,nt)
-  n = lr÷nt
-  r = lr%nt
-  stop = 0
-  init = 1
-  for i=1:r
-    stop=init+n
-    push!(a,init:stop)
-    init = stop+1
-  end
-  for i=1:(nt-r)
-    stop=init+n-1
-    push!(a,init:stop)
-    init = stop+1
-  end
-  return (a...,)
+    a = UnitRange{Int}[]
+    sizehint!(a,nt)
+    n = lr÷nt
+    r = lr%nt
+    stop = 0
+    init = 1
+    for i=1:r
+        stop=init+n
+        push!(a,init:stop)
+        init = stop+1
+    end
+    for i=1:(nt-r)
+        stop=init+n-1
+        push!(a,init:stop)
+        init = stop+1
+    end
+    return (a...,)
 end
 
 function compute_shells2D(kx,ky,Nx,Ny)
-  nShells2D = min(Nx,Ny÷2)
-  maxdk2D = max(kx[2],ky[2])
-  kh = zeros(nShells2D)
-  numPtsInShell2D = zeros(Int,nShells2D)
+    nShells2D = min(Nx,Ny÷2)
+    maxdk2D = max(kx[2],ky[2])
+    kh = zeros(nShells2D)
+    numPtsInShell2D = zeros(Int,nShells2D)
 
-  @inbounds for j=1:Ny
-    for i=1:Nx
-      K = sqrt(kx[i]^2 + ky[j]^2)
-      ii = round(Int,K/maxdk2D)+1
-      if ii <= nShells2D
-        kh[ii] += K
-        numPtsInShell2D[ii] += 1
-      end
+    @inbounds for j=1:Ny
+        for i=1:Nx
+            K = sqrt(kx[i]^2 + ky[j]^2)
+            ii = round(Int,K/maxdk2D)+1
+            if ii <= nShells2D
+                kh[ii] += K
+                numPtsInShell2D[ii] += 1
+            end
+        end
     end
-  end
   
-  @inbounds @simd for i in linearindices(kh)
-    kh[i] = kh[i]/numPtsInShell2D[i]
-  end
+    @inbounds @simd for i in linearindices(kh)
+        kh[i] = kh[i]/numPtsInShell2D[i]
+    end
 
-  return nShells2D, maxdk2D, numPtsInShell2D, kh
+    return nShells2D, maxdk2D, numPtsInShell2D, kh
 end
 
 function calculate_Zf(kf,kh)
-  Zf = zeros(kh)
-  for (i,k) in enumerate(kh)
-      Zf[i] = tanh((kf-k) / (0.25*kf)) * (((kf-k) <= 0.0) ? 0.0 : 1.0)
-  end
-  return (Zf...,)
+    Zf = zeros(kh)
+    for (i,k) in enumerate(kh)
+        Zf[i] = tanh((kf-k) / (0.25*kf)) * (((kf-k) <= 0.0) ? 0.0 : 1.0)
+    end
+    return (Zf...,)
 end

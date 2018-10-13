@@ -3,7 +3,7 @@ module Globals
 
 using ..ReadGlobal, FluidTensors
 
-export Lx,Ly,Lz,Nx,Ny,Nz,Lcs,Lcv,Nrrx,Nrx,Lrs,Lrv,ν,Dealias,kx,ky,kz,Thr,Nt,RealRanges,dealias,K
+export LX,LY,LZ,NX,NY,NZ,NRRX,NRX,ν,DEALIAS_TYPE,KX,KY,KZ,THR,NT,TRANGE,REAL_RANGES,DEALIAS,K,RXRANGE,XRANGE,YRANGE,ZRANGE,RANGEC
 
 function splitrange(lr,nt)
     a = UnitRange{Int}[]
@@ -37,52 +37,55 @@ function fftfreq(n::Integer,s::Real)::Vector{Float64}
 end
 
     d = readglobal()
-    const global Nrx = parse(Int,d[:nx])
-    const global Ny = parse(Int,d[:ny])
-    const global Nz = parse(Int,d[:nz])
+    const global NRX = parse(Int,d[:nx])
+    const global NY = parse(Int,d[:ny])
+    const global NZ = parse(Int,d[:nz])
   
-    const global Nx = div(Nrx,2)+1
-    const global Nrrx = 2Nx
-    const global Lcs = Nx*Ny*Nz
-    const global Lcv = 3*Lcs
-    const global Lrs = 2*Lcs
-    const global Lrv = 2*Lcv
+    const global NX = div(NRX,2)+1
+    const global NRRX = 2NX
   
-    const global Lx = Float64(eval(Meta.parse(d[:xDomainSize])))
-    const global Ly = Float64(eval(Meta.parse(d[:yDomainSize])))
-    const global Lz = Float64(eval(Meta.parse(d[:zDomainSize])))
+    const global LX = Float64(eval(Meta.parse(d[:xDomainSize])))
+    const global LY = Float64(eval(Meta.parse(d[:yDomainSize])))
+    const global LZ = Float64(eval(Meta.parse(d[:zDomainSize])))
     const global ν = Float64(eval(Meta.parse(d[:kinematicViscosity])))
   
-    kxp = reshape(rfftfreq(Nrx,Lx),(Nx,1,1))
-    kyp = reshape(fftfreq(Ny,Ly),(1,Ny,1))
-    kzp = reshape(fftfreq(Nz,Lz),(1,1,Nz))
+    kxp = reshape(rfftfreq(NRX,LX),(NX,1,1))
+    kyp = reshape(fftfreq(NY,LY),(1,NY,1))
+    kzp = reshape(fftfreq(NZ,LZ),(1,1,NZ))
   
     haskey(d,:threaded) ? (tr = parse(Bool,d[:threaded])) : (tr = true)
-    const global Thr = tr
+    const global THR = tr
   
-    const global Nt = tr ? Threads.nthreads() : 1 
+    const global NT = tr ? Threads.nthreads() : 1 
+    const global TRANGE = Base.OneTo(NT)
   
-    const global RealRanges = splitrange(Lrs, Nt)
+    const global REAL_RANGES = splitrange(NRRX*NY*NZ, NT)
   
     haskey(d,:dealias) ? (Dealiastype = Symbol(d[:dealias])) : (Dealiastype = :sphere)
     haskey(d,:cutoff) ? (cutoffr = Float64(eval(Meta.parse(d[:cutoff])))) : (cutoffr = 15/16)
-    const global Dealias = (Dealiastype,cutoffr) 
+    const global DEALIAS_TYPE = (Dealiastype,cutoffr) 
 
     cutoff = (cutoffr*kxp[end])^2
 
-    const global dealias = BitArray(undef,(Nx,Ny,Nz))
+    const global DEALIAS = BitArray(undef,(NX,NY,NZ))
 
     if Dealiastype == :sphere
-        @. dealias = (kxp^2 + kyp^2 + kzp^2) > cutoff
+        @. DEALIAS = (kxp^2 + kyp^2 + kzp^2) > cutoff
     elseif Dealiastype == :cube
-        @. dealias = (kxp^2 > cutoff) | (kyp^2 > cutoff) | (kzp^2 > cutoff)
+        @. DEALIAS = (kxp^2 > cutoff) | (kyp^2 > cutoff) | (kzp^2 > cutoff)
     end
 
-    const global kx = (kxp...,)
-    const global ky = (kyp...,)
-    const global kz = (kzp...,)
+    const global KX = (kxp...,)
+    const global KY = (kyp...,)
+    const global KZ = (kzp...,)
 
-    s = (Nx,Ny,Nz)
-    const global K = VecArray(HomogeneousArray{1}(kx,s),HomogeneousArray{2}(ky,s),HomogeneousArray{3}(kz,s))
+    s = (NX,NY,NZ)
+    const global K = VecArray(HomogeneousArray{1}(KX,s),HomogeneousArray{2}(KY,s),HomogeneousArray{3}(KZ,s))
 
+    const global XRANGE = Base.OneTo(NX)
+    const global RXRANGE = Base.OneTo(NRX)
+    const global YRANGE = Base.OneTo(NY)
+    const global ZRANGE = Base.OneTo(NZ)
+    const global RANGEC = Base.OneTo(NX*NY*NZ)
+ 
 end

@@ -16,8 +16,8 @@ function Adams_Bashforth3rdO{adp,indt}() where {adp,indt}
     dt = Ref(indt)
     dt2 = Ref(indt)
     dt3 = Ref(indt)
-    fm1 = ScalarField{Float64}(Nrx,Ny,Nz)
-    fm2 = ScalarField{Float64}(Nrx,Ny,Nz)
+    fm1 = ScalarField{Float64}(NRX,NY,NZ)
+    fm2 = ScalarField{Float64}(NRX,NY,NZ)
     return Adams_Bashforth3rdO{adp,indt}(fm1,fm2,at,bt,ct,dt,dt2,dt3)
 end
 
@@ -25,8 +25,8 @@ get_dt(t::Adams_Bashforth3rdO{true,idt}) where {idt} =
     getindex(t.dt)
 
 function initialize!(t::Adams_Bashforth3rdO,rhs::AbstractArray,vis,s::AbstractSimulation)
-    mycopy!(data(t.fm1), rhs,s) 
-    mycopy!(data(t.fm2), data(t.fm1),s) 
+    mycopy!(data(t.fm1), rhs) 
+    mycopy!(data(t.fm2), data(t.fm1)) 
     setindex!(t.dt,get_dt(s))
     setindex!(t.dt2,t.dt[])
     setindex!(t.dt3,t.dt[])
@@ -88,7 +88,7 @@ get_Ct(t::Type{Adams_Bashforth3rdO{false,idt}}) where {idt} =
     get_Ct(A)
 
 @par function (f::Adams_Bashforth3rdO)(ρ::AbstractArray{<:Complex,3},ρrhs::AbstractArray{<:Complex,3}, s::@par(AbstractSimulation))
-    @mthreads for kk = 1:Nz
+    @mthreads for kk in ZRANGE
         _tAdams_Bashforth3rdO!(kk, ρ,ρrhs,f.fm1,f.fm2,f,s)
     end
     return nothing
@@ -99,8 +99,8 @@ end
     At = get_At(f)
     Bt = get_Bt(f)
     Ct = get_Ct(f)
-    for j in Base.OneTo(Ny)
-        @msimd for i in Base.OneTo(Nx)
+    for j in YRANGE
+        @msimd for i in XRANGE
             #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
             #u[i,j,k] = muladd(muladd(23, rhs[i,j,k], muladd(-16, rm1[i,jj,kk], 5rm2[i,jj,kk])), dt12, u[i,j,k])
             u[i,j,k] = muladd(At, rhs[i,j,k], muladd(Bt, rm1[i,j,k], muladd(Ct, rm2[i,j,k], u[i,j,k])))
@@ -113,7 +113,7 @@ end
 
 # with forcing
 @par function (f::Adams_Bashforth3rdO)(ρ::AbstractArray{<:Complex,3},ρrhs::AbstractArray{<:Complex,3}, forcing::AbstractArray{<:Complex,3}, s::@par(AbstractSimulation))
-    @mthreads for kk = 1:Nz
+    @mthreads for kk in ZRANGE
         _tAdams_Bashforth3rdO!(kk, ρ,ρrhs, forcing, f.fm1,f.fm2,f,s)
     end
     return nothing
@@ -125,8 +125,8 @@ end
     Bt = get_Bt(f)
     Ct = get_Ct(f)
     if (6 < k < Nz-k+1)
-        for j in Base.OneTo(Ny)
-            @msimd for i in Base.OneTo(Nx)
+        for j in YRANGE
+            @msimd for i in XRANGE
                 #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
                 u[i,j,k] = muladd(At, rhs[i,j,k], muladd(Bt, rm1[i,j,k], muladd(Ct, rm2[i,j,k], u[i,j,k])))
                 rm2[i,j,k] = rm1[i,j,k]
@@ -134,8 +134,8 @@ end
             end
         end
     else
-        for j in Base.OneTo(Ny)
-            @msimd for i in Base.OneTo(Nx)
+        for j in YRANGE
+            @msimd for i in XRANGE
                 #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
                 u[i,j,k] = muladd(At, rhs[i,j,k], muladd(Bt, rm1[i,j,k], muladd(Ct, rm2[i,j,k], u[i,j,k]))) + forcing[i,j,k]
                 rm2[i,j,k] = rm1[i,j,k]

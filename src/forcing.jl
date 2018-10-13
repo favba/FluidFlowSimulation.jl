@@ -24,15 +24,15 @@ initialize!(f::NoForcing,s) = nothing
     s1 = F.forcex
     s2 = F.forcey
 
-    u1 = s.u.cx
-    u2 = s.u.cy
-    u3 = s.u.cz
+    u1 = s.u.c.x
+    u2 = s.u.c.y
+    u3 = s.u.c.z
 
     # // get current spectrum for k=0 plane
     calculate_u1u2_spectrum!(Ef,s.u, cPlaneNumber,s)
 
     for i=2:nShells2d
-        if kx[i] <= _kf
+        if KX[i] <= _kf
             R[i] += dt*(-2*alpha*omega*R[i] - omega*omega*(Ef[i] - Em[i])) 
             R[i]=max(0.0, R[i])
             factor[i] = sqrt(R[i]/ifelse(Ef[i]>eps,Ef[i],eps))*Zf[i]*dt     
@@ -44,11 +44,11 @@ initialize!(f::NoForcing,s) = nothing
     ff = 0.0
     fv = 0.0
 
-    for j=1:Ny
+    for j=YRANGE
         conjFactX=1.0
-        for i=1:Nx
-            K=sqrt(muladd(kx[i],kx[i],ky[j]^2))
-            n = round(Int,K/maxdk) + 1
+        for i=XRANGE
+            k=sqrt(muladd(KX[i],KX[i],KY[j]^2))
+            n = round(Int,k/maxdk) + 1
                 if (1 < n < nShells2d)
                     if avgWaveNumInShell2d[n] <= _kf
                         s1[i,j,1] = u1[i,j,1]*factor[n]
@@ -82,10 +82,10 @@ initialize!(f::NoForcing,s) = nothing
     for k=2:6
         s1[1,1,k] = u1[1,1,k]*f
         s2[1,1,k] = u2[1,1,k]*f
-        s1[1,1,Nz-k+2] = u1[1,1,Nz-k+2]*f
-        s2[1,1,Nz-k+2] = u2[1,1,Nz-k+2]*f
-        ff += abs2(s1[1,1,k]) + abs2(s2[1,1,k]) + abs2(s1[1,1,Nz-k+2]) + abs2(s2[1,1,Nz-k+2])
-        fv += abs2(u1[1,1,k]) + abs2(u2[1,1,k]) + abs2(u1[1,1,Nz-k+2]) + abs2(u2[1,1,Nz-k+2])
+        s1[1,1,NZ-k+2] = u1[1,1,NZ-k+2]*f
+        s2[1,1,NZ-k+2] = u2[1,1,NZ-k+2]*f
+        ff += abs2(s1[1,1,k]) + abs2(s2[1,1,k]) + abs2(s1[1,1,NZ-k+2]) + abs2(s2[1,1,NZ-k+2])
+        fv += abs2(u1[1,1,k]) + abs2(u2[1,1,k]) + abs2(u1[1,1,NZ-k+2]) + abs2(u2[1,1,NZ-k+2])
     end
     ff = ff*0.5/dt
     fv = fv/dt

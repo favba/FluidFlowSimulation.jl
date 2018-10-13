@@ -14,12 +14,12 @@ function ETD3rdO{adp,indt,Hyper}() where {adp,indt,Hyper}
     dt = Ref(indt)
     dt2 = Ref(indt)
     dt3 = Ref(indt)
-    c = zeros(Nrx,Ny,Nz)
+    c = zeros(NRX,NY,NZ)
     At = zero(c)
     Bt = zero(c)
     Ct = zero(c)
-    fm1 = ScalarField(Nx,Ny,Nz)
-    fm2 = ScalarField(Nx,Ny,Nz)
+    fm1 = ScalarField(NX,NY,NZ)
+    fm2 = ScalarField(NX,NY,NZ)
     return ETD3rdO{adp,indt,Hyper}(fm1,fm2,c,At,Bt,Ct,dt,dt2,dt3)
 end
 
@@ -37,23 +37,23 @@ function initialize!(t::ETD3rdO,rhs::AbstractArray,vis,s::AbstractSimulation)
 end
 
 @par function init_c!(t::ETD3rdO{adp,indt,false},c::AbstractArray,mν,s::@par(AbstractSimulation)) where{adp,indt}
-    @mthreads for k in 1:Nz
-        for j in 1:Ny
-            @fastmath @inbounds @msimd for i in 1:Nx
-                c[i,j,k] = muladd(kx[i], kx[i], muladd(ky[j], ky[j], kz[k]*kz[k]))*mν
+    @mthreads for k in ZRANGE
+        for j in YRANGE
+            @fastmath @inbounds @msimd for i in XRANGE
+                c[i,j,k] = muladd(KX[i], KX[i], muladd(KY[j], KY[j], KZ[k]*KZ[k]))*mν
             end
         end
     end
 end
 
 @par function init_c!(t::ETD3rdO{adp,indt,true},c::AbstractArray,aux,s::@par(AbstractSimulation)) where {adp,indt}
-    mν::Float64 = -nu(s)
+    mν::Float64 = -ν
     mνh::Float64 = -nuh(s)
     M::Int = get_hyperviscosity_exponent(s)
-    @mthreads for k in 1:Nz
-        for j in 1:Ny
-            @fastmath @inbounds @msimd for i in 1:Nx
-                modk = muladd(kx[i], kx[i], muladd(ky[j], ky[j], kz[k]*kz[k])) 
+    @mthreads for k in ZRANGE
+        for j in YRANGE
+            @fastmath @inbounds @msimd for i in XRANGE
+                modk = muladd(KX[i], KX[i], muladd(KY[j], KY[j], KZ[k]*KZ[k])) 
                 c[i,j,k] = muladd(modk, mν, modk^M * mνh) 
             end
         end
@@ -172,8 +172,8 @@ end
     Ct = f.Ct
     c = f.c
     dt = get_dt(f)
-    for j in 1:Ny
-        @fastmath @msimd for i in 1:Nx
+    for j in YRANGE
+        @fastmath @msimd for i in XRANGE
             u[i,j,k] = muladd(At[i,j,k], rhs[i,j,k], muladd(Bt[i,j,k], rm1[i,j,k], muladd(Ct[i,j,k], rm2[i,j,k], exp(c[i,j,k]*dt)*u[i,j,k])))
             rm2[i,j,k] = rm1[i,j,k]
             rm1[i,j,k] = rhs[i,j,k]
@@ -198,16 +198,16 @@ end
     c = f.c
     dt = get_dt(f)
     if (6 < k < Nz-k+1)
-        for j in 1:Ny
-            @fastmath @msimd for i in 1:Nx
+        for j in YRANGE
+            @fastmath @msimd for i in XRANGE
                 u[i,j,k] = muladd(At[i,j,k], rhs[i,j,k], muladd(Bt[i,j,k], rm1[i,j,k], muladd(Ct[i,j,k], rm2[i,j,k], exp(c[i,j,k]*dt)*u[i,j,k])))
                 rm2[i,j,k] = rm1[i,j,k]
                 rm1[i,j,k] = rhs[i,j,k]
             end
         end
     else
-        for j in 1:Ny
-            @fastmath @msimd for i in 1:Nx
+        for j in YRANGE
+            @fastmath @msimd for i in XRANGE
                 u[i,j,k] = muladd(At[i,j,k], rhs[i,j,k], muladd(Bt[i,j,k], rm1[i,j,k], muladd(Ct[i,j,k], rm2[i,j,k],muladd(exp(c[i,j,k]*dt), u[i,j,k], forcing[i,j,k]))))
                 rm2[i,j,k] = rm1[i,j,k]
                 rm1[i,j,k] = rhs[i,j,k]

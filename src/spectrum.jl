@@ -3,14 +3,14 @@
     uy = u.cy
     # Initialize the shells to zeros
     fill!(Ef,0)
-    dk =  kx[2] 
-    maxdk2d = max(kx[2],ky[2])
-    nshells = min(Nx,Ny÷2)
-    @inbounds for j=1:Ny
+    dk =  KX[2] 
+    maxdk2d = max(KX[2],KY[2])
+    nshells = min(NX,NY÷2)
+    @inbounds for j in YRANGE
         conjFactX=1.0
-        for i=1:Nx
-            K = sqrt(kx[i]^2 + ky[j]^2)
-            n = round(Int, K/maxdk2d) + 1
+        for i in XRANGE
+            k = sqrt(KX[i]^2 + KY[j]^2)
+            n = round(Int, k/maxdk2d) + 1
             if n <= nshells
                 magsq = abs2(ux[i,j,cplane]) + abs2(uy[i,j,cplane])
                 ee = 0.5*conjFactX * magsq / maxdk2d;
@@ -22,7 +22,7 @@
 end
 
 @par function calculate_u1u2_spectrum(u,cplane,s::@par(AbstractSimulation))
-    Ef = zeros(min(Nx, Ny÷2))
+    Ef = zeros(min(NX, NY÷2))
     calculate_u1u2_spectrum!(Ef,u,cplane,s)
     return Ef
 end

@@ -1,14 +1,8 @@
 __precompile__(false)
 module FluidFlowSimulation
-export run_simulation, advance_in_time!, VectorField, parameters, readglobal
+export run_simulation, advance_in_time!, parameters, readglobal
 
-using FFTW, InplaceRealFFT, FluidTensors, FluidFields
-
-function Base.unsafe_getindex(A::Tuple, I)
-  Base.@_inline_meta
-  @inbounds r = getindex(A, I)
-  r
-end
+using FFTW, InplaceRealFFT, FluidTensors, FluidFields, LinearAlgebra
 
 include("ReadGlobal.jl")
 include("Globals.jl")

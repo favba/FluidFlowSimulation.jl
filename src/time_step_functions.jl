@@ -4,6 +4,7 @@ abstract type AbstractScalarTimeStepWithIF{Adp,initdt,N} <: AbstractScalarTimeSt
 
 @inline is_implicit(::Type{<:AbstractScalarTimeStep}) = false
 @inline is_implicit(::Type{<:AbstractScalarTimeStepWithIF}) = true
+@inline @par is_implicit(::Type{<:@par(AbstractSimulation)}) = is_implicit(VelocityTimeStepType)
 
 has_variable_timestep(t::Type{<:AbstractScalarTimeStep{adp,idt,N}}) where {adp,idt,N} =
     adp
@@ -45,7 +46,7 @@ get_cfl(t::Type{VectorTimeStep{cfl,Tx,Ty,Tz}}) where{cfl,Tx,Ty,Tz} =
     get_cfl(VelocityTimeStepType)
 
 function initialize!(t::VectorTimeStep,rhs::VectorField,s::AbstractSimulation)
-    vis = nu(s)
+    vis = ν
     initialize!(t.x,rhs.rr.x,vis,s)
     initialize!(t.y,rhs.rr.y,vis,s)
     initialize!(t.z,rhs.rr.z,vis,s)
@@ -77,19 +78,19 @@ has_variable_timestep(t::Type{VectorTimeStep{cfl,Tx,Ty,Tz}}) where {cfl,Tx,Ty,Tz
 
 function (f::VectorTimeStep)(u::VectorField,rhs::VectorField,s::AbstractSimulation)
     if hasforcing(s)
-        f.x(u.cx,rhs.cx,s.forcing.forcex,s)
-        f.y(u.cy,rhs.cy,s.forcing.forcey,s)
+        f.x(u.c.x,rhs.c.x,s.forcing.forcex,s)
+        f.y(u.c.y,rhs.c.y,s.forcing.forcey,s)
         if typeof(s.forcing) <: RfForcing
-            f.z(u.cz,rhs.cz,s)
+            f.z(u.c.z,rhs.c.z,s)
         else
-            f.z(u.cz,rhs.cz,s.forcing.forcez,s)
+            f.z(u.c.z,rhs.c.z,s.forcing.forcez,s)
         end
     else
-        f.x(u.cx,rhs.cx,s)
-        f.y(u.cy,rhs.cy,s)
-        f.z(u.cz,rhs.cz,s)
+        f.x(u.c.x,rhs.c.x,s)
+        f.y(u.c.y,rhs.c.y,s)
+        f.z(u.c.z,rhs.c.z,s)
     end
-    pressure_projection!(u.cx,u.cy,u.cz,s)
+    pressure_projection!(u.c.x,u.c.y,u.c.z,s)
     return nothing
 end
 
@@ -99,7 +100,7 @@ include("time_step_functions/ETD.jl")
 
 @par function set_dt!(s::@par(AbstractSimulation))
     umax = maximum(s.reduction)
-    dx = 2π*Ly/Ny
+    dx = 2π*LY/NY
     cfl = get_cfl(s)
     #νt = nu(s)
     newdt =cfl * dx/umax

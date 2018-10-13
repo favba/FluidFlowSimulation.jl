@@ -7,27 +7,27 @@ macro def(name, definition) # thanks to http://www.stochasticlifestyle.com/type-
 end
 
 macro cthreads(condition::Symbol,loop::Expr) #does not work well because of #15276, but seems to work on Julia v0.7
-  return esc(quote
-    if $condition
-      Threads.@threads $loop
-    else
-      $loop
-    end
-  end)
+    return esc(quote
+        if $condition
+            Threads.@threads $loop
+        else
+            $loop
+        end
+    end)
 end
 
 macro mthreads(ex)
-  return esc(:(@cthreads Thr $ex))
+    return esc(:(@cthreads THR $ex))
 end
 
 macro msimd(ex)
-  #return esc(ex)
-  return esc(:(@simd $ex))
+    #return esc(ex)
+    return esc(:(@simd $ex))
 end
 
 macro gen(ex)
-  ex2 = macroexpand(ex)
-  return esc(:(@generated $ex2))
+    ex2 = macroexpand(ex)
+    return esc(:(@generated $ex2))
 end
 
 const sim_par = (:VelocityTimeStepType,:PassiveScalarType,:DensityStratificationType,:LESModelType,:ForcingType,:HyperViscosityType)
@@ -60,7 +60,7 @@ julia> @macroexpand @par(BoussinesqParameters)
 ```
 """
 macro par(t::Symbol)
-  return esc(Expr(:curly,t,sim_par...))
+    return esc(Expr(:curly,t,sim_par...))
 end
 
 """
@@ -80,13 +80,13 @@ end)
 ```
 """
 macro par(ex::Expr)
-  if ex.head == :function || ex.head == :(=)
-    if ex.args[1].head == :where
-      # append!(ex.args[1].args,sim_par)
-      ex.args[1].args = vcat(ex.args[1].args[1], sim_par..., ex.args[1].args[2:end]) # This way the parameters are available to the existing parameters
-    elseif ex.args[1].head == :call
-      ex.args[1] = Expr(:where, ex.args[1], sim_par...) 
+    if ex.head == :function || ex.head == :(=)
+        if ex.args[1].head == :where
+            # append!(ex.args[1].args,sim_par)
+            ex.args[1].args = vcat(ex.args[1].args[1], sim_par..., ex.args[1].args[2:end]) # This way the parameters are available to the existing parameters
+        elseif ex.args[1].head == :call
+            ex.args[1] = Expr(:where, ex.args[1], sim_par...) 
+        end
     end
-  end
-  return esc(ex)
+    return esc(ex)
 end
