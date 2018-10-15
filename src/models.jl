@@ -108,7 +108,7 @@ end
             ρmax = 0.0
         end
         if hasles(A)
-            vis = nu(s)
+            vis = ν
             numax = 0.
             # ep = eps()
         end
