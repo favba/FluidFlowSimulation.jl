@@ -111,7 +111,7 @@ include("time_step_functions/ETD.jl")
     end
     if hasdensity(s) 
         ρmax = maximum(s.densitystratification.reduction)
-        g = abs(gravity(s))
+        g = norm(gravity(s))
         k = diffusivity(s)
         newdt = min(newdt, 
         cfl * sqrt(dx/(ρmax*g))/2)#,
