@@ -74,7 +74,7 @@ initialize!(f::NoForcing,s) = nothing
     umag = 0.0
     #     // get the sum of the existing velocites
     for k = 2:6
-        umag += sqrt(abs2(u1[1,1,k]) + abs2(u2[1,1,k])) + sqrt(abs2(u1[1,1,Nz-k+2]) + abs2(u2[1,1,Nz-k+2]))
+        umag += sqrt(abs2(u1[1,1,k]) + abs2(u2[1,1,k])) + sqrt(abs2(u1[1,1,NZ-k+2]) + abs2(u2[1,1,NZ-k+2]))
     end
 
     f = dt*sqrt(2.0*horizontalPower*(1.0-powerFraction))/umag

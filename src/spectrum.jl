@@ -1,6 +1,6 @@
 @par function calculate_u1u2_spectrum!(Ef,u,cplane,s::@par(AbstractSimulation))
-    ux = u.cx
-    uy = u.cy
+    ux = u.c.x
+    uy = u.c.y
     # Initialize the shells to zeros
     fill!(Ef,0)
     dk =  KX[2] 

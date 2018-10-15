@@ -120,7 +120,7 @@ function compute_shells2D(kx,ky,Nx,Ny)
         end
     end
   
-    @inbounds @simd for i in linearindices(kh)
+    @inbounds @simd for i in 1:length(kh)
         kh[i] = kh[i]/numPtsInShell2D[i]
     end
 
@@ -128,7 +128,7 @@ function compute_shells2D(kx,ky,Nx,Ny)
 end
 
 function calculate_Zf(kf,kh)
-    Zf = zeros(kh)
+    Zf = zeros(size(kh))
     for (i,k) in enumerate(kh)
         Zf[i] = tanh((kf-k) / (0.25*kf)) * (((kf-k) <= 0.0) ? 0.0 : 1.0)
     end
