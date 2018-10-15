@@ -124,7 +124,7 @@ end
     At = get_At(f)
     Bt = get_Bt(f)
     Ct = get_Ct(f)
-    if (6 < k < Nz-k+1)
+    if (6 < k < NZ-k+1)
         for j in YRANGE
             @msimd for i in XRANGE
                 #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
