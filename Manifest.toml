@@ -9,9 +9,9 @@ uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
 [[BinaryProvider]]
 deps = ["Libdl", "Pkg", "SHA", "Test"]
-git-tree-sha1 = "38be61810f280c3c478f5c38aaf387f8f9199275"
+git-tree-sha1 = "9930c1a6cd49d9fcd7218df6be417e6ae4f1468a"
 uuid = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
-version = "0.5.1"
+version = "0.5.2"
 
 [[Compat]]
 deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
@@ -53,7 +53,7 @@ version = "0.1.0"
 
 [[FluidTensors]]
 deps = ["LinearAlgebra"]
-git-tree-sha1 = "eb9b528e21102654b26bbfc3f6822e295b29276e"
+git-tree-sha1 = "914e925c5df9786aa72da0a4ce35ca116fa60e57"
 repo-rev = "master"
 repo-url = "git@github.com:favba/FluidTensors.jl.git"
 uuid = "9c362f20-be79-11e8-0b20-338637273ba1"
