@@ -72,7 +72,7 @@ end
 
 #ape(s::AbstractSimulation) = tmean(x->x^2,parent(real(s.ρ)),s)
 
-@par function tmean(f::Function,x::AbstractArray{T,3},s::@par(AbstractSimulation)) where {T<:Number}
+@par function tmean(f::F,x::AbstractArray{T,3},s::@par(AbstractSimulation)) where {F<:Function,T<:Number}
 
     result = fill!(s.reduction,0.0)
     @mthreads for k in ZRANGE
@@ -88,15 +88,15 @@ end
 
 tmean(x::AbstractArray,s::AbstractSimulation) = tmean(identity,x,s)
 
-@inline @generated function getind(f::Function,x::NTuple{N,AbstractArray{T,3}},i::Int,j::Int,k::Int) where {T,N}
+@generated function getind(f::F,x::NTuple{N,AbstractArray{T,3}},i::Int,j::Int,k::Int) where {F,T,N}
     args = Array{Any,1}(N)
     for l=1:N 
        args[l] = :(x[$l][i,j,k])
     end
-    return Expr(:call,:f,args...)
+    return Base.pushmeta!(Expr(:call,:f,args...),:inline)
 end
 
-@par function tmean(f::Function,x::NTuple{N,AbstractArray{T,3}},s::@par(AbstractSimulation)) where {T,N}
+@par function tmean(f::F,x::NTuple{N,AbstractArray{T,3}},s::@par(AbstractSimulation)) where {F,T,N}
     result = fill!(s.reduction,0.0)
     @mthreads for k in ZRANGE
         for j in YRANGE
