@@ -1,9 +1,8 @@
-@par function calculate_u1u2_spectrum!(Ef,u,cplane,s::@par(AbstractSimulation))
+@par function calculate_u1u2_spectrum!(Ef,u,cplane)
     ux = u.c.x
     uy = u.c.y
     # Initialize the shells to zeros
     fill!(Ef,0)
-    dk =  KX[2] 
     maxdk2d = max(KX[2],KY[2])
     nshells = min(NX,NY÷2)
     @inbounds for j in YRANGE
@@ -23,6 +22,6 @@ end
 
 @par function calculate_u1u2_spectrum(u,cplane,s::@par(AbstractSimulation))
     Ef = zeros(min(NX, NY÷2))
-    calculate_u1u2_spectrum!(Ef,u,cplane,s)
+    calculate_u1u2_spectrum!(Ef,u,cplane=1)
     return Ef
 end

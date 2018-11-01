@@ -21,15 +21,15 @@ initialize!(f::NoForcing,s) = nothing
     Zf = getZf(F)
     factor = F.factor
   
-    s1 = F.forcex
-    s2 = F.forcey
+    s1 = fill!(F.forcex,0)
+    s2 = fill!(F.forcey,0)
 
     u1 = s.u.c.x
     u2 = s.u.c.y
     u3 = s.u.c.z
 
-    # // get current spectrum for k=0 plane
-    calculate_u1u2_spectrum!(Ef,s.u, cPlaneNumber,s)
+    # // get current spectrum for k=1 plane
+    calculate_u1u2_spectrum!(Ef,s.u, cPlaneNumber)
 
     for i=2:nShells2d
         if KX[i] <= _kf
@@ -95,7 +95,7 @@ end
 
 function initialize!(f::RfForcing,s)
     if f.init
-        calculate_u1u2_spectrum!(f.Em,s.u,1,s)
+        calculate_u1u2_spectrum!(f.Em,s.u,1)
     end
     return nothing
 end
