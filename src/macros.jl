@@ -17,12 +17,16 @@ macro cthreads(condition::Symbol,loop::Expr) #does not work well because of #152
 end
 
 macro mthreads(ex)
-    return esc(:(@cthreads THR $ex))
+    if THR
+       return esc(:(Threads.@threads $ex))
+    else
+        return esc(ex)
+    end
 end
 
 macro msimd(ex)
-    #return esc(ex)
-    return esc(:(@simd $ex))
+    return esc(ex)
+    #return esc(:(@simd $ex))
 end
 
 macro gen(ex)
