@@ -35,7 +35,7 @@ initialize!(f::NoForcing,s) = nothing
         if KX[i] <= _kf
             R[i] += dt*(-2*alpha*omega*R[i] - omega*omega*(Ef[i] - Em[i])) 
             R[i]=max(0.0, R[i])
-            factor[i] = sqrt(R[i]/ifelse(Ef[i]>eps,Ef[i],eps))*Zf[i]*dt     
+            factor[i] = sqrt(R[i]/max(Ef[i],eps))*Zf[i]*dt     
         end
     end
 
@@ -49,17 +49,17 @@ initialize!(f::NoForcing,s) = nothing
         for i=XRANGE
             k=sqrt(muladd(KX[i],KX[i],KY[j]^2))
             n = round(Int,k/maxdk) + 1
-                if (1 < n < nShells2d)
-                    if avgWaveNumInShell2d[n] <= _kf
-                        s1[i,j,1] = u1[i,j,1]*factor[n]
-                        s2[i,j,1] = u2[i,j,1]*factor[n]
-                        ff += (abs2(s1[i,j,1]) + abs2(s2[i,j,1]))*conjFactX
-                        fv += (abs2(u1[i,j,1]) + abs2(u2[i,j,1]))*conjFactX
-                        conjFactX=2.0
-                    end
+            if (1 < n <= nShells2d)
+                if avgWaveNumInShell2d[n] <= _kf
+                    s1[i,j,1] = u1[i,j,1]*factor[n]
+                    s2[i,j,1] = u2[i,j,1]*factor[n]
+                    ff += (abs2(s1[i,j,1]) + abs2(s2[i,j,1]))*conjFactX
+                    fv += (abs2(u1[i,j,1]) + abs2(u2[i,j,1]))*conjFactX
+                    conjFactX=2.0
                 end
             end
         end
+    end
     ff = ff*0.5/dt
     fv = fv*0.5/dt
     horizontalPower = ff+fv
