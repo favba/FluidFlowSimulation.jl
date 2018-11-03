@@ -18,6 +18,14 @@ hasdensity(s::AbstractSimulation) = hasdensity(typeof(s))
     LESModelType !== NoLESModel
 hasles(s::AbstractSimulation) = hasles(typeof(s))
 
+@par hasdensityles(s::Type{T}) where {T<:@par(AbstractSimulation)}  =
+    hasdensity(T) && hasdensityles(DensityStratificationType)
+hasdensityles(s::AbstractSimulation) = hasdensityles(typeof(s))
+
+@par haspassivescalarles(s::Type{T}) where {T<:@par(AbstractSimulation)}  =
+    haspassivescalar(T) && haspassivescalarles(PassiveScalarType)
+haspassivescalarles(s::AbstractSimulation) = haspassivescalarles(typeof(s))
+
 @par hasforcing(s::Type{T}) where {T<:@par(AbstractSimulation)}  =
     ForcingType !== NoForcing
 hasforcing(s::AbstractSimulation) = hasforcing(typeof(s))
@@ -29,7 +37,6 @@ hashyperviscosity(s::AbstractSimulation) = hashyperviscosity(typeof(s))
 struct @par(Simulation) <: @par(AbstractSimulation)
     u::VectorField{Float64,3,2,false}
     rhs::VectorField{Float64,3,2,false}
-    aux::VectorField{Float64,3,2,false}
     reduction::Vector{Float64}
     timestep::VelocityTimeStepType
     passivescalar::PassiveScalarType
@@ -41,11 +48,10 @@ struct @par(Simulation) <: @par(AbstractSimulation)
     @par function @par(Simulation)(u::VectorField,timestep,passivescalar,densitystratification,lesmodel,forcing,hv) 
 
         rhs = similar(u)
-        aux = similar(u)
   
         reduction = zeros(THR ? Threads.nthreads() : 1)
 
-        return @par(new)(u,rhs,aux,reduction,timestep,passivescalar,densitystratification,lesmodel,forcing,hv)
+        return @par(new)(u,rhs,reduction,timestep,passivescalar,densitystratification,lesmodel,forcing,hv)
     end
 
 end
@@ -82,27 +88,38 @@ print(io,smsg)
 end
 
 # Simulaiton with Scalar fields ===================================================================================================================================================
-abstract type AbstractPassiveScalar{TT,α,dρdz,Gdirec} end
 
-    diffusivity(a::Type{T}) where {TT,α,dρdz,Gdirec,T<:AbstractPassiveScalar{TT,α,dρdz,Gdirec}} = 
+abstract type AbstractLESScalar end
+
+struct NoLESScalar <: AbstractLESScalar end
+
+struct EddyDiffusion <: AbstractLESScalar end
+
+abstract type AbstractPassiveScalar{L,TT,α,dρdz,Gdirec} end
+
+    haspassivescalarles(a::Type{T}) where {L,TT,α,dρdz,Gdirec,T<:AbstractPassiveScalar{L,TT,α,dρdz,Gdirec}} = 
+        L === NoLESScalar ? false : true
+    @inline haspassivescalarles(a::AbstractPassiveScalar) = haspassivescalarles(typeof(a)) 
+
+    diffusivity(a::Type{T}) where {L,TT,α,dρdz,Gdirec,T<:AbstractPassiveScalar{L,TT,α,dρdz,Gdirec}} = 
         α
     @inline diffusivity(a::AbstractPassiveScalar) = diffusivity(typeof(a)) 
 
-    meangradient(a::Type{T}) where {TT,α,dρdz,Gdirec,T<:AbstractPassiveScalar{TT,α,dρdz,Gdirec}} = 
+    meangradient(a::Type{T}) where {L,TT,α,dρdz,Gdirec,T<:AbstractPassiveScalar{L,TT,α,dρdz,Gdirec}} = 
         dρdz
-    @inline meangradient(a::AbstractPassiveScalar{TT,α,dρdz,Gdirec}) where {TT,α,dρdz,Gdirec} = meangradient(typeof(a))
+    @inline meangradient(a::AbstractPassiveScalar{L,TT,α,dρdz,Gdirec}) where {L,TT,α,dρdz,Gdirec} = meangradient(typeof(a))
 
-    graddir(a::Type{T}) where {TT,α,dρdz,Gdirec,T<:AbstractPassiveScalar{TT,α,dρdz,Gdirec}} = 
+    graddir(a::Type{T}) where {L,TT,α,dρdz,Gdirec,T<:AbstractPassiveScalar{L,TT,α,dρdz,Gdirec}} = 
         Gdirec
-    @inline graddir(a::AbstractPassiveScalar{TT,α,dρdz,Gdirec}) where {TT,α,dρdz,Gdirec} = graddir(typeof(a))
+    @inline graddir(a::AbstractPassiveScalar{L,TT,α,dρdz,Gdirec}) where {L,TT,α,dρdz,Gdirec} = graddir(typeof(a))
 
-    initialize!(a::AbstractPassiveScalar,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),diffusivity(a),s)
+    initialize!(a::AbstractPassiveScalar,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.rhs)),diffusivity(a),s)
 
     statsheader(a::AbstractPassiveScalar) = "scalar,scalar^2,dscalardx^2,dscalardy^2,dscalardz^2"
 
-    stats(a::AbstractPassiveScalar,s::AbstractSimulation) = scalar_stats(a,s)
+    stats(a::AbstractPassiveScalar,s::AbstractSimulation) = scalar_stats(a.φ,a,s)
 
-struct NoPassiveScalar <: AbstractPassiveScalar{nothing,nothing,nothing,nothing} end
+struct NoPassiveScalar <: AbstractPassiveScalar{NoLESScalar,nothing,nothing,nothing,nothing} end
 
     initialize!(a::NoPassiveScalar,s::AbstractSimulation) = nothing
 
@@ -112,19 +129,25 @@ struct NoPassiveScalar <: AbstractPassiveScalar{nothing,nothing,nothing,nothing}
 
     msg(a::NoPassiveScalar) = "\nPassive Scalar: No passive scalar\n"
 
-struct PassiveScalar{TTimeStep, α #=Difusitivity = ν/Pr =#,
-                  dρdz #=Linear mean profile=#, Gdirec #=Axis of mean profile =#} <: AbstractPassiveScalar{TTimeStep,α,dρdz,Gdirec}
-    ρ::ScalarField{Float64,3,2,false}
-    ρrhs::ScalarField{Float64,3,2,false}
-    timestep::TTimeStep
 
-    function PassiveScalar{TT,α,dρdz,Gdirec}(ρ,timestep) where {TT,α,dρdz,Gdirec}
+struct PassiveScalar{L,TTimeStep, α #=Difusitivity = ν/Pr =#,
+                  dρdz #=Linear mean profile=#, Gdirec #=Axis of mean profile =#} <: AbstractPassiveScalar{L,TTimeStep,α,dρdz,Gdirec}
+    φ::ScalarField{Float64,3,2,false}
+    rhs::ScalarField{Float64,3,2,false}
+    flux::VectorField{Float64,3,2,false}
+    lesmodel::L
+    timestep::TTimeStep
+    reduction::Vector{Float64}
+
+    function PassiveScalar{TT,α,dρdz,Gdirec}(ρ,les,timestep) where {TT,α,dρdz,Gdirec}
         ρrhs = similar(ρ)
-        return new{TT,α,dρdz,Gdirec}(ρ,ρrhs,timestep)
+        flux = VectorField(size(ρ.field.r)...)
+        reduction = zeros(THR ? Threads.nthreads() : 1)
+        return new{typeof(les),TT,α,dρdz,Gdirec}(ρ,ρrhs,flux,les,timestep,reduction)
     end
 end 
 
-msg(a::PassiveScalar{TT,α,dρdz,Gdirec}) where {TT,α,dρdz,Gdirec} = """
+msg(a::PassiveScalar{L,TT,α,dρdz,Gdirec}) where {L,TT,α,dρdz,Gdirec} = """
 
 Passive Scalar: true
 Scalar diffusivity: $(α)
@@ -135,36 +158,40 @@ Scalar time-stepping method: $(TT)
 """
 # ==========================================================================================================
 
-abstract type AbstractDensityStratification{TT,α,dρdz,g,Gdirec} end
+abstract type AbstractDensityStratification{L,TT,α,dρdz,g,Gdirec} end
 
-    diffusivity(a::Type{T}) where {TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{TT,α,dρdz,g,Gdirec}} = 
+    hasdensityles(a::Type{T}) where {L,TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{L,TT,α,dρdz,g,Gdirec}} = 
+        L === NoLESScalar ? false : true
+    @inline hasdensityles(a::AbstractDensityStratification{L,TT,α,dρdz,g,Gdirec}) where {L,TT,α,dρdz,g,Gdirec} = hasdensityles(typeof(a))
+
+    diffusivity(a::Type{T}) where {L,TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{L,TT,α,dρdz,g,Gdirec}} = 
         α
-    @inline diffusivity(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = diffusivity(typeof(a))
+    @inline diffusivity(a::AbstractDensityStratification{L,TT,α,dρdz,g,Gdirec}) where {L,TT,α,dρdz,g,Gdirec} = diffusivity(typeof(a))
     @inline @par diffusivity(s::Type{T}) where {T<:@par(AbstractSimulation)} = diffusivity(DensityStratificationType)
     @inline diffusivity(s::AbstractSimulation) = diffusivity(typeof(s))
 
-    meangradient(a::Type{T}) where {TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{TT,α,dρdz,g,Gdirec}} = 
+    meangradient(a::Type{T}) where {L,TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{L,TT,α,dρdz,g,Gdirec}} = 
         dρdz
-    @inline meangradient(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = meangradient(typeof(a))
+    @inline meangradient(a::AbstractDensityStratification{L,TT,α,dρdz,g,Gdirec}) where {L,TT,α,dρdz,g,Gdirec} = meangradient(typeof(a))
 
-    gravity(a::Type{T}) where {TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{TT,α,dρdz,g,Gdirec}} = 
+    gravity(a::Type{T}) where {L,TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{L,TT,α,dρdz,g,Gdirec}} = 
         g
-    @inline gravity(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = gravity(typeof(a))
+    @inline gravity(a::AbstractDensityStratification{L,TT,α,dρdz,g,Gdirec}) where {L,TT,α,dρdz,g,Gdirec} = gravity(typeof(a))
     @inline @par gravity(s::Type{T}) where {T<:@par(AbstractSimulation)} = gravity(DensityStratificationType)
     @inline gravity(s::AbstractSimulation) = gravity(typeof(s))
 
-    graddir(a::Type{T}) where {TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{TT,α,dρdz,g,Gdirec}} = 
+    graddir(a::Type{T}) where {L,TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{L,TT,α,dρdz,g,Gdirec}} = 
         Gdirec
-    @inline graddir(a::AbstractDensityStratification{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = graddir(typeof(a))
+    @inline graddir(a::AbstractDensityStratification{L,TT,α,dρdz,g,Gdirec}) where {L,TT,α,dρdz,g,Gdirec} = graddir(typeof(a))
 
 
-    initialize!(a::AbstractDensityStratification,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),diffusivity(a),s)
+    initialize!(a::AbstractDensityStratification,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.rhs)),diffusivity(a),s)
 
     statsheader(a::AbstractDensityStratification) = "rho,rho^2,drhodx^2,drhody^3,drhodz^2"
 
-    stats(a::AbstractDensityStratification,s::AbstractSimulation) = scalar_stats(a,s)
+    stats(a::AbstractDensityStratification,s::AbstractSimulation) = scalar_stats(a.ρ,a,s)
 
-struct NoDensityStratification <: AbstractDensityStratification{nothing,nothing,nothing,nothing,nothing} end
+struct NoDensityStratification <: AbstractDensityStratification{NoLESScalar,nothing,nothing,nothing,nothing,nothing} end
 
     initialize!(a::NoDensityStratification,s::AbstractSimulation) = nothing
 
@@ -174,24 +201,27 @@ struct NoDensityStratification <: AbstractDensityStratification{nothing,nothing,
 
     msg(a::NoDensityStratification) = "\nDensity Stratification: No density stratification\n"
 
-struct BoussinesqApproximation{TTimeStep, α #=Difusitivity = ν/Pr =#,
+struct BoussinesqApproximation{L,TTimeStep, α #=Difusitivity = ν/Pr =#,
                    dρdz #=Linear mean profile=#, g #=This is actually g/ρ₀ =#, 
-                   Gdirec#=Gravity direction =#} <: AbstractDensityStratification{TTimeStep,α,dρdz,g,Gdirec}
+                   Gdirec#=Gravity direction =#} <: AbstractDensityStratification{L,TTimeStep,α,dρdz,g,Gdirec}
     ρ::ScalarField{Float64,3,2,false}
-    ρrhs::ScalarField{Float64,3,2,false}
+    rhs::ScalarField{Float64,3,2,false}
+    flux::VectorField{Float64,3,2,false}
+    lesmodel::L
     timestep::TTimeStep
     reduction::Vector{Float64}
 
-    function BoussinesqApproximation{TT,α,dρdz,g,Gdirec}(ρ,timestep,tr) where {TT,α,dρdz,g,Gdirec}
+    function BoussinesqApproximation{TT,α,dρdz,g,Gdirec}(ρ,timestep,tr,les) where {TT,α,dρdz,g,Gdirec}
         ρrhs = similar(ρ)
+        flux = VectorField(size(ρ.field.r)...)
         reduction = zeros(tr ? Threads.nthreads() : 1)
-        return new{TT,α,dρdz,g,Gdirec}(ρ,ρrhs,timestep,reduction)
+        return new{typeof(les),TT,α,dρdz,g,Gdirec}(ρ,ρrhs,flux,les,timestep,reduction)
     end
 end 
 
-initialize!(a::BoussinesqApproximation,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.ρrhs)),diffusivity(a),s)
+initialize!(a::BoussinesqApproximation,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.rhs)),diffusivity(a),s)
 
-msg(a::BoussinesqApproximation{TT,α,dρdz,g,Gdirec}) where {TT,α,dρdz,g,Gdirec} = """
+msg(a::BoussinesqApproximation{L,TT,α,dρdz,g,Gdirec}) where {L,TT,α,dρdz,g,Gdirec} = """
 
 Density Stratification: Boussinesq Approximation
 Density diffusivity: $(α)
@@ -218,32 +248,21 @@ struct NoLESModel <: AbstractLESModel end
 
     msg(a::NoLESModel) = "\nLES model: No LES model\n"
 
-abstract type AbstractLESScalar end
-
-struct NoLESScalar <: AbstractLESScalar end
-
-struct EddyDiffusion{VecType} <: AbstractLESScalar 
-    gradρ::VecType
-end
-
-    EddyDiffusion(nx,ny,nz) = EddyDiffusion(VectorField(nx,ny,nz))
 
 # Smagorinsky Model Start ======================================================
 
 abstract type EddyViscosityModel <: AbstractLESModel end
 
-struct Smagorinsky{c,Δ,ScalarType<:AbstractLESScalar,TensorType} <: EddyViscosityModel
+struct Smagorinsky{c,Δ,TensorType} <: EddyViscosityModel
     tau::TensorType
-    scalar::ScalarType
     reduction::Vector{Float64}
 end
 
-function Smagorinsky(c::Real,Δ::Real,scalar::Bool,dim::NTuple{3,Integer},tr) 
+function Smagorinsky(c::Real,Δ::Real,dim::NTuple{3,Integer},tr) 
     data = SymTrTenField(dim...)
     #fill!(data,0)
-    scalart = scalar ? EddyDiffusion(dim...) : NoLESScalar()
     reduction = zeros(tr ? Threads.nthreads() : 1)
-    return Smagorinsky{c,Δ,typeof(scalart),typeof(data)}(data,scalart,reduction)
+    return Smagorinsky{c,Δ,typeof(data)}(data,reduction)
 end
 
 Smagorinsky(c::Real,Δ::Real,dim::NTuple{3,Integer}) = Smagorinsky(c,Δ,false,dim)
@@ -257,11 +276,6 @@ cs(s::Type{T}) where {c,Δ,scalar,T<:Smagorinsky{c,Δ,scalar}} = c
 Delta(s::Type{T}) where {c,Δ,scalar,T<:Smagorinsky{c,Δ,scalar}} = Δ
 @inline Delta(s::T) where {c,Δ,scalar,T<:Smagorinsky{c,Δ,scalar}} = Delta(T)
 
-lesscalarmodel(s::Type{T}) where {c,Δ,scalar,T<:Smagorinsky{c,Δ,scalar}} = scalar
-@inline lesscalarmodel(s::T) where {c,Δ,scalar,T<:Smagorinsky{c,Δ,scalar}} = lesscalarmodel(T)
-@inline @par lesscalarmodel(s::Type{T}) where {T<:@par(AbstractSimulation)} = lesscalarmodel(LESModelType)
-@inline lesscalarmodel(s::AbstractSimulation) = lesscalarmodel(typeof(s))
-
 statsheader(a::Smagorinsky) = ""
 
 stats(a::Smagorinsky,s::AbstractSimulation) = ()
@@ -272,31 +286,26 @@ msg(a::Smagorinsky) = "\nLES model: Smagorinsky\nConstant: $(cs(a))\nFilter Widt
 
 # Smagorinsky+P Model Start ======================================================
 
-struct SandP{cs,cβ,Δ,ScalarType<:AbstractLESScalar,TensorType} <: AbstractLESModel
+struct SandP{cs,cβ,Δ,TensorType} <: AbstractLESModel
     tau::TensorType
-    scalar::ScalarType
 end
 
-function SandP(c::Real,cb::Real,Δ::Real,scalar::Bool,dim::NTuple{3,Integer}) 
+function SandP(c::Real,cb::Real,Δ::Real,dim::NTuple{3,Integer}) 
     data = SymmetricTracelessTensor(dim)
     fill!(data,0)
-    scalart = scalar ? EddyDiffusion(dim...) : NoLESScalar()
-    return SandP{c,cb,Δ,typeof(scalart),typeof(data)}(data,scalart)
+    return SandP{c,cb,Δ,typeof(data)}(data)
 end
 
 is_SandP(a::Union{<:SandP,Type{<:SandP}}) = true
 @inline @par is_SandP(s::Type{T}) where {T<:@par(AbstractSimulation)} = is_SandP(LESModelType)
 @inline is_SandP(s::T) where {T<:AbstractSimulation} = is_SandP(T)
 
-cs(s::Type{T}) where {c,cb,Δ,T<:SandP{c,cb,Δ}} = c
-@inline cs(s::T) where {c,cb,Δ,T<:SandP{c,cb,Δ}} = cs(T)
-cbeta(s::Type{T}) where {c,cb,Δ,T<:SandP{c,cb,Δ}} = cb
-@inline cbeta(s::T) where {c,cb,Δ,T<:SandP{c,cb,Δ}} = cbeta(T)
-Delta(s::Type{T}) where {c,cb,Δ,T<:SandP{c,cb,Δ}} = Δ
-@inline Delta(s::T) where {c,cb,Δ,T<:SandP{c,cb,Δ}} = Delta(T)
-
-lesscalarmodel(s::Type{T}) where {c,cb,Δ,scalar,T<:SandP{c,cb,Δ,scalar}} = scalar
-@inline lesscalarmodel(s::T) where {c,cb,Δ,scalar,T<:SandP{c,cb,Δ,scalar}} = lesscalarmodel(T)
+cs(s::Type{T}) where {c,cb,Δ,TP,T<:SandP{c,cb,Δ,TP}} = c
+@inline cs(s::T) where {c,cb,Δ,TP,T<:SandP{c,cb,Δ,TP}} = cs(T)
+cbeta(s::Type{T}) where {c,cb,Δ,TP,T<:SandP{c,cb,Δ,TP}} = cb
+@inline cbeta(s::T) where {c,cb,Δ,TP,T<:SandP{c,cb,Δ,TP}} = cbeta(T)
+Delta(s::Type{T}) where {c,cb,Δ,TP,T<:SandP{c,cb,Δ,TP}} = Δ
+@inline Delta(s::T) where {c,cb,Δ,TP,T<:SandP{c,cb,Δ,TP}} = Delta(T)
 
 statsheader(a::SandP) = ""
 
@@ -452,7 +461,7 @@ function parameters(d::Dict)
         α = ν/Float64(eval(Meta.parse(d[:scalarPr])))
         dρdz = Float64(eval(Meta.parse(d[:scalarGradient])))
         @info("Reading initial scalar field scalar.$start")
-        rho = isfile("scalar.$start") ? PaddedArray("scalar.$start",(nx,ny,nz),true) : PaddedArray(zeros(nx,ny,nz)) 
+        rho = isfile("scalar.$start") ? ScalarField("scalar.$start",(nx,ny,nz)) : ScalarField(PaddedArray(zeros(nx,ny,nz))) 
         scalardir = haskey(d,:scalarDirection) ? Symbol(d[:scalarDirection]) : :z
         scalartimestep = if integrator === :Euller
             Euller{variableTimeStep,idt}(Ref(idt))
@@ -461,7 +470,12 @@ function parameters(d::Dict)
         else
             ETD3rdO{variableTimeStep,idt,false}()
         end 
-        scalartype = PassiveScalar{typeof(scalartimestep),α,dρdz,scalardir}(rho,scalartimestep)
+        lestype = if haskey(d,:lesModel)
+            EddyDiffusion()
+        else
+            NoLESScalar()
+        end
+        scalartype = PassiveScalar{typeof(scalartimestep),α,dρdz,scalardir}(rho,lestype,scalartimestep)
     else
         scalartype = NoPassiveScalar()
     end
@@ -489,7 +503,12 @@ function parameters(d::Dict)
         else
             ETD3rdO{variableTimeStep,idt,false}()
         end 
-        densitytype = BoussinesqApproximation{typeof(densitytimestep),α,dρdz,g,gdir}(rho,densitytimestep,tr)
+        lestype = if haskey(d,:lesModel)
+                EddyDiffusion()
+            else
+                NoLESScalar()
+            end
+        densitytype = BoussinesqApproximation{typeof(densitytimestep),α,dρdz,g,gdir}(rho,densitytimestep,tr,lestype)
 
     else
         densitytype = NoDensityStratification()

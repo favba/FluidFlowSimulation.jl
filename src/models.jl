@@ -6,6 +6,9 @@
 end
 
 @par function calculate_rhs!(s::A) where {A<:@par(AbstractSimulation)}
+    setfourier!(s.rhs)
+    hasdensity(A) && setfourier!(s.densitystratification.rhs)
+    haspassivescalar(A) && setfourier!(s.passivescalar.rhs)
     fourierspacep1!(s)
     realspace!(s)
     has_variable_timestep(s) && set_dt!(s)
@@ -20,43 +23,71 @@ end
     return nothing
 end
 
-@inline @par function fourierspacep1!(k,s::@par(AbstractSimulation)) 
-    aux = s.aux.c
+@inline @par function fourierspacep1!(k,s::A) where {A<:@par(AbstractSimulation)}
+    rhs = s.rhs.c
     u = s.u.c
-    if hasles(s)
+    if hasles(A)
         τ = s.lesmodel.tau.c
-        if hasdensity(s) || haspassivescalar(s)
-            ρ = hasdensity(s) ? s.densitystratification.ρ : s.passivescalar.ρ
-            ∇ρ = s.lesmodel.scalar.gradρ.c
-        end
     end
+
+    if hasdensity(A) && hasdensityles(A)
+        ρ = s.densitystratification.ρ
+        f = s.densitystratification.flux
+    end
+
+    if haspassivescalar(A) && haspassivescalarles(A)
+        φ = s.passivescalar.φ
+        fφ = s.passivescalar.flux
+    end
+
     @inbounds for j in YRANGE
         @msimd for i in XRANGE 
             v = u[i,j,k]
             ∇ = im*K[i,j,k]  
-            aux[i,j,k] = ∇ × v
-            if hasles(s)
+            rhs[i,j,k] = ∇ × v
+
+            if hasles(A)
                 τ[i,j,k] = symouter(∇,v)
-                if haspassivescalar(s) || hasdensity(s)
-                    ∇ρ[i,j,k] = ∇*ρ[i,j,k]
-                end
             end
+
+            if hasdensity(A) && hasdensityles(A)
+                f[i,j,k] = ∇*ρ[i,j,k]
+            end
+
+            if haspassivescalar(A) && haspassivescalarles(A)
+                fφ[i,j,k] = ∇*φ[i,j,k]
+            end
+
         end
     end
 end
 
 @par function realspace!(s::A) where {A<:@par(AbstractSimulation)}
     brfft!(s.u)
-    brfft!(s.aux)
+    brfft!(s.rhs)
   
-    haspassivescalar(A) && brfft!(s.passivescalar.ρ)
+    haspassivescalar(A) && brfft!(s.passivescalar.φ)
     hasdensity(A) && brfft!(s.densitystratification.ρ)
  
-    if hasles(s)
-        brfft!(s.lesmodel.tau)
-        (haspassivescalar(A) | hasdensity(A)) && brfft!(s.lesmodel.scalar.gradρ)
-    end
+    hasles(s) && brfft!(s.lesmodel.tau)
   
+    if hasdensity(A)
+        if hasdensityles(A)
+            brfft!(s.densitystratification.flux)
+        else
+            setreal!(s.densitystratification.flux)
+        end
+    end
+
+    if haspassivescalar(A)
+        if haspassivescalarles(A)
+            brfft!(s.passivescalar.flux)
+        else
+            setreal!(s.passivescalar.flux)
+        end
+    end
+
+
     realspacecalculation!(s)
 
     rfft_and_scale!(s.rhs)
@@ -67,30 +98,26 @@ end
     rfft_and_scale!(s.u)
 
     if haspassivescalar(A) 
-        rfft_and_scale!(s.aux)
-        dealias!(s.aux)
-        rfft_and_scale!(s.passivescalar.ρ)
-    elseif hasdensity(A)
-        rfft_and_scale!(s.aux)
-        dealias!(s.aux)
+        rfft_and_scale!(s.passivescalar.flux)
+        dealias!(s.passivescalar.flux)
+        rfft_and_scale!(s.passivescalar.φ)
+    end
+    if hasdensity(A)
+        rfft_and_scale!(s.densitystratification.flux)
+        dealias!(s.densitystratification.flux)
         rfft_and_scale!(s.densitystratification.ρ)
-    else
-        dealias!(s.aux)
     end
 
     if hasles(s)
         rfft_and_scale!(s.lesmodel.tau)
         dealias!(s.lesmodel.tau)
-        if (haspassivescalar(A) | hasdensity(A))
-            dealias!(s.lesmodel.scalar.gradρ)
-        end
     end
 
     return nothing
 end
 
 @par function realspacecalculation!(s::A) where {A<:@par(AbstractSimulation)}
-    @assert !(hasdensity(A) & haspassivescalar(A))
+    #@assert !(hasdensity(A) & haspassivescalar(A))
     @mthreads for j in TRANGE
         realspacecalculation!(s,j)
     end
@@ -99,14 +126,14 @@ end
 
 @par function realspacecalculation!(s::A,j::Integer) where {A<:@par(AbstractSimulation)} 
     u = s.u.rr
-    ω = s.aux.rr
-    out = s.rhs.rr
+    rhs = s.rhs.rr
     if has_variable_timestep(A)
         umaxhere = 0.0
         umax = 0.0
         if hasdensity(A)
             ρmax = 0.0
         end
+        haspassivescalar(A) && (smax = 0.0)
         if hasles(A)
             vis = ν
             numax = 0.
@@ -114,10 +141,12 @@ end
         end
     end
     if haspassivescalar(A)
-        ρ = s.passivescalar.ρ.field.data
+        φ = s.passivescalar.φ.field.data
+        fφ = s.passivescalar.flux
     end
     if hasdensity(A)
         ρ = s.densitystratification.ρ.field.data
+        f = s.densitystratification.flux
     end
     if hasles(A)
         τ = s.lesmodel.tau.rr
@@ -125,20 +154,19 @@ end
         Δ = Delta(s.lesmodel)
         α = c*c*Δ*Δ 
         is_SandP(A) && (β = cbeta(s.lesmodel)*Δ*Δ)
-        if haspassivescalar(A) | hasdensity(A)
-            ∇ρ = s.lesmodel.scalar.gradρ.rr
-        end
     end
 
     @inbounds @msimd for i in REAL_RANGES[j]
         v = u[i]
-        w = ω[i]
-        out[i] = v × w
+        w = rhs[i]
+        rhs[i] = v × w
+
         if has_variable_timestep(A)
             umaxhere = ifelse(abs(v.x)>abs(v.y),abs(v.x),abs(v.y))
             umaxhere = ifelse(umaxhere>abs(v.z),umaxhere,abs(v.z))
             umax = ifelse(umaxhere>umax,umaxhere,umax)
         end
+
         if hasles(A)
             S = τ[i]
             νt = α*norm(S)
@@ -153,23 +181,32 @@ end
                 τ[i] = νt*S + β*P
             end
         end
-        if haspassivescalar(A) || hasdensity(A)
-            ω[i] = (-ρ[i]) * u[i]
-            if has_variable_timestep(A)
-                ρmax = ifelse(ρmax > abs(ρ[i]),ρmax,abs(ρ[i]))
-            end
-            if hasles(A)
-                ω[i] += νt*∇ρ[i]
-            end
+
+        if hasdensity(A)
+            rhsden = (-ρ[i]) * v
+            hasdensityles(A) && (rhsden += νt*f[i])
+            f[i] = rhsden
+            has_variable_timestep(A) && (ρmax = ifelse(ρmax > abs(ρ[i]),ρmax,abs(ρ[i])))
         end
+
+        if haspassivescalar(A)
+            rhsp = (-φ[i]) * v
+            haspassivescalarles(A) && (rhsp += νt*fφ[i])
+            fφ[i] = rhsp
+            has_variable_timestep(A) && (smax = ifelse(smax > abs(φ[i]),smax,abs(φ[i])))
+        end
+
     end
+
     if has_variable_timestep(A) 
         s.reduction[j] = umax
         hasdensity(A) && (s.densitystratification.reduction[j] = ρmax)
+        haspassivescalar(A) && (s.passivescalar.reduction[j] = smax)
         if hasles(A)
             s.lesmodel.reduction[j] = numax
         end
     end
+
     return nothing
 end
 
@@ -254,13 +291,13 @@ end
     fourierspacep2_velocity!(s)
     if haspassivescalar(A)
         gdir = graddir(s.passivescalar) === :x ? s.u.c.x : graddir(s.passivescalar) === :y ? s.u.c.y : s.u.c.z 
-        div!(complex(s.passivescalar.ρrhs), s.aux.c.x, s.aux.c.y, s.aux.c.z, gdir, -meangradient(s.passivescalar), s)
-        is_implicit(typeof(s.passivescalar.timestep)) || add_scalar_difusion!(complex(s.passivescalar.ρrhs),complex(s.passivescalar.ρ),diffusivity(s.passivescalar),s)
+        div!(complex(s.passivescalar.rhs), s.passivescalar.flux.c.x, s.passivescalar.flux.c.y, s.passivescalar.flux.c.z, gdir, -meangradient(s.passivescalar), s)
+        is_implicit(typeof(s.passivescalar.timestep)) || add_scalar_difusion!(complex(s.passivescalar.rhs),complex(s.passivescalar.φ),diffusivity(s.passivescalar),s)
     end
     if hasdensity(A)
         gdir = graddir(s.densitystratification) === :x ? s.u.c.x : graddir(s.densitystratification) === :y ? s.u.c.y : s.u.c.z 
-        div!(complex(s.densitystratification.ρrhs), s.aux.c.x, s.aux.c.y, s.aux.c.z, gdir, -meangradient(s.densitystratification), s)
-        is_implicit(typeof(s.densitystratification.timestep)) || add_scalar_difusion!(complex(s.densitystratification.ρrhs),complex(s.densitystratification.ρ),diffusivity(s.densitystratification),s)
+        div!(complex(s.densitystratification.rhs), s.densitystratification.flux.c.x, s.densitystratification.flux.c.y, s.densitystratification.flux.c.z, gdir, -meangradient(s.densitystratification), s)
+        is_implicit(typeof(s.densitystratification.timestep)) || add_scalar_difusion!(complex(s.densitystratification.rhs),complex(s.densitystratification.ρ),diffusivity(s.densitystratification),s)
     end
     return nothing
 end
@@ -359,6 +396,6 @@ end
 
 @par function time_step!(s::A) where {A<:@par(AbstractSimulation)}
     s.timestep(s.u,s.rhs,s)
-    haspassivescalar(s) && s.passivescalar.timestep(s.passivescalar.ρ,s.passivescalar.ρrhs,s)
-    hasdensity(s) && s.densitystratification.timestep(s.densitystratification.ρ,s.densitystratification.ρrhs,s)
+    haspassivescalar(s) && s.passivescalar.timestep(s.passivescalar.φ,s.passivescalar.rhs,s)
+    hasdensity(s) && s.densitystratification.timestep(s.densitystratification.ρ,s.densitystratification.rhs,s)
 end

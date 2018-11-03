@@ -51,17 +51,13 @@ end
 function initialize!(s::AbstractSimulation,init::Integer)
     init == 0 && writeheader(s)
     rfft_and_scale!(s.u)
-    #dealias!(s.u,s)
 
-    #haspassivescalar(s) && s.passivescalar.ps * s.passivescalar.ρ
     if haspassivescalar(s)
-        rfft_and_scale!(s.passivescalar.ρ) 
-        #dealias!(s.passivescalar.ρ,s)
+        rfft_and_scale!(s.passivescalar.φ) 
     end
-    #hasdensity(s) && s.densitystratification.ps * s.densitystratification.ρ
+
     if hasdensity(s) 
         rfft_and_scale!(s.densitystratification.ρ) 
-        #dealias!(s.densitystratification.ρ,s)
     end
 
     calculate_rhs!(s)
