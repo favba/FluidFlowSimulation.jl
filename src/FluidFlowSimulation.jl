@@ -2,12 +2,10 @@ __precompile__(false)
 module FluidFlowSimulation
 export run_simulation, advance_in_time!, parameters, readglobal
 
-using FFTW, InplaceRealFFT, FluidTensors, FluidFields, LinearAlgebra
+using FFTW, InplaceRealFFT, FluidTensors, FluidFields, LinearAlgebra, GlobalFileHelper
 
-include("ReadGlobal.jl")
 include("Globals.jl")
 
-using .ReadGlobal
 using .Globals
 
 include("macros.jl")

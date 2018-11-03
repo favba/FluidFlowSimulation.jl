@@ -1,7 +1,7 @@
 __precompile__(false)
 module Globals
 
-using ..ReadGlobal, FluidTensors
+using GlobalFileHelper, FluidTensors
 
 export LX,LY,LZ,NX,NY,NZ,NRRX,NRX,ν,DEALIAS_TYPE,KX,KY,KZ,THR,NT,TRANGE,REAL_RANGES,DEALIAS,K,RXRANGE,XRANGE,YRANGE,ZRANGE,RANGEC
 

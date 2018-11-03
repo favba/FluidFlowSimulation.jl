@@ -38,14 +38,14 @@ deps = ["LinearAlgebra", "Random", "Serialization", "Sockets"]
 uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[FFTW]]
-deps = ["AbstractFFTs", "BinaryProvider", "Compat", "Conda", "Libdl", "LinearAlgebra", "Pkg", "Reexport", "Test"]
+deps = ["AbstractFFTs", "BinaryProvider", "Compat", "Conda", "Libdl", "LinearAlgebra", "Reexport", "Test"]
 git-tree-sha1 = "29cda58afbf62f35b1a094882ad6c745a47b2eaa"
 uuid = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
 version = "0.2.4"
 
 [[FluidFields]]
 deps = ["FFTW", "FluidTensors", "InplaceRealFFT", "LinearAlgebra"]
-git-tree-sha1 = "da4c39a723abd134119e1338ea4bcf2b61b213ba"
+git-tree-sha1 = "82952ba6231a0f67313f7a19d5d56354b09e0e48"
 repo-rev = "master"
 repo-url = "git@github.com:favba/FluidFields.jl.git"
 uuid = "390a1fbe-c11f-11e8-0e71-0f874e7fb199"
@@ -57,6 +57,14 @@ git-tree-sha1 = "914e925c5df9786aa72da0a4ce35ca116fa60e57"
 repo-rev = "master"
 repo-url = "git@github.com:favba/FluidTensors.jl.git"
 uuid = "9c362f20-be79-11e8-0b20-338637273ba1"
+version = "0.1.0"
+
+[[GlobalFileHelper]]
+deps = ["FluidFields", "FluidTensors", "InplaceRealFFT", "LinearAlgebra", "ReadGlobal", "Reexport"]
+git-tree-sha1 = "86fad15c833e6f63300e9cb72a78f7115fa2015b"
+repo-rev = "master"
+repo-url = "https://github.com/favba/GlobalFileHelper.jl.git"
+uuid = "57078f6c-df9f-11e8-3c9f-6588600d7a86"
 version = "0.1.0"
 
 [[InplaceRealFFT]]
@@ -72,7 +80,7 @@ deps = ["LinearAlgebra", "Markdown"]
 uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 
 [[JSON]]
-deps = ["Dates", "Distributed", "Mmap", "Pkg", "Sockets", "Test", "Unicode"]
+deps = ["Dates", "Distributed", "Mmap", "Sockets", "Test", "Unicode"]
 git-tree-sha1 = "fec8e4d433072731466d37ed0061b3ba7f70eeb9"
 uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 version = "0.19.0"
@@ -112,6 +120,14 @@ uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 [[Random]]
 deps = ["Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
+[[ReadGlobal]]
+deps = ["DelimitedFiles"]
+git-tree-sha1 = "15c72912770ea7444408e4b503907187455da8cc"
+repo-rev = "master"
+repo-url = "https://github.com/favba/ReadGlobal.jl.git"
+uuid = "858704a1-3b57-5cfa-b7d3-7513df57bf80"
+version = "0.1.0"
 
 [[Reexport]]
 deps = ["Pkg"]
