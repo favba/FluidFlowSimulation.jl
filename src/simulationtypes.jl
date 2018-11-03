@@ -288,12 +288,13 @@ msg(a::Smagorinsky) = "\nLES model: Smagorinsky\nConstant: $(cs(a))\nFilter Widt
 
 struct SandP{cs,cβ,Δ,TensorType} <: AbstractLESModel
     tau::TensorType
+    reduction::Vector{Float64}
 end
 
 function SandP(c::Real,cb::Real,Δ::Real,dim::NTuple{3,Integer}) 
-    data = SymmetricTracelessTensor(dim)
-    fill!(data,0)
-    return SandP{c,cb,Δ,typeof(data)}(data)
+    data = SymTrTenField(dim...)
+    reduction = zeros(THR ? Threads.nthreads() : 1)
+    return SandP{c,cb,Δ,typeof(data)}(data,reduction)
 end
 
 is_SandP(a::Union{<:SandP,Type{<:SandP}}) = true
@@ -518,14 +519,12 @@ function parameters(d::Dict)
         if d[:lesModel] == "Smagorinsky"
             c = haskey(d,:smagorinskyConstant) ? Float64(eval(Meta.parse(d[:smagorinskyConstant]))) : 0.17 
             Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
-            lesscalar = (haskey(d,:passiveScalar) | haskey(d,:densityStratification)) ? true : false
-            lestype = Smagorinsky(c,Δ,lesscalar,(nx,ny,nz),tr)
+            lestype = Smagorinsky(c,Δ,(nx,ny,nz),tr)
         elseif d[:lesModel] == "Smagorinsky+P"
             c = haskey(d,:smagorinskyConstant) ? Float64(eval(Meta.parse(d[:smagorinskyConstant]))) : 0.17 
             cb = haskey(d,:pTensorConstant) ? Float64(eval(Meta.parse(d[:pTensorConstant]))) : 0.17 
             Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : lx*2π/nx  
-            lesscalar = (haskey(d,:passiveScalar) | haskey(d,:densityStratification)) ? true : false
-            lestype = SandP(c,cb,Δ,lesscalar,(nx,ny,nz))
+            lestype = SandP(c,cb,Δ,(nx,ny,nz))
         end
     else
         lestype = NoLESModel()

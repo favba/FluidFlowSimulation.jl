@@ -9,6 +9,7 @@ end
     setfourier!(s.rhs)
     hasdensity(A) && setfourier!(s.densitystratification.rhs)
     haspassivescalar(A) && setfourier!(s.passivescalar.rhs)
+    hasles(A) && setfourier!(s.lesmodel.tau)
     fourierspacep1!(s)
     realspace!(s)
     has_variable_timestep(s) && set_dt!(s)
