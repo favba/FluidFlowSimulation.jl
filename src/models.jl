@@ -8,7 +8,9 @@ end
 @par function calculate_rhs!(s::A) where {A<:@par(AbstractSimulation)}
     setfourier!(s.rhs)
     hasdensity(A) && setfourier!(s.densitystratification.rhs)
+    hasdensityles(A) && setfourier!(s.densitystratification.flux)
     haspassivescalar(A) && setfourier!(s.passivescalar.rhs)
+    #haspassivescalarles(A) && setfourier!(s.passivescalar.flux) # Bug? julia segfaults if I uncomment this line
     hasles(A) && setfourier!(s.lesmodel.tau)
     fourierspacep1!(s)
     realspace!(s)

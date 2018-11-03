@@ -19,11 +19,11 @@ hasdensity(s::AbstractSimulation) = hasdensity(typeof(s))
 hasles(s::AbstractSimulation) = hasles(typeof(s))
 
 @par hasdensityles(s::Type{T}) where {T<:@par(AbstractSimulation)}  =
-    hasdensity(T) && hasdensityles(DensityStratificationType)
+    (hasdensity(T) && hasdensityles(DensityStratificationType))
 hasdensityles(s::AbstractSimulation) = hasdensityles(typeof(s))
 
 @par haspassivescalarles(s::Type{T}) where {T<:@par(AbstractSimulation)}  =
-    haspassivescalar(T) && haspassivescalarles(PassiveScalarType)
+    (haspassivescalar(T) && haspassivescalarles(PassiveScalarType))
 haspassivescalarles(s::AbstractSimulation) = haspassivescalarles(typeof(s))
 
 @par hasforcing(s::Type{T}) where {T<:@par(AbstractSimulation)}  =
