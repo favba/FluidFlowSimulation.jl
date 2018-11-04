@@ -58,7 +58,7 @@ myscale!(o::SymTrTenField) = (myscale!(o.rr.xx);
                               myscale!(o.rr.yy);
                               myscale!(o.rr.yz))
 
-function rfft_and_scale!(field)
+function myfourier!(field::A) where {T,N,N2,L,A<:Union{<:ScalarField{T,N,N2,L},<:VectorField{T,N,N2,L},<:SymTrTenField{T,N,N2,L}}}
     rfft!(field)
     myscale!(field)
     return nothing

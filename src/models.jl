@@ -10,7 +10,7 @@ end
     hasdensity(A) && setfourier!(s.densitystratification.rhs)
     hasdensityles(A) && setfourier!(s.densitystratification.flux)
     haspassivescalar(A) && setfourier!(s.passivescalar.rhs)
-    #haspassivescalarles(A) && setfourier!(s.passivescalar.flux) # Bug? julia segfaults if I uncomment this line
+    haspassivescalarles(A) && setfourier!(s.passivescalar.flux) # Bug? julia segfaults if I uncomment this line
     hasles(A) && setfourier!(s.lesmodel.tau)
     fourierspacep1!(s)
     realspace!(s)
@@ -66,17 +66,17 @@ end
 end
 
 @par function realspace!(s::A) where {A<:@par(AbstractSimulation)}
-    brfft!(s.u)
-    brfft!(s.rhs)
+    real!(s.u)
+    real!(s.rhs)
   
-    haspassivescalar(A) && brfft!(s.passivescalar.φ)
-    hasdensity(A) && brfft!(s.densitystratification.ρ)
+    haspassivescalar(A) && real!(s.passivescalar.φ)
+    hasdensity(A) && real!(s.densitystratification.ρ)
  
-    hasles(s) && brfft!(s.lesmodel.tau)
+    hasles(s) && real!(s.lesmodel.tau)
   
     if hasdensity(A)
         if hasdensityles(A)
-            brfft!(s.densitystratification.flux)
+            real!(s.densitystratification.flux)
         else
             setreal!(s.densitystratification.flux)
         end
@@ -84,7 +84,7 @@ end
 
     if haspassivescalar(A)
         if haspassivescalarles(A)
-            brfft!(s.passivescalar.flux)
+            real!(s.passivescalar.flux)
         else
             setreal!(s.passivescalar.flux)
         end
@@ -93,26 +93,26 @@ end
 
     realspacecalculation!(s)
 
-    rfft_and_scale!(s.rhs)
+    myfourier!(s.rhs)
     # fix for erros on u×ω calculation
     s.rhs[1] = zero(Vec{ComplexF64})
     dealias!(s.rhs)
     
-    rfft_and_scale!(s.u)
+    myfourier!(s.u)
 
     if haspassivescalar(A) 
-        rfft_and_scale!(s.passivescalar.flux)
+        myfourier!(s.passivescalar.flux)
         dealias!(s.passivescalar.flux)
-        rfft_and_scale!(s.passivescalar.φ)
+        myfourier!(s.passivescalar.φ)
     end
     if hasdensity(A)
-        rfft_and_scale!(s.densitystratification.flux)
+        myfourier!(s.densitystratification.flux)
         dealias!(s.densitystratification.flux)
-        rfft_and_scale!(s.densitystratification.ρ)
+        myfourier!(s.densitystratification.ρ)
     end
 
     if hasles(s)
-        rfft_and_scale!(s.lesmodel.tau)
+        myfourier!(s.lesmodel.tau)
         dealias!(s.lesmodel.tau)
     end
 
@@ -145,11 +145,11 @@ end
     end
     if haspassivescalar(A)
         φ = s.passivescalar.φ.field.data
-        fφ = s.passivescalar.flux
+        fφ = s.passivescalar.flux.rr
     end
     if hasdensity(A)
         ρ = s.densitystratification.ρ.field.data
-        f = s.densitystratification.flux
+        f = s.densitystratification.flux.rr
     end
     if hasles(A)
         τ = s.lesmodel.tau.rr

@@ -1,5 +1,5 @@
 function statsheader(s::AbstractSimulation)
-    simulaitionheader = "iteration,time,u1,u2,u3,u1^2,u2^2,u3^2,du1dx1^2,du1dx2^2,du1dx3^2,du2dx1^2,du2dx2^2,du2dx3^2,du3dx1^2,du3dx2^2,du3dx3^2"
+    simulaitionheader = "iteration,time,u1,u2,u3,u1p2,u2p2,u3p2,du1dx1p2,du1dx2p2,du1dx3p2,du2dx1p2,du2dx2p2,du2dx3p2,du3dx1p2,du3dx2p2,du3dx3p2"
     header = join(Iterators.filter(x->x !== "",
       (simulaitionheader,statsheader.(getfield.(Ref(s),sim_fields))...,"\n")),
       ",","")
@@ -30,28 +30,28 @@ stats(s::AbstractSimulation) =
 
     mycopy!(s.rhs,s.u)
     setfourier!(s.rhs)
-    brfft!(s.rhs)
+    real!(s.rhs)
     u12 = tmean(x->x^2,s.rhs.rr.x,s)
     u22 = tmean(x->x^2,s.rhs.rr.y,s)
     u32 = tmean(x->x^2,s.rhs.rr.z,s)
 
     grad!(s.rhs,s.u.c.x,s)
     setfourier!(s.rhs)
-    brfft!(s.rhs)
+    real!(s.rhs)
     d1d1 = tmean(x->x^2,s.rhs.rr.x,s)
     d1d2 = tmean(x->x^2,s.rhs.rr.y,s)
     d1d3 = tmean(x->x^2,s.rhs.rr.z,s)
 
     grad!(s.rhs,s.u.c.y,s)
     setfourier!(s.rhs)
-    brfft!(s.rhs)
+    real!(s.rhs)
     d2d1 = tmean(x->x^2,s.rhs.rr.x,s)
     d2d2 = tmean(x->x^2,s.rhs.rr.y,s)
     d2d3 = tmean(x->x^2,s.rhs.rr.z,s)
 
     grad!(s.rhs,s.u.c.z,s)
     setfourier!(s.rhs)
-    brfft!(s.rhs)
+    real!(s.rhs)
     d3d1 = tmean(x->x^2,s.rhs.rr.x,s)
     d3d2 = tmean(x->x^2,s.rhs.rr.y,s)
     d3d3 = tmean(x->x^2,s.rhs.rr.z,s)
@@ -63,12 +63,12 @@ end
     rho = real(ρ[1,1,1])
     mycopy!(s1.rhs,ρ)
     setfourier!(s1.rhs)
-    brfft!(s1.rhs)
+    real!(s1.rhs)
     rho2 = tmean(x->x^2,parent(real(s1.rhs)),s)
 
     grad!(s.rhs,complex(ρ),s)
     setfourier!(s.rhs)
-    brfft!(s.rhs)
+    real!(s.rhs)
     drd1 = tmean(x->x^2,s.rhs.rr.x,s)
     drd2 = tmean(x->x^2,s.rhs.rr.y,s)
     drd3 = tmean(x->x^2,s.rhs.rr.z,s)

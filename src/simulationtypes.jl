@@ -115,7 +115,7 @@ abstract type AbstractPassiveScalar{L,TT,α,dρdz,Gdirec} end
 
     initialize!(a::AbstractPassiveScalar,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.rhs)),diffusivity(a),s)
 
-    statsheader(a::AbstractPassiveScalar) = "scalar,scalar^2,dscalardx^2,dscalardy^2,dscalardz^2"
+    statsheader(a::AbstractPassiveScalar) = "scalar,scalarp2,dscalardxp2,dscalardyp2,dscalardzp2"
 
     stats(a::AbstractPassiveScalar,s::AbstractSimulation) = scalar_stats(a.φ,a,s)
 
@@ -141,7 +141,7 @@ struct PassiveScalar{L,TTimeStep, α #=Difusitivity = ν/Pr =#,
 
     function PassiveScalar{TT,α,dρdz,Gdirec}(ρ,les,timestep) where {TT,α,dρdz,Gdirec}
         ρrhs = similar(ρ)
-        flux = VectorField(size(ρ.field.r)...)
+        flux = VectorField(size(ρ.field.r),(ρ.space.lx,ρ.space.ly,ρ.space.lz))
         reduction = zeros(THR ? Threads.nthreads() : 1)
         return new{typeof(les),TT,α,dρdz,Gdirec}(ρ,ρrhs,flux,les,timestep,reduction)
     end
@@ -187,7 +187,7 @@ abstract type AbstractDensityStratification{L,TT,α,dρdz,g,Gdirec} end
 
     initialize!(a::AbstractDensityStratification,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.rhs)),diffusivity(a),s)
 
-    statsheader(a::AbstractDensityStratification) = "rho,rho^2,drhodx^2,drhody^3,drhodz^2"
+    statsheader(a::AbstractDensityStratification) = "rho,rhop2,drhodxp2,drhodyp3,drhodzp2"
 
     stats(a::AbstractDensityStratification,s::AbstractSimulation) = scalar_stats(a.ρ,a,s)
 
@@ -213,7 +213,7 @@ struct BoussinesqApproximation{L,TTimeStep, α #=Difusitivity = ν/Pr =#,
 
     function BoussinesqApproximation{TT,α,dρdz,g,Gdirec}(ρ,timestep,tr,les) where {TT,α,dρdz,g,Gdirec}
         ρrhs = similar(ρ)
-        flux = VectorField(size(ρ.field.r)...)
+        flux = VectorField(size(ρ.field.r),(ρ.space.lx,ρ.space.ly,ρ.space.lz))
         reduction = zeros(tr ? Threads.nthreads() : 1)
         return new{typeof(les),TT,α,dρdz,g,Gdirec}(ρ,ρrhs,flux,les,timestep,reduction)
     end
@@ -259,7 +259,7 @@ struct Smagorinsky{c,Δ,TensorType} <: EddyViscosityModel
 end
 
 function Smagorinsky(c::Real,Δ::Real,dim::NTuple{3,Integer},tr) 
-    data = SymTrTenField(dim...)
+    data = SymTrTenField(dim,(LX,LY,LZ))
     #fill!(data,0)
     reduction = zeros(tr ? Threads.nthreads() : 1)
     return Smagorinsky{c,Δ,typeof(data)}(data,reduction)
@@ -292,7 +292,7 @@ struct SandP{cs,cβ,Δ,TensorType} <: AbstractLESModel
 end
 
 function SandP(c::Real,cb::Real,Δ::Real,dim::NTuple{3,Integer}) 
-    data = SymTrTenField(dim...)
+    data = SymTrTenField(dim,(LX,LY,LZ))
     reduction = zeros(THR ? Threads.nthreads() : 1)
     return SandP{c,cb,Δ,typeof(data)}(data,reduction)
 end
@@ -416,10 +416,7 @@ function parameters(d::Dict)
     start = haskey(d,:start) ? d[:start] : "0"
 
     @info("Reading initial velocity field u1.$start u2.$start u3.$start")
-    u = VectorField(nx,ny,nz)
-    read!("u1.$start",u.rr.x)
-    read!("u2.$start",u.rr.y)
-    read!("u3.$start",u.rr.z)
+    u = VectorField{Float64}("u1.$start","u2.$start","u3.$start")
 
     kxp = reshape(rfftfreq(nx,lx),(ncx,1,1))
     kyp = reshape(fftfreq(ny,ly),(1,ny,1))
@@ -462,7 +459,7 @@ function parameters(d::Dict)
         α = ν/Float64(eval(Meta.parse(d[:scalarPr])))
         dρdz = Float64(eval(Meta.parse(d[:scalarGradient])))
         @info("Reading initial scalar field scalar.$start")
-        rho = isfile("scalar.$start") ? ScalarField("scalar.$start",(nx,ny,nz)) : ScalarField(PaddedArray(zeros(nx,ny,nz))) 
+        rho = isfile("scalar.$start") ? ScalarField{Float64}("scalar.$start") : ScalarField{Float64}((nx,ny,nz),(lx,ly,lz)) 
         scalardir = haskey(d,:scalarDirection) ? Symbol(d[:scalarDirection]) : :z
         scalartimestep = if integrator === :Euller
             Euller{variableTimeStep,idt}(Ref(idt))
@@ -495,7 +492,7 @@ function parameters(d::Dict)
             g = Vec(gval,0.0,0.0)
         end
         @info("Reading initial density field rho.$start")
-        rho = isfile("rho.$start") ? ScalarField("rho.$start",(nx,ny,nz)) : ScalarField(PaddedArray(nx,ny,nz)) 
+        rho = isfile("rho.$start") ? ScalarField{Float64}("rho.$start") : ScalarField{Float64}((nx,ny,nz),(lx,ly,lz)) 
         gdir = haskey(d,:gravityDirection) ? Symbol(d[:gravityDirection]) : :z
         densitytimestep = if integrator === :Euller
             Euller{variableTimeStep,idt}(Ref(idt))

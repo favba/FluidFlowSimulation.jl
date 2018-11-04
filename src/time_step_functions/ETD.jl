@@ -18,8 +18,8 @@ function ETD3rdO{adp,indt,Hyper}() where {adp,indt,Hyper}
     At = zero(c)
     Bt = zero(c)
     Ct = zero(c)
-    fm1 = ScalarField(NX,NY,NZ)
-    fm2 = ScalarField(NX,NY,NZ)
+    fm1 = ScalarField{Float64}((NRX,NY,NZ),(LX,LY,LZ))
+    fm2 = ScalarField{Float64}((NRX,NY,NZ),(LX,LY,LZ))
     return ETD3rdO{adp,indt,Hyper}(fm1,fm2,c,At,Bt,Ct,dt,dt2,dt3)
 end
 

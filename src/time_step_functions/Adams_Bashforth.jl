@@ -16,8 +16,8 @@ function Adams_Bashforth3rdO{adp,indt}() where {adp,indt}
     dt = Ref(indt)
     dt2 = Ref(indt)
     dt3 = Ref(indt)
-    fm1 = ScalarField{Float64}(NRX,NY,NZ)
-    fm2 = ScalarField{Float64}(NRX,NY,NZ)
+    fm1 = ScalarField{Float64}((NRX,NY,NZ),(LX,LY,LZ))
+    fm2 = ScalarField{Float64}((NRX,NY,NZ),(LX,LY,LZ))
     return Adams_Bashforth3rdO{adp,indt}(fm1,fm2,at,bt,ct,dt,dt2,dt3)
 end
 

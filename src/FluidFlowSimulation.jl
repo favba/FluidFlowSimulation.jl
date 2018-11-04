@@ -48,14 +48,14 @@ end
 
 function initialize!(s::AbstractSimulation,init::Integer)
     init == 0 && writeheader(s)
-    rfft_and_scale!(s.u)
+    myfourier!(s.u)
 
     if haspassivescalar(s)
-        rfft_and_scale!(s.passivescalar.φ) 
+        myfourier!(s.passivescalar.φ) 
     end
 
     if hasdensity(s) 
-        rfft_and_scale!(s.densitystratification.ρ) 
+        myfourier!(s.densitystratification.ρ) 
     end
 
     calculate_rhs!(s)
