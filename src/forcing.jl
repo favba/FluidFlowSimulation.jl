@@ -1,6 +1,8 @@
 (f::NoForcing)(dt,s) = nothing
 initialize!(f::NoForcing,s) = nothing
 
+proj(a::Complex,b::Complex) = muladd(real(a), real(b), complex(a)*complex(b))
+
 @par function (F::RfForcing)(s::@par(AbstractSimulation))
 
     cPlaneNumber = 1
@@ -54,7 +56,7 @@ initialize!(f::NoForcing,s) = nothing
                     s1[i,j,1] = u1[i,j,1]*factor[n]
                     s2[i,j,1] = u2[i,j,1]*factor[n]
                     ff += (abs2(s1[i,j,1]) + abs2(s2[i,j,1]))*conjFactX
-                    fv += (abs2(u1[i,j,1]) + abs2(u2[i,j,1]))*conjFactX
+                    fv += (proj(u1[i,j,1],s1[i,j,1]) + proj(u2[i,j,1],s2[i,j,1]))*conjFactX
                     conjFactX=2.0
                 end
             end
@@ -85,7 +87,7 @@ initialize!(f::NoForcing,s) = nothing
         s1[1,1,NZ-k+2] = u1[1,1,NZ-k+2]*f
         s2[1,1,NZ-k+2] = u2[1,1,NZ-k+2]*f
         ff += abs2(s1[1,1,k]) + abs2(s2[1,1,k]) + abs2(s1[1,1,NZ-k+2]) + abs2(s2[1,1,NZ-k+2])
-        fv += abs2(u1[1,1,k]) + abs2(u2[1,1,k]) + abs2(u1[1,1,NZ-k+2]) + abs2(u2[1,1,NZ-k+2])
+        fv += proj(u1[1,1,k],s1[1,1,k]) + proj(u2[1,1,k],s2[1,1,k]) + proj(u1[1,1,NZ-k+2],s1[1,1,NZ-k+2]) + proj(u2[1,1,NZ-k+2],s2[1,1,NZ-k+2])
     end
     ff = ff*0.5/dt
     fv = fv/dt
