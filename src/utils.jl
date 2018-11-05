@@ -113,10 +113,9 @@ function compute_shells2D(kx,ky,Nx,Ny)
         for i=1:Nx
             K = sqrt(kx[i]^2 + ky[j]^2)
             ii = round(Int,K/maxdk2D)+1
-            if ii <= nShells2D
-                kh[ii] += K
-                numPtsInShell2D[ii] += 1
-            end
+            ii > nShells2D && break
+            kh[ii] += K
+            numPtsInShell2D[ii] += 1
         end
     end
   
