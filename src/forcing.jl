@@ -63,7 +63,7 @@ proj(a::Complex,b::Complex) = muladd(real(a), real(b), complex(a)*complex(b))
         end
     end
     ff = ff*0.5/dt
-    fv = fv*0.5/dt
+    fv = fv/dt
     horizontalPower = ff+fv
     powerFraction = 0.99
 
