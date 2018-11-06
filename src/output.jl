@@ -20,4 +20,13 @@ function writeoutput(s::AbstractSimulation,init::Integer)
         write("rho.$init",s.densitystratification.rhs)
         #dealias!(s.densitystratification.ρrhs)
     end
+    if hasles(s)
+        t = s.lesmodel.tau
+        isrealspace(t) || real!(t)
+        write("T11.$init",t.rr.xx)
+        write("T12.$init",t.rr.xy)
+        write("T13.$init",t.rr.xz)
+        write("T22.$init",t.rr.yy)
+        write("T23.$init",t.rr.yz)
+    end
 end
