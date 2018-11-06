@@ -44,6 +44,7 @@ end
         mod(i,dtOutput) == 0 && writeoutput(s,i)
         mod(i,dtStats) == 0 && writestats(s,i,ttime)
     end
+    return s
 end
 
 function initialize!(s::AbstractSimulation,init::Integer)

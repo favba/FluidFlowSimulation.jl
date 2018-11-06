@@ -284,6 +284,42 @@ msg(a::Smagorinsky) = "\nLES model: Smagorinsky\nConstant: $(cs(a))\nFilter Widt
 
 # Smagorinsky Model End ======================================================
 
+struct DynamicSmagorinsky{T} <: EddyViscosityModel
+    Δ²::T
+    Δ̂²::T
+    c::ScalarField{T,3,2,false}
+    L::SymTenField{T,3,2,false}
+    M::SymTrTenField{T,3,2,false}
+    tau::SymTrTenField{T,3,2,false}
+    S::SymTrTenField{T,3,2,false}
+    û::VectorField{T,3,2,false}
+    reduction::Vector{T}
+end
+
+function DynamicSmagorinsky(Δ::T, d2::T, dim::NTuple{3,Integer}) where {T<:Real}
+    c = ScalarField{T}(dim,(LX,LY,LZ))
+    L = SymTenField(dim,(LX,LY,LZ))
+    tau = SymTrTenField(dim,(LX,LY,LZ))
+    M = similar(tau)
+    S = similar(tau)
+    u = VectorField{T}(dim,(LX,LY,LZ))
+    #fill!(data,0)
+    reduction = zeros(THR ? Threads.nthreads() : 1)
+    return DynamicSmagorinsky{T}(Δ^2, d2^2, c, L, M, tau, S, u, reduction)
+end
+
+DynamicSmagorinsky(Δ::T, dim::NTuple{3,Integer}) where {T<:Real} = DynamicSmagorinsky(Δ, 2Δ, dim)
+
+is_dynamic_les(a::Union{<:DynamicSmagorinsky,<:Type{<:DynamicSmagorinsky}}) = true
+@inline @par is_dynamic_les(s::Type{T}) where {T<:@par(AbstractSimulation)} = is_dynamic_les(LESModelType)
+@inline is_dynamic_les(s::T) where {T<:AbstractSimulation} = is_dynamic_les(T)
+
+statsheader(a::DynamicSmagorinsky) = ""
+
+stats(a::DynamicSmagorinsky,s::AbstractSimulation) = ()
+
+msg(a::DynamicSmagorinsky) = "\nLES model: Dynamic Smagorinsky\nFilter Width: $(sqrt(a.Δ²))\nTest Filter Width: $(sqrt(a.Δ̂²))\n"
+
 # Smagorinsky+P Model Start ======================================================
 
 struct SandP{cs,cβ,Δ,TensorType} <: AbstractLESModel
@@ -468,12 +504,12 @@ function parameters(d::Dict)
         else
             ETD3rdO{variableTimeStep,idt,false}()
         end 
-        lestype = if haskey(d,:lesModel)
+        lestypescalar = if haskey(d,:lesModel)
             EddyDiffusion()
         else
             NoLESScalar()
         end
-        scalartype = PassiveScalar{typeof(scalartimestep),α,dρdz,scalardir}(rho,lestype,scalartimestep)
+        scalartype = PassiveScalar{typeof(scalartimestep),α,dρdz,scalardir}(rho,lestypescalar,scalartimestep)
     else
         scalartype = NoPassiveScalar()
     end
@@ -501,12 +537,12 @@ function parameters(d::Dict)
         else
             ETD3rdO{variableTimeStep,idt,false}()
         end 
-        lestype = if haskey(d,:lesModel)
+        lestypedensity = if haskey(d,:lesModel)
                 EddyDiffusion()
             else
                 NoLESScalar()
             end
-        densitytype = BoussinesqApproximation{typeof(densitytimestep),α,dρdz,g,gdir}(rho,densitytimestep,tr,lestype)
+        densitytype = BoussinesqApproximation{typeof(densitytimestep),α,dρdz,g,gdir}(rho,densitytimestep,tr,lestypedensity)
 
     else
         densitytype = NoDensityStratification()
@@ -517,6 +553,10 @@ function parameters(d::Dict)
             c = haskey(d,:smagorinskyConstant) ? Float64(eval(Meta.parse(d[:smagorinskyConstant]))) : 0.17 
             Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
             lestype = Smagorinsky(c,Δ,(nx,ny,nz),tr)
+        elseif d[:lesModel] == "dynamicSmagorinsky"
+            Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)
+            tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ
+            lestype = DynamicSmagorinsky(Δ,tΔ,(nx,ny,nz))
         elseif d[:lesModel] == "Smagorinsky+P"
             c = haskey(d,:smagorinskyConstant) ? Float64(eval(Meta.parse(d[:smagorinskyConstant]))) : 0.17 
             cb = haskey(d,:pTensorConstant) ? Float64(eval(Meta.parse(d[:pTensorConstant]))) : 0.17 

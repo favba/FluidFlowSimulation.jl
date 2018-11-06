@@ -58,7 +58,14 @@ myscale!(o::SymTrTenField) = (myscale!(o.rr.xx);
                               myscale!(o.rr.yy);
                               myscale!(o.rr.yz))
 
-function myfourier!(field::A) where {T,N,N2,L,A<:Union{<:ScalarField{T,N,N2,L},<:VectorField{T,N,N2,L},<:SymTrTenField{T,N,N2,L}}}
+myscale!(o::SymTenField) = (myscale!(o.rr.xx);
+                            myscale!(o.rr.xy);
+                            myscale!(o.rr.xz);
+                            myscale!(o.rr.yy);
+                            myscale!(o.rr.yz);
+                            myscale!(o.rr.zz))
+
+function myfourier!(field::A) where {T,N,N2,L,A<:Union{<:ScalarField{T,N,N2,L},<:VectorField{T,N,N2,L},<:SymTrTenField{T,N,N2,L},<:SymTenField{T,N,N2,L}}}
     rfft!(field)
     myscale!(field)
     return nothing
@@ -81,6 +88,14 @@ dealias!(o::SymTrTenField) = (dealias!(o.c.xx);
                               dealias!(o.c.xz);
                               dealias!(o.c.yy);
                               dealias!(o.c.yz))
+
+dealias!(o::SymTenField) = (dealias!(o.c.xx);
+                              dealias!(o.c.xy);
+                              dealias!(o.c.xz);
+                              dealias!(o.c.yy);
+                              dealias!(o.c.yz);
+                              dealias!(o.c.zz))
+
 
 
 function splitrange(lr,nt)
@@ -132,4 +147,9 @@ function calculate_Zf(kf,kh)
         Zf[i] = tanh((kf-k) / (0.25*kf)) * (((kf-k) <= 0.0) ? 0.0 : 1.0)
     end
     return (Zf...,)
+end
+
+@inline function Gaussfilter(Δ²::Real, i::Integer,j::Integer,k::Integer)
+    aux = -(Δ²*π^2)/6
+    return exp(aux*(K[i,j,k]⋅K[i,j,k]))
 end

@@ -12,6 +12,7 @@ end
     haspassivescalar(A) && setfourier!(s.passivescalar.rhs)
     haspassivescalarles(A) && setfourier!(s.passivescalar.flux) # Bug? julia segfaults if I uncomment this line
     hasles(A) && setfourier!(s.lesmodel.tau)
+    is_dynamic_les(A) && (setfourier!(s.lesmodel.û); setfourier!(s.lesmodel.M))
     fourierspacep1!(s)
     realspace!(s)
     has_variable_timestep(s) && set_dt!(s)
@@ -26,11 +27,16 @@ end
     return nothing
 end
 
-@inline @par function fourierspacep1!(k,s::A) where {A<:@par(AbstractSimulation)}
+@par function fourierspacep1!(k,s::A) where {A<:@par(AbstractSimulation)}
     rhs = s.rhs.c
     u = s.u.c
     if hasles(A)
         τ = s.lesmodel.tau.c
+        if is_dynamic_les(A)
+            û = s.lesmodel.û.c
+            Δ̂² = s.lesmodel.Δ̂²
+            M = s.lesmodel.M.c
+        end
     end
 
     if hasdensity(A) && hasdensityles(A)
@@ -50,7 +56,13 @@ end
             rhs[i,j,k] = ∇ × v
 
             if hasles(A)
-                τ[i,j,k] = symouter(∇,v)
+                S = symouter(∇,v)
+                τ[i,j,k] = S
+                if is_dynamic_les(A)
+                    G = Gaussfilter(Δ̂²,i,j,k)
+                    M[i,j,k] = G*S
+                    û[i,j,k] = G*v
+                end
             end
 
             if hasdensity(A) && hasdensityles(A)
@@ -73,6 +85,11 @@ end
     hasdensity(A) && real!(s.densitystratification.ρ)
  
     hasles(s) && real!(s.lesmodel.tau)
+    if is_dynamic_les(s)
+        realspace_dynamic_les_calculation!(s)
+        fourierspace_dynamic_les_calculation!(s)
+        #coefficient_dynamic_les_calculation!(s)
+    end
   
     if hasdensity(A)
         if hasdensityles(A)
@@ -119,6 +136,58 @@ end
     return nothing
 end
 
+@par function realspace_dynamic_les_calculation!(s::A) where {A<:@par(AbstractSimulation)}
+    real!(s.lesmodel.û)
+    real!(s.lesmodel.M)
+    @mthreads for j in TRANGE
+        realspace_dynamic_les_calculation!(s,j)
+    end
+    return nothing
+end
+
+@par function realspace_dynamic_les_calculation!(s::A,j::Integer) where {A<:@par(AbstractSimulation)} 
+    u = s.u.rr
+    L = s.lesmodel.L.rr
+    tau = s.lesmodel.tau.rr
+    Sa = s.lesmodel.S.rr
+    Δ² = s.lesmodel.Δ²
+
+    @inbounds @msimd for i in REAL_RANGES[j]
+        S = tau[i]
+        Sa[i] = Δ²*norm(S)*S 
+        v = u[i]
+        L[i] = symouter(v,v)
+    end
+
+    return nothing
+end
+
+@par function fourierspace_dynamic_les_calculation!(s::A) where {A<:@par(AbstractSimulation)}
+    myfourier!(s.lesmodel.S)
+    dealias!(s.lesmodel.S)
+    myfourier!(s.lesmodel.L)
+    dealias!(s.lesmodel.L)
+    @mthreads for k in ZRANGE
+        fourierspace_dynamic_les_calculation!(s,k)
+    end
+    real!(s.lesmodel.S)
+    real!(s.lesmodel.L)
+    return nothing
+end
+
+@par function fourierspace_dynamic_les_calculation!(s::A,k::Integer) where {A<:@par(AbstractSimulation)}
+    S = s.lesmodel.S.c
+    L = s.lesmodel.L.c
+    Δ̂² = s.lesmodel.Δ̂² 
+    @inbounds for j in YRANGE
+        @msimd for i in XRANGE 
+            G = Gaussfilter(Δ̂²,i,j,k)
+            S[i,j,k] *= G
+            L[i,j,k] *= G
+        end
+    end
+end
+
 @par function realspacecalculation!(s::A) where {A<:@par(AbstractSimulation)}
     #@assert !(hasdensity(A) & haspassivescalar(A))
     @mthreads for j in TRANGE
@@ -153,10 +222,20 @@ end
     end
     if hasles(A)
         τ = s.lesmodel.tau.rr
-        c = cs(s.lesmodel)
-        Δ = Delta(s.lesmodel)
-        α = c*c*Δ*Δ 
-        is_SandP(A) && (β = cbeta(s.lesmodel)*Δ*Δ)
+        if is_dynamic_les(A)
+            ca = s.lesmodel.c.rr
+            û = s.lesmodel.û.rr
+            La = s.lesmodel.L.rr
+            Ma = s.lesmodel.M.rr
+            Sa = s.lesmodel.S.rr
+            Δ̂² = s.lesmodel.Δ̂²
+            Δ² = s.lesmodel.Δ²
+        else
+            c = cs(s.lesmodel)
+            Δ = Delta(s.lesmodel)
+            α = c*c*Δ*Δ 
+            is_SandP(A) && (β = cbeta(s.lesmodel)*Δ*Δ)
+        end
     end
 
     @inbounds @msimd for i in REAL_RANGES[j]
@@ -172,7 +251,16 @@ end
 
         if hasles(A)
             S = τ[i]
-            νt = α*norm(S)
+            if is_dynamic_les(A)
+                L = symouter(û[i],û[i]) - La[i]
+                M = Δ̂²*norm(Sa[i])*Sa[i] - Ma[i]
+                c = max(0.0, 0.5*((traceless(L) : M)/(M:M)))
+                νt = 2*c*Δ²*norm(S)
+                τ[i] = νt*S
+                ca[i] = c
+            else
+                νt = α*norm(S)
+            end
             if has_variable_timestep(A)
                 nnu = (vis+νt)
                 numax = ifelse(numax > nnu, numax, nnu)
