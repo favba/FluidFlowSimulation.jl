@@ -149,7 +149,23 @@ function calculate_Zf(kf,kh)
     return (Zf...,)
 end
 
-@inline function Gaussfilter(Δ²::Real, i::Integer,j::Integer,k::Integer)
-    aux = -(Δ²*π^2)/6
-    return exp(aux*(K[i,j,k]⋅K[i,j,k]))
+@inline function Gaussfilter(Δ²::Real, k2::Real)
+    aux = -Δ²/24
+    return exp(aux*k2)
 end
+
+@inline Gaussfilter(Δ²::Real, i::Integer,j::Integer,k::Integer) = Gaussfilter(Δ²,K[i,j,k]⋅K[i,j,k])
+
+@inline function boxfilter(Δ²::Real, k2::Real)
+    aux = 0.5*sqrt(Δ²*k2)
+    return k2 == zero(k2) ? oneunit(k2) : sin(aux)/aux
+end
+
+@inline boxfilter(Δ::Real,i::Integer,j::Integer,k::Integer) = boxfilter(Δ,K[i,j,k]⋅K[i,j,k])
+
+@inline function cutofffilter(Δ²::Real, k2::Real)
+    aux = inv(Δ²)*π^2
+    return k2 < aux
+end
+
+@inline cutofffilter(Δ²::Real,i::Integer,j::Integer,k::Integer) = boxfilter(Δ²,K[i,j,k]⋅K[i,j,k])
