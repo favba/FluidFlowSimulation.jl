@@ -320,6 +320,8 @@ stats(a::DynamicSmagorinsky,s::AbstractSimulation) = ()
 
 msg(a::DynamicSmagorinsky) = "\nLES model: Dynamic Smagorinsky\nFilter Width: $(sqrt(a.Δ²))\nTest Filter Width: $(sqrt(a.Δ̂²))\n"
 
+include("les_models/dynamic_smagorinsky.jl")
+
 # Smagorinsky+P Model Start ======================================================
 
 struct SandP{cs,cβ,Δ,TensorType} <: AbstractLESModel
