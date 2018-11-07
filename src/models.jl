@@ -254,7 +254,7 @@ end
             if is_dynamic_les(A)
                 L = symouter(û[i],û[i]) - La[i]
                 M = Δ̂²*norm(Sa[i])*Sa[i] - Ma[i]
-                c = max(0.0, 0.5*((traceless(L) : M)/(M:M)))
+                c = max(0.0, -0.5*((traceless(L) : M)/(M:M)))
                 νt = 2*c*Δ²*norm(S)
                 τ[i] = νt*S
                 ca[i] = c
