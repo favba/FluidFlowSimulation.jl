@@ -333,7 +333,7 @@ struct SandP{T<:Real,Smodel<:EddyViscosityModel} <: AbstractLESModel
     Smodel::Smodel
 end
 
-function Base.getproperty(a::SandP,s::Symbol)
+@inline function Base.getproperty(a::SandP,s::Symbol)
     if s === :Smodel || s === :cb
         return getfield(a,s)
     else
