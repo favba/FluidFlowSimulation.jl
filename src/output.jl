@@ -28,5 +28,6 @@ function writeoutput(s::AbstractSimulation,init::Integer)
         write("T13.$init",t.rr.xz)
         write("T22.$init",t.rr.yy)
         write("T23.$init",t.rr.yz)
+        write("pr.$init",s.lesmodel.pr)
     end
 end

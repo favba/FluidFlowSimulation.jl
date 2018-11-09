@@ -236,6 +236,7 @@ end
             α = c*c*Δ*Δ 
             is_SandP(A) && (β = cbeta(s.lesmodel)*Δ*Δ)
         end
+        pr = s.lesmodel.pr.rr
     end
 
     @inbounds @msimd for i in REAL_RANGES[j]
@@ -253,11 +254,11 @@ end
             S = τ[i]
             if is_dynamic_les(A)
                 L = symouter(û[i],û[i]) - La[i]
-                M = Δ̂²*norm(Sa[i])*Sa[i] - Ma[i]
-                c = -0.5*((traceless(L) : M)/(M:M))
+                M = Δ̂²*norm(Ma[i])*Ma[i] - Sa[i]
+                c = 0.5*((traceless(L) : M)/(M:M))
                 c = allow_backscatter(A) ? c : max(0.0,c)
                 νt = 2*c*Δ²*norm(S)
-                τ[i] = νt*S
+                t = νt*S
                 ca[i] = c
             else
                 νt = α*norm(S)
@@ -267,11 +268,13 @@ end
                 numax = ifelse(numax > nnu, numax, nnu)
             end
             if is_Smagorinsky(A)
-                τ[i] = νt*S
+                t = νt*S
             elseif is_SandP(A)
                 P = Lie(S,0.5*w)
-                τ[i] = νt*S + β*P
+                t = νt*S + β*P
             end
+            pr[i] = t:S
+            τ[i] = t
         end
 
         if hasdensity(A)

@@ -256,13 +256,15 @@ abstract type EddyViscosityModel <: AbstractLESModel end
 struct Smagorinsky{c,Δ,TensorType} <: EddyViscosityModel
     tau::TensorType
     reduction::Vector{Float64}
+    pr::ScalarField{Float64,3,2,false}
 end
 
 function Smagorinsky(c::Real,Δ::Real,dim::NTuple{3,Integer},tr) 
     data = SymTrTenField(dim,(LX,LY,LZ))
+    pr = ScalarField(dim,(LX,LY,LZ))
     #fill!(data,0)
     reduction = zeros(tr ? Threads.nthreads() : 1)
-    return Smagorinsky{c,Δ,typeof(data)}(data,reduction)
+    return Smagorinsky{c,Δ,typeof(data)}(data,reduction,pr)
 end
 
 Smagorinsky(c::Real,Δ::Real,dim::NTuple{3,Integer}) = Smagorinsky(c,Δ,false,dim)
@@ -276,9 +278,9 @@ cs(s::Type{T}) where {c,Δ,scalar,T<:Smagorinsky{c,Δ,scalar}} = c
 Delta(s::Type{T}) where {c,Δ,scalar,T<:Smagorinsky{c,Δ,scalar}} = Δ
 @inline Delta(s::T) where {c,Δ,scalar,T<:Smagorinsky{c,Δ,scalar}} = Delta(T)
 
-statsheader(a::Smagorinsky) = ""
+statsheader(a::Smagorinsky) = "pr"
 
-stats(a::Smagorinsky,s::AbstractSimulation) = ()
+stats(a::Smagorinsky,s::AbstractSimulation) = (tmean(a.pr.rr,s),)
 
 msg(a::Smagorinsky) = "\nLES model: Smagorinsky\nConstant: $(cs(a))\nFilter Width: $(Delta(a))\n"
 
@@ -294,6 +296,7 @@ struct DynamicSmagorinsky{T,AllowBackScatter} <: EddyViscosityModel
     S::SymTrTenField{T,3,2,false}
     û::VectorField{T,3,2,false}
     reduction::Vector{T}
+    pr::ScalarField{T,3,2,false}
 end
 
 function DynamicSmagorinsky(Δ::T, d2::T, dim::NTuple{3,Integer}, backscatter::Bool=false) where {T<:Real}
@@ -305,7 +308,7 @@ function DynamicSmagorinsky(Δ::T, d2::T, dim::NTuple{3,Integer}, backscatter::B
     u = VectorField{T}(dim,(LX,LY,LZ))
     #fill!(data,0)
     reduction = zeros(THR ? Threads.nthreads() : 1)
-    return DynamicSmagorinsky{T,backscatter}(Δ^2, d2^2, c, L, M, tau, S, u, reduction)
+    return DynamicSmagorinsky{T,backscatter}(Δ^2, d2^2, c, L, M, tau, S, u, reduction, similar(c))
 end
 
 DynamicSmagorinsky(Δ::T, dim::NTuple{3,Integer},b::Bool=false) where {T<:Real} = DynamicSmagorinsky(Δ, 2Δ, dim,b)
@@ -319,9 +322,9 @@ allow_backscatter(a::Union{<:DynamicSmagorinsky{T,allow},<:Type{<:DynamicSmagori
 @inline allow_backscatter(s::T) where {T<:AbstractSimulation} = allow_backscatter(T)
 
 
-statsheader(a::DynamicSmagorinsky) = ""
+statsheader(a::DynamicSmagorinsky) = "pr"
 
-stats(a::DynamicSmagorinsky,s::AbstractSimulation) = ()
+stats(a::DynamicSmagorinsky,s::AbstractSimulation) = (tmean(a.pr.rr,s),)
 
 msg(a::DynamicSmagorinsky{T,bs}) where {T,bs} = "\nLES model: Dynamic Smagorinsky\nFilter Width: $(sqrt(a.Δ²))\nTest Filter Width: $(sqrt(a.Δ̂²))\nAllow backscatter: $(bs)\n"
 
