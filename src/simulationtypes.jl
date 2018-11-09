@@ -284,7 +284,7 @@ msg(a::Smagorinsky) = "\nLES model: Smagorinsky\nConstant: $(cs(a))\nFilter Widt
 
 # Smagorinsky Model End ======================================================
 
-struct DynamicSmagorinsky{T} <: EddyViscosityModel
+struct DynamicSmagorinsky{T,AllowBackScatter} <: EddyViscosityModel
     Δ²::T
     Δ̂²::T
     c::ScalarField{T,3,2,false}
@@ -296,7 +296,7 @@ struct DynamicSmagorinsky{T} <: EddyViscosityModel
     reduction::Vector{T}
 end
 
-function DynamicSmagorinsky(Δ::T, d2::T, dim::NTuple{3,Integer}) where {T<:Real}
+function DynamicSmagorinsky(Δ::T, d2::T, dim::NTuple{3,Integer}, backscatter::Bool=false) where {T<:Real}
     c = ScalarField{T}(dim,(LX,LY,LZ))
     L = SymTenField(dim,(LX,LY,LZ))
     tau = SymTrTenField(dim,(LX,LY,LZ))
@@ -305,20 +305,25 @@ function DynamicSmagorinsky(Δ::T, d2::T, dim::NTuple{3,Integer}) where {T<:Real
     u = VectorField{T}(dim,(LX,LY,LZ))
     #fill!(data,0)
     reduction = zeros(THR ? Threads.nthreads() : 1)
-    return DynamicSmagorinsky{T}(Δ^2, d2^2, c, L, M, tau, S, u, reduction)
+    return DynamicSmagorinsky{T,backscatter}(Δ^2, d2^2, c, L, M, tau, S, u, reduction)
 end
 
-DynamicSmagorinsky(Δ::T, dim::NTuple{3,Integer}) where {T<:Real} = DynamicSmagorinsky(Δ, 2Δ, dim)
+DynamicSmagorinsky(Δ::T, dim::NTuple{3,Integer},b::Bool=false) where {T<:Real} = DynamicSmagorinsky(Δ, 2Δ, dim,b)
 
 is_dynamic_les(a::Union{<:DynamicSmagorinsky,<:Type{<:DynamicSmagorinsky}}) = true
 @inline @par is_dynamic_les(s::Type{T}) where {T<:@par(AbstractSimulation)} = is_dynamic_les(LESModelType)
 @inline is_dynamic_les(s::T) where {T<:AbstractSimulation} = is_dynamic_les(T)
 
+allow_backscatter(a::Union{<:DynamicSmagorinsky{T,allow},<:Type{<:DynamicSmagorinsky{T,allow}}}) where {T,allow} = allow
+@inline @par allow_backscatter(s::Type{T}) where {T<:@par(AbstractSimulation)} = allow_backscatter(LESModelType)
+@inline allow_backscatter(s::T) where {T<:AbstractSimulation} = allow_backscatter(T)
+
+
 statsheader(a::DynamicSmagorinsky) = ""
 
 stats(a::DynamicSmagorinsky,s::AbstractSimulation) = ()
 
-msg(a::DynamicSmagorinsky) = "\nLES model: Dynamic Smagorinsky\nFilter Width: $(sqrt(a.Δ²))\nTest Filter Width: $(sqrt(a.Δ̂²))\n"
+msg(a::DynamicSmagorinsky{T,bs}) where {T,bs} = "\nLES model: Dynamic Smagorinsky\nFilter Width: $(sqrt(a.Δ²))\nTest Filter Width: $(sqrt(a.Δ̂²))\nAllow backscatter: $(bs)\n"
 
 # Smagorinsky+P Model Start ======================================================
 
@@ -556,7 +561,8 @@ function parameters(d::Dict)
         elseif d[:lesModel] == "dynamicSmagorinsky"
             Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)
             tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ
-            lestype = DynamicSmagorinsky(Δ,tΔ,(nx,ny,nz))
+            backscatter = haskey(d,:backscatter) ? parse(Bool,d[:backscatter]) : false
+            lestype = DynamicSmagorinsky(Δ,tΔ,(nx,ny,nz), backscatter)
         elseif d[:lesModel] == "Smagorinsky+P"
             c = haskey(d,:smagorinskyConstant) ? Float64(eval(Meta.parse(d[:smagorinskyConstant]))) : 0.17 
             cb = haskey(d,:pTensorConstant) ? Float64(eval(Meta.parse(d[:pTensorConstant]))) : 0.17 
