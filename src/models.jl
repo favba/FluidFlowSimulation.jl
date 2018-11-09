@@ -222,6 +222,7 @@ end
     end
     if hasles(A)
         τ = s.lesmodel.tau.rr
+        Δ² = s.lesmodel.Δ²
         if is_dynamic_les(A)
             ca = s.lesmodel.c.rr
             û = s.lesmodel.û.rr
@@ -229,12 +230,12 @@ end
             Ma = s.lesmodel.M.rr
             Sa = s.lesmodel.S.rr
             Δ̂² = s.lesmodel.Δ̂²
-            Δ² = s.lesmodel.Δ²
-        else
-            c = cs(s.lesmodel)
-            Δ = Delta(s.lesmodel)
-            α = c*c*Δ*Δ 
-            is_SandP(A) && (β = cbeta(s.lesmodel)*Δ*Δ)
+        elseif is_Smagorinsky(A)
+            c = s.lesmodel.c
+            α = c*c*Δ²
+        end
+        if is_SandP(A) 
+            β = s.lesmodel.cb*Δ²
         end
         pr = s.lesmodel.pr.rr
     end
@@ -260,18 +261,17 @@ end
                 νt = 2*c*Δ²*norm(S)
                 t = νt*S
                 ca[i] = c
-            else
+            elseif is_Smagorinsky(A)
                 νt = α*norm(S)
+                t = νt*S
             end
             if has_variable_timestep(A)
                 nnu = (vis+νt)
                 numax = ifelse(numax > nnu, numax, nnu)
             end
-            if is_Smagorinsky(A)
-                t = νt*S
-            elseif is_SandP(A)
+            if is_SandP(A)
                 P = Lie(S,0.5*w)
-                t = νt*S + β*P
+                t += β*P
             end
             pr[i] = t:S
             τ[i] = t

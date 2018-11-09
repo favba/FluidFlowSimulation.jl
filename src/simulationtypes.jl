@@ -253,36 +253,32 @@ struct NoLESModel <: AbstractLESModel end
 
 abstract type EddyViscosityModel <: AbstractLESModel end
 
-struct Smagorinsky{c,Δ,TensorType} <: EddyViscosityModel
-    tau::TensorType
-    reduction::Vector{Float64}
-    pr::ScalarField{Float64,3,2,false}
+struct Smagorinsky{T} <: EddyViscosityModel
+    c::T
+    Δ²::T
+    tau::SymTrTenField{T,3,2,false}
+    reduction::Vector{T}
+    pr::ScalarField{T,3,2,false}
 end
 
-function Smagorinsky(c::Real,Δ::Real,dim::NTuple{3,Integer},tr) 
-    data = SymTrTenField(dim,(LX,LY,LZ))
-    pr = ScalarField(dim,(LX,LY,LZ))
+function Smagorinsky(c::T,Δ::Real,dim::NTuple{3,Integer}) where {T<:Real}
+    data = SymTrTenField{T}(dim,(LX,LY,LZ))
+    pr = ScalarField{T}(dim,(LX,LY,LZ))
     #fill!(data,0)
-    reduction = zeros(tr ? Threads.nthreads() : 1)
-    return Smagorinsky{c,Δ,typeof(data)}(data,reduction,pr)
+    reduction = zeros(THR ? Threads.nthreads() : 1)
+    return Smagorinsky{T}(c,Δ^2, data,reduction,pr)
 end
-
-Smagorinsky(c::Real,Δ::Real,dim::NTuple{3,Integer}) = Smagorinsky(c,Δ,false,dim)
 
 is_Smagorinsky(a::Union{<:Smagorinsky,Type{<:Smagorinsky}}) = true
 @inline @par is_Smagorinsky(s::Type{T}) where {T<:@par(AbstractSimulation)} = is_Smagorinsky(LESModelType)
 @inline is_Smagorinsky(s::T) where {T<:AbstractSimulation} = is_Smagorinsky(T)
-
-cs(s::Type{T}) where {c,Δ,scalar,T<:Smagorinsky{c,Δ,scalar}} = c
-@inline cs(s::T) where {c,Δ,scalar,T<:Smagorinsky{c,Δ,scalar}} = cs(T)
-Delta(s::Type{T}) where {c,Δ,scalar,T<:Smagorinsky{c,Δ,scalar}} = Δ
-@inline Delta(s::T) where {c,Δ,scalar,T<:Smagorinsky{c,Δ,scalar}} = Delta(T)
+is_Smagorinsky(a) = false
 
 statsheader(a::Smagorinsky) = "pr"
 
 stats(a::Smagorinsky,s::AbstractSimulation) = (tmean(a.pr.rr,s),)
 
-msg(a::Smagorinsky) = "\nLES model: Smagorinsky\nConstant: $(cs(a))\nFilter Width: $(Delta(a))\n"
+msg(a::Smagorinsky) = "\nLES model: Smagorinsky\nConstant: $(a.c)\nFilter Width: $(sqrt(a.Δ²))\n"
 
 # Smagorinsky Model End ======================================================
 
@@ -316,10 +312,12 @@ DynamicSmagorinsky(Δ::T, dim::NTuple{3,Integer},b::Bool=false) where {T<:Real} 
 is_dynamic_les(a::Union{<:DynamicSmagorinsky,<:Type{<:DynamicSmagorinsky}}) = true
 @inline @par is_dynamic_les(s::Type{T}) where {T<:@par(AbstractSimulation)} = is_dynamic_les(LESModelType)
 @inline is_dynamic_les(s::T) where {T<:AbstractSimulation} = is_dynamic_les(T)
+is_dynamic_les(a) = false
 
 allow_backscatter(a::Union{<:DynamicSmagorinsky{T,allow},<:Type{<:DynamicSmagorinsky{T,allow}}}) where {T,allow} = allow
 @inline @par allow_backscatter(s::Type{T}) where {T<:@par(AbstractSimulation)} = allow_backscatter(LESModelType)
 @inline allow_backscatter(s::T) where {T<:AbstractSimulation} = allow_backscatter(T)
+allow_backscatter(a) = false
 
 
 statsheader(a::DynamicSmagorinsky) = "pr"
@@ -330,33 +328,31 @@ msg(a::DynamicSmagorinsky{T,bs}) where {T,bs} = "\nLES model: Dynamic Smagorinsk
 
 # Smagorinsky+P Model Start ======================================================
 
-struct SandP{cs,cβ,Δ,TensorType} <: AbstractLESModel
-    tau::TensorType
-    reduction::Vector{Float64}
+struct SandP{T<:Real,Smodel<:EddyViscosityModel} <: AbstractLESModel
+    cb::T # default: 0.1
+    Smodel::Smodel
 end
 
-function SandP(c::Real,cb::Real,Δ::Real,dim::NTuple{3,Integer}) 
-    data = SymTrTenField(dim,(LX,LY,LZ))
-    reduction = zeros(THR ? Threads.nthreads() : 1)
-    return SandP{c,cb,Δ,typeof(data)}(data,reduction)
+function Base.getproperty(a::SandP,s::Symbol)
+    if s === :Smodel || s === :cb
+        return getfield(a,s)
+    else
+        return getfield(getfield(a,:Smodel),s)
+    end
 end
 
 is_SandP(a::Union{<:SandP,Type{<:SandP}}) = true
 @inline @par is_SandP(s::Type{T}) where {T<:@par(AbstractSimulation)} = is_SandP(LESModelType)
 @inline is_SandP(s::T) where {T<:AbstractSimulation} = is_SandP(T)
 
-cs(s::Type{T}) where {c,cb,Δ,TP,T<:SandP{c,cb,Δ,TP}} = c
-@inline cs(s::T) where {c,cb,Δ,TP,T<:SandP{c,cb,Δ,TP}} = cs(T)
-cbeta(s::Type{T}) where {c,cb,Δ,TP,T<:SandP{c,cb,Δ,TP}} = cb
-@inline cbeta(s::T) where {c,cb,Δ,TP,T<:SandP{c,cb,Δ,TP}} = cbeta(T)
-Delta(s::Type{T}) where {c,cb,Δ,TP,T<:SandP{c,cb,Δ,TP}} = Δ
-@inline Delta(s::T) where {c,cb,Δ,TP,T<:SandP{c,cb,Δ,TP}} = Delta(T)
+@inline is_Smagorinsky(a::Union{<:SandP{t,S},<:Type{SandP{t,S}}}) where {t,S} = is_Smagorinsky(S)
+@inline is_dynamic_les(a::Union{<:SandP{t,S},<:Type{SandP{t,S}}}) where {t,S} = is_dynamic_les(S)
 
-statsheader(a::SandP) = ""
+statsheader(a::SandP) = "pr"
 
-stats(a::SandP,s::AbstractSimulation) = ()
+stats(a::SandP,s::AbstractSimulation) = (tmean(a.pr.rr,s),)
 
-msg(a::SandP) = "\nLES model: Smagorinsky + P tensor\nSmagorinsky Constant: $(cs(a))\nP tensor constant: $(cbeta(a))\nFilter Width: $(Delta(a))\n"
+msg(a::SandP) = "\nLES model: SandP\nP tensor constant: $(a.cb)\nEddy Viscosity model: [$(msg(a.Smodel))]\n"
 
 
 # ==========================================================================================
@@ -560,17 +556,25 @@ function parameters(d::Dict)
         if d[:lesModel] == "Smagorinsky"
             c = haskey(d,:smagorinskyConstant) ? Float64(eval(Meta.parse(d[:smagorinskyConstant]))) : 0.17 
             Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
-            lestype = Smagorinsky(c,Δ,(nx,ny,nz),tr)
+            lestype = Smagorinsky(c,Δ,(nx,ny,nz))
         elseif d[:lesModel] == "dynamicSmagorinsky"
             Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)
             tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ
             backscatter = haskey(d,:backscatter) ? parse(Bool,d[:backscatter]) : false
             lestype = DynamicSmagorinsky(Δ,tΔ,(nx,ny,nz), backscatter)
-        elseif d[:lesModel] == "Smagorinsky+P"
-            c = haskey(d,:smagorinskyConstant) ? Float64(eval(Meta.parse(d[:smagorinskyConstant]))) : 0.17 
-            cb = haskey(d,:pTensorConstant) ? Float64(eval(Meta.parse(d[:pTensorConstant]))) : 0.17 
-            Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : lx*2π/nx  
-            lestype = SandP(c,cb,Δ,(nx,ny,nz))
+        elseif d[:lesModel] == "SandP"
+            cb = haskey(d,:pConstant) ? Float64(eval(Meta.parse(d[:pConstant]))) : 0.1
+            Slestype = if d[:sLesModel] == "Smagorinsky"
+                c = haskey(d,:smagorinskyConstant) ? Float64(eval(Meta.parse(d[:smagorinskyConstant]))) : 0.17 
+                Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
+                Smagorinsky(c,Δ,(nx,ny,nz))
+            elseif d[:sLesModel] == "dynamicSmagorinsky"
+                Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)
+                tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ
+                backscatter = haskey(d,:backscatter) ? parse(Bool,d[:backscatter]) : false
+                DynamicSmagorinsky(Δ,tΔ,(nx,ny,nz), backscatter)
+            end
+            lestype = SandP(cb,Slestype)
         end
     else
         lestype = NoLESModel()
