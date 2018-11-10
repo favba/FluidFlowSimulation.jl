@@ -25,25 +25,34 @@ function run_simulation()
     s = parameters(par)
     init = haskey(par,:start) ? parse(Int,par[:start]) : 0
     ttime = haskey(par,:startTime) ? parse(Float64,par[:startTime]) : 0.0
-    run_simulation(s,init,ttime,parse(Int,par[:dtStat]),parse(Int,par[:writeTime]),parse(Int,par[:nt]))
+    lengthtime = haskey(par,:timeDuration) ? parse(Float64,par[:timeDuration]) : Inf
+    nt = haskey(par,:nt) ? parse(Int,par[:nt]) : typemax(Int)
+    run_simulation(s,init,ttime,parse(Int,par[:dtStat]),parse(Int,par[:writeTime]),nt,lengthtime)
 end
 
-@par function run_simulation(s::@par(AbstractSimulation),init::Int,itime::Real,dtStats::Integer,dtOutput::Integer,totalnsteps::Integer)
+@par function run_simulation(s::@par(AbstractSimulation),init::Int,itime::Real,dtStats::Integer,dtOutput::Integer,totalnsteps::Integer,lenghtime::Real)
     @info("Simulation started.")
 
     initialize!(s,init)
 
     @assert totalnsteps >= dtOutput 
     @assert totalnsteps >= dtStats
-    finalstep = init + totalnsteps
+    @show finalstep = init + totalnsteps
+    @show finaltime = itime+lenghtime
 
+    i = init+1
     ttime = itime
-    for i = (init+1):finalstep
+    while (i<=finalstep && ttime<=finaltime)
         advance_in_time!(s)
+        i+=1
         ttime+=get_dt(s)
         mod(i,dtOutput) == 0 && writeoutput(s,i)
         mod(i,dtStats) == 0 && writestats(s,i,ttime)
     end
+
+    writeoutput(s,i)
+    writestats(s,i,ttime)
+
     return s
 end
 
