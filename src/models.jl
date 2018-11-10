@@ -230,6 +230,7 @@ end
             Ma = s.lesmodel.M.rr
             Sa = s.lesmodel.S.rr
             Δ̂² = s.lesmodel.Δ̂²
+            cmin = s.lesmodel.cmin
         elseif is_Smagorinsky(A)
             c = s.lesmodel.c
             α = c*c*Δ²
@@ -257,7 +258,7 @@ end
                 L = symouter(û[i],û[i]) - La[i]
                 M = Δ̂²*norm(Ma[i])*Ma[i] - Sa[i]
                 c = 0.5*((traceless(L) : M)/(M:M))
-                c = max(allow_backscatter(A) ? -0.5 : 0.0 ,c) # to prevent underflow se minimum of -0.5 for c
+                c = max(cmin ,c) # to prevent underflow set minimum value for c
                 νt = 2*c*Δ²*norm(S)
                 t = νt*S
                 ca[i] = c
