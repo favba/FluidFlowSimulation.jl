@@ -110,7 +110,7 @@ end
 
     realspacecalculation!(s)
 
-    mod(s.iteration[],s.dtoutput) == 0 && writeoutput(s)
+    s.iteration[] != 0 && mod(s.iteration[],s.dtoutput) == 0 && writeoutput(s)
 
     myfourier!(s.rhs)
     # fix for erros on u×ω calculation
