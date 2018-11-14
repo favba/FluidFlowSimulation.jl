@@ -12,7 +12,9 @@ function writeheader(s::AbstractSimulation)
     end
 end
 
-function writestats(s::AbstractSimulation,init::Integer,time::Real)
+function writestats(s::AbstractSimulation)
+    init = s.iteration[]
+    time = s.time[]
     results = stats(s)
     open("Stats.txt","a+") do file 
         join(file,(init, time, results..., "\n"), ",","")

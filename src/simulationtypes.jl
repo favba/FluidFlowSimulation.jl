@@ -44,14 +44,18 @@ struct @par(Simulation) <: @par(AbstractSimulation)
     lesmodel::LESModelType
     forcing::ForcingType
     hyperviscosity::HyperViscosityType
+    iteration::Ref{Int}
+    time::Ref{Float64}
+    dtoutput::Int
+    dtstats::Int
   
-    @par function @par(Simulation)(u::VectorField,timestep,passivescalar,densitystratification,lesmodel,forcing,hv) 
+    @par function @par(Simulation)(u::VectorField,timestep,passivescalar,densitystratification,lesmodel,forcing,hv,iteration,time,dtout,dtstats) 
 
         rhs = similar(u)
   
         reduction = zeros(THR ? Threads.nthreads() : 1)
 
-        return @par(new)(u,rhs,reduction,timestep,passivescalar,densitystratification,lesmodel,forcing,hv)
+        return @par(new)(u,rhs,reduction,timestep,passivescalar,densitystratification,lesmodel,forcing,hv,iteration,time,dtout,dtstats)
     end
 
 end
@@ -448,7 +452,10 @@ function parameters(d::Dict)
     lz = Float64(eval(Meta.parse(d[:zDomainSize])))
     ν = Float64(eval(Meta.parse(d[:kinematicViscosity])))
 
-    start = haskey(d,:start) ? d[:start] : "0"
+    start = haskey(d,:start) ? parse(Int,d[:start]) : 0
+    starttime = haskey(d,:startTime) ? parse(Float64,d[:startTime]) : 0.0
+    dtstat = parse(Int,d[:dtStat])
+    dtout = parse(Int,d[:writeTime])
 
     @info("Reading initial velocity field u1.$start u2.$start u3.$start")
     u = VectorField{Float64}("u1.$start","u2.$start","u3.$start")
@@ -607,7 +614,7 @@ function parameters(d::Dict)
 
     s = Simulation{typeof(vtimestep),
         typeof(scalartype),typeof(densitytype),typeof(lestype),typeof(forcingtype),
-        typeof(hyperviscositytype)}(u,vtimestep,scalartype,densitytype,lestype,forcingtype,hyperviscositytype)
+        typeof(hyperviscositytype)}(u,vtimestep,scalartype,densitytype,lestype,forcingtype,hyperviscositytype,Ref(start),Ref(starttime),dtout,dtstat)
   #
 
     FFTW.export_wisdom("fftw_wisdom")

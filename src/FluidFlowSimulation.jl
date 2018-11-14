@@ -23,41 +23,37 @@ include("models.jl")
 function run_simulation()
     par = readglobal()
     s = parameters(par)
-    init = haskey(par,:start) ? parse(Int,par[:start]) : 0
-    ttime = haskey(par,:startTime) ? parse(Float64,par[:startTime]) : 0.0
     lengthtime = haskey(par,:timeDuration) ? parse(Float64,par[:timeDuration]) : Inf
     nt = haskey(par,:nt) ? parse(Int,par[:nt]) : typemax(Int)
-    run_simulation(s,init,ttime,parse(Int,par[:dtStat]),parse(Int,par[:writeTime]),nt,lengthtime)
+    run_simulation(s,nt,lengthtime)
 end
 
-@par function run_simulation(s::@par(AbstractSimulation),init::Int,itime::Real,dtStats::Integer,dtOutput::Integer,totalnsteps::Integer,lenghtime::Real)
+@par function run_simulation(s::@par(AbstractSimulation),totalnsteps::Integer,lenghtime::Real)
     @info("Simulation started.")
 
-    initialize!(s,init)
+    initialize!(s)
 
-    @assert totalnsteps >= dtOutput 
-    @assert totalnsteps >= dtStats
-    @show finalstep = init + totalnsteps
-    @show finaltime = itime+lenghtime
+    @assert totalnsteps >= s.dtoutput 
+    @assert totalnsteps >= s.dtstats
+    @show finalstep = s.iteration[] + totalnsteps
+    @show finaltime = s.time[]+lenghtime
 
-    i = init+1
-    ttime = itime
-    while (i<=finalstep && ttime<=finaltime)
+    while (s.iteration[]<finalstep && s.time[]<finaltime)
+        s.iteration[] += 1
         advance_in_time!(s)
-        i+=1
-        ttime+=get_dt(s)
-        mod(i,dtOutput) == 0 && writeoutput(s,i)
-        mod(i,dtStats) == 0 && writestats(s,i,ttime)
+        s.time[] += get_dt(s)
+        mod(s.iteration[],s.dtstats) == 0 && writestats(s)
     end
-
-    writeoutput(s,i)
-    writestats(s,i,ttime)
+    
+    calculate_rhs!(s)
+    mod(s.iteration[],s.dtoutput) == 0 || writeoutput(s)
+    mod(s.iteration[],s.dtstats) == 0 || writestats(s)
 
     return s
 end
 
-function initialize!(s::AbstractSimulation,init::Integer)
-    init == 0 && writeheader(s)
+function initialize!(s::AbstractSimulation)
+    s.iteration[] == 0 && writeheader(s)
     myfourier!(s.u)
 
     if haspassivescalar(s)
@@ -76,7 +72,7 @@ function initialize!(s::AbstractSimulation,init::Integer)
   
     initialize!(s.forcing,s)
 
-    init == 0 && writestats(s,0,0)
+    s.iteration[] == 0 && writestats(s)
     return nothing
 end
 
