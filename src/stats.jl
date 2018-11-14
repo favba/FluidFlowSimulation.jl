@@ -1,5 +1,5 @@
 function statsheader(s::AbstractSimulation)
-    simulaitionheader = "iteration,time,u1,u2,u3,u1p2,u2p2,u3p2,du1dx1p2,du1dx2p2,du1dx3p2,du2dx1p2,du2dx2p2,du2dx3p2,du3dx1p2,du3dx2p2,du3dx3p2"
+    simulaitionheader = "iteration,time,u1,u2,u3,u1p2,u2p2,u3p2,k,du1dx1p2,du1dx2p2,du1dx3p2,du2dx1p2,du2dx2p2,du2dx3p2,du3dx1p2,du3dx2p2,du3dx3p2,diss"
     header = join(Iterators.filter(x->x !== "",
       (simulaitionheader,statsheader.(getfield.(Ref(s),sim_fields))...,"\n")),
       ",","")
@@ -34,6 +34,7 @@ stats(s::AbstractSimulation) =
     u12 = tmean(x->x^2,s.rhs.rr.x,s)
     u22 = tmean(x->x^2,s.rhs.rr.y,s)
     u32 = tmean(x->x^2,s.rhs.rr.z,s)
+    k = (u12+u22+u32)/2
 
     grad!(s.rhs,s.u.c.x,s)
     setfourier!(s.rhs)
@@ -56,7 +57,9 @@ stats(s::AbstractSimulation) =
     d3d2 = tmean(x->x^2,s.rhs.rr.y,s)
     d3d3 = tmean(x->x^2,s.rhs.rr.z,s)
 
-    return u1, u2, u3, u12, u22, u32, d1d1, d1d2, d1d3, d2d1, d2d2, d2d3, d3d1, d3d2, d3d3
+    ε = 2ν*(d1d1+d2d2+d3d3+ 2*((d1d2+d2d1)/2 + (d1d3+d3d1)/2 + (d2d3+d3d2)/2))
+
+    return u1, u2, u3, u12, u22, u32, k, d1d1, d1d2, d1d3, d2d1, d2d2, d2d3, d3d1, d3d2, d3d3, ε
 end
 
 @par function scalar_stats(ρ,s1,s::@par(AbstractSimulation))
