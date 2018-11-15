@@ -46,8 +46,15 @@ end
     end
     
     calculate_rhs!(s)
-    mod(s.iteration[],s.dtoutput) == 0 || writeoutput(s)
     mod(s.iteration[],s.dtstats) == 0 || writestats(s)
+    if !(mod(s.iteration[],s.dtoutput) == 0)
+        real!(s.u)
+        hasdensity(s) && real!(s.densitystratification.ρ)
+        haspassivescalar(s) && real!(s.passivescalar.φ)
+        hasles(s) && real!(s.lesmodel.tau)
+
+        writeoutput(s)
+    end
 
     return s
 end
