@@ -146,7 +146,7 @@ function calculate_Zf(kf,kh)
     for (i,k) in enumerate(kh)
         Zf[i] = tanh((kf-k) / (0.25*kf)) * (((kf-k) <= 0.0) ? 0.0 : 1.0)
     end
-    return (Zf...,)
+    return Zf
 end
 
 @inline function Gaussfilter(Δ²::Real, k2::Real)

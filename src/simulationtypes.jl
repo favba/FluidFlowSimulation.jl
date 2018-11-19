@@ -369,41 +369,43 @@ abstract type AbstractForcing end
 
     msg(a::NoForcing) = "\nForcing: No forcing\n"
 
-struct RfForcing{Tf,α,Kf,MaxDk,avgK, Zf} #= Tf = 1.0 , α = 1.0  =# <: AbstractForcing
-    Ef::Vector{Float64} # Velocity Field Spectrum
-    Em::Vector{Float64} # Target Spectrum
-    R::Vector{Float64} # Solution to ODE
+struct RfForcing{T<:AbstractFloat} #= Tf = 1.0 , α = 1.0  =# <: AbstractForcing
+    Tf::T
+    α::T
+    Kf::T
+    maxDk::T
+    avgK::Vector{T}
+    Zf::Vector{T}
+    Ef::Vector{T} # Velocity Field Spectrum
+    Em::Vector{T} # Target Spectrum
+    R::Vector{T} # Solution to ODE
   #  Zf::Vector{Float64} # Cutoff function, using as parameter
     #dRdt::Vector{Float64} # Not needed if I use Euller timestep
-    factor::Vector{Float64} # Factor to multiply velocity Field
-    forcex::PaddedArray{Float64,3,2,false} # Final force
-    forcey::PaddedArray{Float64,3,2,false} # Final force
+    factor::Vector{T} # Factor to multiply velocity Field
+    forcex::PaddedArray{T,3,2,false} # Final force
+    forcey::PaddedArray{T,3,2,false} # Final force
     init::Bool # Tell if the initial condition spectra should be used instead of from data
+    hp::Base.RefValue{T}
+    vp::Base.RefValue{T}
 end
 
-    statsheader(a::RfForcing) = ""
+    statsheader(a::RfForcing) = "hp,vp"
 
-    stats(a::RfForcing,s::AbstractSimulation) = ()
+    stats(a::RfForcing,s::AbstractSimulation) = (a.hp[],a.vp[])
 
     msg(a::RfForcing) = "\nForcing:  Rf forcing\nTf: $(getTf(a))\nalphac: $(getalpha(a))\nKf: $(getKf(a))\n"
 
-    getTf(f::Type{RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}}) where {Tf,α,Kf,MaxDk,avgK, Zf} = Tf
-    @inline getTf(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = getTf(typeof(f))
+    @inline getTf(f::RfForcing) = f.Tf
 
-    getalpha(f::Type{RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}}) where {Tf,α,Kf,MaxDk,avgK, Zf} = α
-    @inline getalpha(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = getalpha(typeof(f))
+    @inline getalpha(f::RfForcing) = f.α
 
-    getKf(f::Type{RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}}) where {Tf,α,Kf,MaxDk,avgK, Zf} = Kf
-    @inline getKf(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = getKf(typeof(f))
+    @inline getKf(f::RfForcing) = f.Kf
 
-    getmaxdk(f::Type{RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}}) where {Tf,α,Kf,MaxDk,avgK, Zf} = MaxDk
-    @inline getmaxdk(f::RfForcing{Tf,α,Kf,MaxDk,avgK, Zf}) where {Tf,α,Kf,MaxDk,avgK, Zf} = getmaxdk(typeof(f))
+    @inline getmaxdk(f::RfForcing) = f.maxDk
 
-    getavgk(f::Type{RfForcing{Tf,α,Kf,MaxDk,AvgK, Zf}}) where {Tf,α,Kf,MaxDk,AvgK, Zf} = AvgK
-    @inline getavgk(f::RfForcing{Tf,α,Kf,MaxDk,AvgK, Zf}) where {Tf,α,Kf,MaxDk,AvgK, Zf} = getavgk(typeof(f))
+    @inline getavgk(f::RfForcing) = f.avgK
 
-    getZf(f::Type{RfForcing{Tf,α,Kf,MaxDk,AvgK, Zf}}) where {Tf,α,Kf,MaxDk,AvgK, Zf} = Zf
-    @inline getZf(f::RfForcing{Tf,α,Kf,MaxDk,AvgK, Zf}) where {Tf,α,Kf,MaxDk,AvgK, Zf} = getZf(typeof(f))
+    @inline getZf(f::RfForcing) = f.Zf
 
 # Hyper viscosity Type
 
@@ -595,7 +597,7 @@ function parameters(d::Dict)
             forcey = PaddedArray((nx,ny,nz))
             Zf = calculate_Zf(kf,kh)
             if !isfile("targSpectrum.dat")
-                forcingtype = RfForcing{TF, alphac, kf, maxdk2D, (kh...,),Zf}(Ef,Em,R,factor,forcex,forcey,true)
+                forcingtype = RfForcing{Float64}(TF, alphac, kf, maxdk2D, kh,Zf,Ef,Em,R,factor,forcex,forcey,true,Ref(0.0),Ref(0.0))
             else
             #todo read spectrum.dat
             end

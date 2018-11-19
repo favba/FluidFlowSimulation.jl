@@ -1,7 +1,7 @@
 (f::NoForcing)(dt,s) = nothing
 initialize!(f::NoForcing,s) = nothing
 
-proj(a::Complex,b::Complex) = muladd(real(a), real(b), complex(a)*complex(b))
+@inline proj(a::Complex,b::Complex) = muladd(a.re, b.re, a.im*b.im)
 
 @par function (F::RfForcing)(s::@par(AbstractSimulation))
 
@@ -37,7 +37,7 @@ proj(a::Complex,b::Complex) = muladd(real(a), real(b), complex(a)*complex(b))
         if KX[i] <= _kf
             R[i] += dt*(-2*alpha*omega*R[i] - omega*omega*(Ef[i] - Em[i])) 
             R[i]=max(0.0, R[i])
-            factor[i] = sqrt(R[i]/max(Ef[i],eps))*Zf[i]*dt     
+            factor[i] = sqrt(R[i]/max(abs(Ef[i]),eps))*Zf[i]*dt     
         end
     end
 
@@ -65,6 +65,7 @@ proj(a::Complex,b::Complex) = muladd(real(a), real(b), complex(a)*complex(b))
     ff = ff*0.5/dt
     fv = fv/dt
     horizontalPower = ff+fv
+    F.hp[] = horizontalPower
     powerFraction = 0.99
 
     # # -------------------- Vertical Forcing -------------------- 
@@ -92,6 +93,7 @@ proj(a::Complex,b::Complex) = muladd(real(a), real(b), complex(a)*complex(b))
     ff = ff*0.5/dt
     fv = fv/dt
     verticalPower = ff+fv
+    F.vp[] = verticalPower
     return 1/dt
 end
 
