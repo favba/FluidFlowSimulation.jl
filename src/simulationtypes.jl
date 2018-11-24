@@ -468,7 +468,7 @@ function parameters(d::Dict)
 
     haskey(d,:threaded) ? (tr = parse(Bool,d[:threaded])) : (tr = true)
 
-    tr && FFTW.set_num_threads(Threads.nthreads())
+    tr || FFTW.set_num_threads(1)
     nt = tr ? Threads.nthreads() : 1 
 
     b = Globals.splitrange(lrs, nt)
@@ -484,8 +484,6 @@ function parameters(d::Dict)
     #elseif Dealiastype == :cube
         #@. dealias = (kxp^2 > cutoff) | (kyp^2 > cutoff) | (kzp^2 > cutoff)
     #end
-
-    isfile("fftw_wisdom") && FFTW.import_wisdom("fftw_wisdom")
   
     integrator = haskey(d,:velocityTimeStep) ? Symbol(d[:velocityTimeStep]) : :Adams_Bashforth3rdO
     variableTimeStep = haskey(d,:variableTimestepFlag) ? parse(Bool,d[:variableTimestepFlag]) : true
@@ -619,7 +617,6 @@ function parameters(d::Dict)
         typeof(hyperviscositytype)}(u,vtimestep,scalartype,densitytype,lestype,forcingtype,hyperviscositytype,Ref(start),Ref(starttime),dtout,dtstat)
   #
 
-    FFTW.export_wisdom("fftw_wisdom")
     @info(s)
     return s
 end
