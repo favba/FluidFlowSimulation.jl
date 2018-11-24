@@ -145,7 +145,7 @@ struct PassiveScalar{L,TTimeStep, α #=Difusitivity = ν/Pr =#,
 
     function PassiveScalar{TT,α,dρdz,Gdirec}(ρ,les,timestep) where {TT,α,dρdz,Gdirec}
         ρrhs = similar(ρ)
-        flux = VectorField(size(ρ.field.r),(ρ.space.lx,ρ.space.ly,ρ.space.lz))
+        flux = VectorField(size(ρ.field.r),(ρ.kx.l,ρ.ky.l,ρ.kz.l))
         reduction = zeros(THR ? Threads.nthreads() : 1)
         return new{typeof(les),TT,α,dρdz,Gdirec}(ρ,ρrhs,flux,les,timestep,reduction)
     end
@@ -217,7 +217,7 @@ struct BoussinesqApproximation{L,TTimeStep, α #=Difusitivity = ν/Pr =#,
 
     function BoussinesqApproximation{TT,α,dρdz,g,Gdirec}(ρ,timestep,tr,les) where {TT,α,dρdz,g,Gdirec}
         ρrhs = similar(ρ)
-        flux = VectorField(size(ρ.field.r),(ρ.space.lx,ρ.space.ly,ρ.space.lz))
+        flux = VectorField(size(ρ.field.r),(ρ.kx.l,ρ.ky.l,ρ.kz.l))
         reduction = zeros(tr ? Threads.nthreads() : 1)
         return new{typeof(les),TT,α,dρdz,g,Gdirec}(ρ,ρrhs,flux,les,timestep,reduction)
     end
