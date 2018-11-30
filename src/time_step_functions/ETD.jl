@@ -33,6 +33,7 @@ function initialize!(t::ETD3rdO,rhs::AbstractArray,vis,s::AbstractSimulation)
     setindex!(t.dt2,t.dt[])
     setindex!(t.dt3,t.dt[])
     init_c!(t,t.c,-vis,s)
+    set_ABCt!(t)
     return nothing
 end
 
@@ -125,7 +126,7 @@ end
     return nothing
 end
 
-@inline function get_ats(t::ETD3rdO{true,indt,H}) where {indt,H}
+@inline function get_ats(t::ETD3rdO)
     dt = t.dt[]
     dt2 = t.dt2[]
     dt3 = t.dt3[]
@@ -136,7 +137,7 @@ end
     return a0,a1,a2,a3
 end
 
-@inline function get_bts(t::ETD3rdO{true,indt,H}) where {indt,H}
+@inline function get_bts(t::ETD3rdO)
     dt = t.dt[]
     dt2 = t.dt2[]
     dt3 = t.dt3[]
@@ -147,7 +148,7 @@ end
     return b0,b1,b2,b3
 end
 
-@inline function get_cts(t::ETD3rdO{true,indt,H}) where {indt,H}
+@inline function get_cts(t::ETD3rdO)
     dt = t.dt[]
     dt2 = t.dt2[]
     dt3 = t.dt3[]
