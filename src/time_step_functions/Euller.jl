@@ -15,7 +15,7 @@ set_dt!(t::Euller{true,idt},dt::Real) where {idt} = setindex!(t.dt,dt)
     dt = get_dt(f)
     @mthreads for k in ZRANGE
         for j in YRANGE
-            @inbounds @fastmath @msimd for i in XRANGE
+            @inbounds @msimd for i in XRANGE
                 ρ[i,j,k] = muladd(dt,rhs[i,j,k],ρ[i,j,k])
             end
         end

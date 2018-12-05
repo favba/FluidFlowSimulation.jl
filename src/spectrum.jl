@@ -1,4 +1,4 @@
-@par function calculate_u1u2_spectrum!(Ef,u,cplane)
+function calculate_u1u2_spectrum!(Ef,u,cplane)
     ux = u.c.x
     uy = u.c.y
     # Initialize the shells to zeros
@@ -8,7 +8,7 @@
     @inbounds for j in YRANGE
         conjFactX=1.0
         for i in XRANGE
-            k = sqrt(KX[i]^2 + KY[j]^2)
+            k = @fastmath sqrt(KX[i]^2 + KY[j]^2)
             n = round(Int, k/maxdk2d) + 1
             if n <= nshells
                 magsq = abs2(ux[i,j,cplane]) + abs2(uy[i,j,cplane])
@@ -20,7 +20,7 @@
     end
 end
 
-@par function calculate_u1u2_spectrum(u,cplane,s::@par(AbstractSimulation))
+function calculate_u1u2_spectrum(u,cplane,s::AbstractSimulation)
     Ef = zeros(min(NX, NY÷2))
     calculate_u1u2_spectrum!(Ef,u,cplane=1)
     return Ef

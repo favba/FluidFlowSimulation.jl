@@ -33,11 +33,11 @@ initialize!(f::NoForcing,s) = nothing
     # // get current spectrum for k=1 plane
     calculate_u1u2_spectrum!(Ef,s.u, cPlaneNumber)
 
-    for i=2:nShells2d
+    @inbounds for i=2:nShells2d
         if KX[i] <= _kf
             R[i] += dt*(-2*alpha*omega*R[i] - omega*omega*(Ef[i] - Em[i])) 
             R[i]=max(0.0, R[i])
-            factor[i] = sqrt(R[i]/max(abs(Ef[i]),eps))*Zf[i]*dt     
+            factor[i] = Base.FastMath.sqrt_llvm(R[i]/max(abs(Ef[i]),eps))*Zf[i]*dt     
         end
     end
 
@@ -46,10 +46,10 @@ initialize!(f::NoForcing,s) = nothing
     ff = 0.0
     fv = 0.0
 
-    for j=YRANGE
+    @inbounds for j=YRANGE
         conjFactX=1.0
         for i=XRANGE
-            k=sqrt(muladd(KX[i],KX[i],KY[j]^2))
+            k = @fastmath sqrt(muladd(KX[i],KX[i],KY[j]^2))
             n = round(Int,k/maxdk) + 1
             if (1 < n <= nShells2d)
                 if avgWaveNumInShell2d[n] <= _kf
@@ -76,13 +76,13 @@ initialize!(f::NoForcing,s) = nothing
     fv = 0.0
     umag = 0.0
     #     // get the sum of the existing velocites
-    for k = 2:6
-        umag += sqrt(abs2(u1[1,1,k]) + abs2(u2[1,1,k])) + sqrt(abs2(u1[1,1,NZ-k+2]) + abs2(u2[1,1,NZ-k+2]))
+    @inbounds for k = 2:6
+        umag += @fastmath sqrt(abs2(u1[1,1,k]) + abs2(u2[1,1,k])) + sqrt(abs2(u1[1,1,NZ-k+2]) + abs2(u2[1,1,NZ-k+2]))
     end
 
     f = dt*sqrt(2.0*horizontalPower*(1.0-powerFraction))/umag
 
-    for k=2:6
+    @inbounds for k=2:6
         s1[1,1,k] = u1[1,1,k]*f
         s2[1,1,k] = u2[1,1,k]*f
         s1[1,1,NZ-k+2] = u1[1,1,NZ-k+2]*f

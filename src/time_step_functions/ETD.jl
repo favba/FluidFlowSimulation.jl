@@ -40,7 +40,7 @@ end
 @par function init_c!(t::ETD3rdO{adp,indt,false},c::AbstractArray,mν,s::@par(AbstractSimulation)) where{adp,indt}
     @mthreads for k in ZRANGE
         for j in YRANGE
-            @fastmath @inbounds @msimd for i in XRANGE
+            @inbounds @msimd for i in XRANGE
                 c[i,j,k] = muladd(KX[i], KX[i], muladd(KY[j], KY[j], KZ[k]*KZ[k]))*mν
             end
         end
@@ -53,7 +53,7 @@ end
     M::Int = get_hyperviscosity_exponent(s)
     @mthreads for k in ZRANGE
         for j in YRANGE
-            @fastmath @inbounds @msimd for i in XRANGE
+            @inbounds @msimd for i in XRANGE
                 modk = muladd(KX[i], KX[i], muladd(KY[j], KY[j], KZ[k]*KZ[k])) 
                 c[i,j,k] = muladd(modk, mν, modk^M * mνh) 
             end
@@ -174,7 +174,7 @@ end
     c = f.c
     dt = get_dt(f)
     for j in YRANGE
-        @fastmath @msimd for i in XRANGE
+        @msimd for i in XRANGE
             u[i,j,k] = muladd(At[i,j,k], rhs[i,j,k], muladd(Bt[i,j,k], rm1[i,j,k], muladd(Ct[i,j,k], rm2[i,j,k], exp(c[i,j,k]*dt)*u[i,j,k])))
             rm2[i,j,k] = rm1[i,j,k]
             rm1[i,j,k] = rhs[i,j,k]
@@ -200,7 +200,7 @@ end
     dt = get_dt(f)
     if (6 < k < NZ-k+1)
         for j in YRANGE
-            @fastmath @msimd for i in XRANGE
+            @msimd for i in XRANGE
                 u[i,j,k] = muladd(At[i,j,k], rhs[i,j,k], muladd(Bt[i,j,k], rm1[i,j,k], muladd(Ct[i,j,k], rm2[i,j,k], exp(c[i,j,k]*dt)*u[i,j,k])))
                 rm2[i,j,k] = rm1[i,j,k]
                 rm1[i,j,k] = rhs[i,j,k]
@@ -208,7 +208,7 @@ end
         end
     else
         for j in YRANGE
-            @fastmath @msimd for i in XRANGE
+            @msimd for i in XRANGE
                 u[i,j,k] = muladd(At[i,j,k], rhs[i,j,k], muladd(Bt[i,j,k], rm1[i,j,k], muladd(Ct[i,j,k], rm2[i,j,k],muladd(exp(c[i,j,k]*dt), u[i,j,k], forcing[i,j,k]))))
                 rm2[i,j,k] = rm1[i,j,k]
                 rm1[i,j,k] = rhs[i,j,k]
