@@ -273,7 +273,7 @@ end
                 numax = ifelse(numax > nnu, numax, nnu)
             end
             if is_SandP(A)
-                P = Lie(S,0.5*w)
+                P = Lie(S,AntiSymTen(-0.5*w))
                 t += β*P
             end
             pr[i] = t:S

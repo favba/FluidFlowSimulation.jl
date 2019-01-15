@@ -36,7 +36,7 @@ mycopy!(o::SymTrTenField,i::SymTrTenField) = (mycopy!(o.rr.xx,i.rr.xx);
                                               mycopy!(o.rr.yy,i.rr.yy);
                                               mycopy!(o.rr.yz,i.rr.yz))
 
-@inline @par function myscale!(field::AbstractArray{<:Real,N}) where N
+@par function myscale!(field::AbstractArray{<:Real,N}) where N
     @mthreads for j in TRANGE
         l = REAL_RANGES[j]
         x = 1/(NRX*NY*NZ)
