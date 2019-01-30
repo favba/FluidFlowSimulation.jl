@@ -44,8 +44,8 @@ struct @par(Simulation) <: @par(AbstractSimulation)
     lesmodel::LESModelType
     forcing::ForcingType
     hyperviscosity::HyperViscosityType
-    iteration::Ref{Int}
-    time::Ref{Float64}
+    iteration::Base.RefValue{Int}
+    time::Base.RefValue{Float64}
     dtoutput::Int
     dtstats::Int
   
