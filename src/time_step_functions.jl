@@ -105,10 +105,6 @@ include("time_step_functions/ETD.jl")
     νt = ν
     newdt =cfl * dx/umax
     # is_implicit(s) || (newdt = min(newdt, (2νt/umax^2)/2))
-    if hasles(s)
-        nut_max = maximum(s.lesmodel.reduction)
-        newdt = min(newdt,cfl*((dx^2)/nut_max)/2)
-    end
     if hasdensity(s) 
         ρmax = maximum(s.densitystratification.reduction)
         g = norm(gravity(s))

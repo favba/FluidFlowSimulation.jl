@@ -1,18 +1,25 @@
+include("LESmodels/les_real_calc.jl")
+
 @inline @par function advance_in_time!(s::A) where {A<:@par(AbstractSimulation)}
     calculate_rhs!(s)
-    hasforcing(s) && s.forcing(s)
     time_step!(s)
     return nothing
 end
 
 @par function calculate_rhs!(s::A) where {A<:@par(AbstractSimulation)}
+    # Set necessary fields to fourier
     setfourier!(s.rhs)
     hasdensity(A) && setfourier!(s.densitystratification.rhs)
     hasdensityles(A) && setfourier!(s.densitystratification.flux)
     haspassivescalar(A) && setfourier!(s.passivescalar.rhs)
-    haspassivescalarles(A) && setfourier!(s.passivescalar.flux) # Bug? julia segfaults if I uncomment this line
+    haspassivescalarles(A) && setfourier!(s.passivescalar.flux)
     hasles(A) && setfourier!(s.lesmodel.tau)
     is_dynamic_les(A) && (setfourier!(s.lesmodel.û); setfourier!(s.lesmodel.M))
+
+    # calculate forcing
+    hasforcing(A) && s.forcing(s)
+
+    #actual calculation
     fourierspacep1!(s)
     realspace!(s)
     has_variable_timestep(s) && set_dt!(s)
@@ -85,11 +92,6 @@ end
     hasdensity(A) && real!(s.densitystratification.ρ)
  
     hasles(s) && real!(s.lesmodel.tau)
-    if is_dynamic_les(s)
-        realspace_dynamic_les_calculation!(s)
-        fourierspace_dynamic_les_calculation!(s)
-        #coefficient_dynamic_les_calculation!(s)
-    end
   
     if hasdensity(A)
         if hasdensityles(A)
@@ -107,7 +109,7 @@ end
         end
     end
 
-
+    realspace_LES_calculation!(s)
     realspacecalculation!(s)
 
     s.iteration[] != 0 && mod(s.iteration[],s.dtoutput) == 0 && writeoutput(s)
@@ -138,57 +140,6 @@ end
     return nothing
 end
 
-@par function realspace_dynamic_les_calculation!(s::A) where {A<:@par(AbstractSimulation)}
-    real!(s.lesmodel.û)
-    real!(s.lesmodel.M)
-    @mthreads for j in TRANGE
-        realspace_dynamic_les_calculation!(s,j)
-    end
-    return nothing
-end
-
-@par function realspace_dynamic_les_calculation!(s::A,j::Integer) where {A<:@par(AbstractSimulation)} 
-    u = s.u.rr
-    L = s.lesmodel.L.rr
-    tau = s.lesmodel.tau.rr
-    Sa = s.lesmodel.S.rr
-    Δ² = s.lesmodel.Δ²
-
-    @inbounds @msimd for i in REAL_RANGES[j]
-        S = tau[i]
-        Sa[i] = Δ²*norm(S)*S 
-        v = u[i]
-        L[i] = symouter(v,v)
-    end
-
-    return nothing
-end
-
-@par function fourierspace_dynamic_les_calculation!(s::A) where {A<:@par(AbstractSimulation)}
-    myfourier!(s.lesmodel.S)
-    dealias!(s.lesmodel.S)
-    myfourier!(s.lesmodel.L)
-    dealias!(s.lesmodel.L)
-    @mthreads for k in ZRANGE
-        fourierspace_dynamic_les_calculation!(s,k)
-    end
-    real!(s.lesmodel.S)
-    real!(s.lesmodel.L)
-    return nothing
-end
-
-@par function fourierspace_dynamic_les_calculation!(s::A,k::Integer) where {A<:@par(AbstractSimulation)}
-    S = s.lesmodel.S.c
-    L = s.lesmodel.L.c
-    Δ̂² = s.lesmodel.Δ̂² 
-    @inbounds for j in YRANGE
-        @msimd for i in XRANGE 
-            G = Gaussfilter(Δ̂²,i,j,k)
-            S[i,j,k] *= G
-            L[i,j,k] *= G
-        end
-    end
-end
 
 @par function realspacecalculation!(s::A) where {A<:@par(AbstractSimulation)}
     #@assert !(hasdensity(A) & haspassivescalar(A))
@@ -222,26 +173,6 @@ end
         ρ = s.densitystratification.ρ.field.data
         f = s.densitystratification.flux.rr
     end
-    if hasles(A)
-        τ = s.lesmodel.tau.rr
-        Δ² = s.lesmodel.Δ²
-        if is_dynamic_les(A)
-            ca = s.lesmodel.c.rr
-            û = s.lesmodel.û.rr
-            La = s.lesmodel.L.rr
-            Ma = s.lesmodel.M.rr
-            Sa = s.lesmodel.S.rr
-            Δ̂² = s.lesmodel.Δ̂²
-            cmin = s.lesmodel.cmin
-        elseif is_Smagorinsky(A)
-            c = s.lesmodel.c
-            α = c*c*Δ²
-        end
-        if is_SandP(A) 
-            β = s.lesmodel.cb*Δ²
-        end
-        pr = s.lesmodel.pr.rr
-    end
 
     @inbounds @msimd for i in REAL_RANGES[j]
         v = u[i]
@@ -254,42 +185,16 @@ end
             umax = ifelse(umaxhere>umax,umaxhere,umax)
         end
 
-        if hasles(A)
-            S = τ[i]
-            if is_dynamic_les(A)
-                L = symouter(û[i],û[i]) - La[i]
-                M = Δ̂²*norm(Ma[i])*Ma[i] - Sa[i]
-                c = 0.5*((traceless(L) : M)/(M:M))
-                c = max(cmin ,c) # to prevent underflow set minimum value for c
-                νt = 2*c*Δ²*norm(S)
-                t = νt*S
-                ca[i] = c
-            elseif is_Smagorinsky(A)
-                νt = α*norm(S)
-                t = νt*S
-            end
-            if has_variable_timestep(A)
-                nnu = (vis+νt)
-                numax = ifelse(numax > nnu, numax, nnu)
-            end
-            if is_SandP(A)
-                P = Lie(S,AntiSymTen(-0.5*w))
-                t += β*P
-            end
-            pr[i] = t:S
-            τ[i] = t
-        end
-
         if hasdensity(A)
             rhsden = (-ρ[i]) * v
-            hasdensityles(A) && (rhsden += νt*f[i])
+            hasdensityles(A) && (rhsden += f[i])
             f[i] = rhsden
             has_variable_timestep(A) && (ρmax = ifelse(ρmax > abs(ρ[i]),ρmax,abs(ρ[i])))
         end
 
         if haspassivescalar(A)
             rhsp = (-φ[i]) * v
-            haspassivescalarles(A) && (rhsp += νt*fφ[i])
+            haspassivescalarles(A) && (rhsp += fφ[i])
             fφ[i] = rhsp
             has_variable_timestep(A) && (smax = ifelse(smax > abs(φ[i]),smax,abs(φ[i])))
         end
@@ -300,9 +205,6 @@ end
         s.reduction[j] = umax
         hasdensity(A) && (s.densitystratification.reduction[j] = ρmax)
         haspassivescalar(A) && (s.passivescalar.reduction[j] = smax)
-        if hasles(A)
-            s.lesmodel.reduction[j] = numax
-        end
     end
 
     return nothing
