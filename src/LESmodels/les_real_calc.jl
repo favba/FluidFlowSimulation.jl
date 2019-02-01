@@ -18,22 +18,22 @@ end
 end
 
 @par function calc_les!(s::A,j::Integer) where {A<:@par(AbstractSimulation)}
+
+    rhs = s.rhs.rr
+    τ = s.lesmodel.tau.rr
+    Δ² = s.lesmodel.Δ²
+
     if haspassivescalarles(A)
         φ = s.passivescalar.φ.field.data
         fφ = s.passivescalar.flux.rr
-        has_les_scalar_vorticity_model(A) && (cφ = s.passivescalar.lesmodel.c)
+        has_les_scalar_vorticity_model(A) && (cφ = s.passivescalar.lesmodel.c*Δ²)
     end
 
     if hasdensityles(A)
         ρ = s.densitystratification.ρ.field.data
         f = s.densitystratification.flux.rr
-        has_les_density_vorticity_model(A) && (cρ = s.densitystratification.lesmodel.c)
+        has_les_density_vorticity_model(A) && (cρ = s.densitystratification.lesmodel.c*Δ²)
     end
-
-    rhs = s.rhs.rr
-    τ = s.lesmodel.tau.rr
-    Δ² = s.lesmodel.Δ²
-    Δ = sqrt(Δ²)
 
     if is_dynamic_les(A)
         ca = s.lesmodel.c.rr
@@ -83,7 +83,7 @@ end
             ∇ρ = f[i]
             rhsden = νt*∇ρ
             if has_les_density_vorticity_model(A)
-                rhsden -= Δ*cρ*w × ∇ρ
+                rhsden += cρ*w × ∇ρ
             end
             f[i] = rhsden
         end
@@ -92,7 +92,7 @@ end
             ∇φ = fφ[i]
             rhsp = νt*fφ[i]
             if has_les_scalar_vorticity_model(A)
-                rhsp -= Δ*cφ*w × ∇φ
+                rhsp += cφ*w × ∇φ
             end
             fφ[i] = rhsp
         end
