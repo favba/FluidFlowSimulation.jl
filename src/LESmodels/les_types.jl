@@ -125,7 +125,7 @@ struct VorticityDiffusion{T<:Real} <: AbstractLESScalar
     c::T
 end
 
-VorticityDiffusion() = VorticityDiffusion{Float64}(1.0)
+VorticityDiffusion() = VorticityDiffusion{Float64}(1.3)
 
 is_vorticity_model(::Any) = false
 is_vorticity_model(::Type{T}) where {T<:VorticityDiffusion} = true
