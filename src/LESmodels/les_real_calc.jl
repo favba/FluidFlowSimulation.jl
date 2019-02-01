@@ -81,7 +81,7 @@ end
 
         if hasdensityles(A)
             ∇ρ = f[i]
-            rhsden = (-νt)*∇ρ
+            rhsden = νt*∇ρ
             if has_les_density_vorticity_model(A)
                 rhsden -= cρ*w × ∇ρ
             end
@@ -90,7 +90,7 @@ end
 
         if haspassivescalarles(A)
             ∇φ = fφ[i]
-            rhsp = (-νt)*fφ[i]
+            rhsp = νt*fφ[i]
             if has_les_scalar_vorticity_model(A)
                 rhsp -= cφ*w × ∇φ
             end
