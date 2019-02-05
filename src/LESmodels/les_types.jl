@@ -85,6 +85,36 @@ stats(a::DynamicSmagorinsky,s::AbstractSimulation) = (tmean(a.pr.rr,s),)
 
 msg(a::DynamicSmagorinsky) = "\nLES model: Dynamic Smagorinsky\nFilter Width: $(sqrt(a.Δ²))\nTest Filter Width: $(sqrt(a.Δ̂²))\nMinimum coefficient permitted: $(a.cmin)\n"
 
+# Vreman Model Start ======================================================
+
+struct VremanLESModel{T} <: EddyViscosityModel
+    c::T
+    Δ²::T
+    tau::SymTrTenField{T,3,2,false}
+    reduction::Vector{T}
+    pr::ScalarField{T,3,2,false}
+end
+
+function VremanLESModel(c::T,Δ::Real,dim::NTuple{3,Integer}) where {T<:Real}
+    data = SymTrTenField{T}(dim,(LX,LY,LZ))
+    pr = ScalarField{T}(dim,(LX,LY,LZ))
+    #fill!(data,0)
+    reduction = zeros(THR ? Threads.nthreads() : 1)
+    return VremanLESModel{T}(c,Δ^2, data,reduction,pr)
+end
+
+is_Vreman(a::Union{<:VremanLESModel,Type{<:VremanLESModel}}) = true
+@inline @par is_Vreman(s::Type{T}) where {T<:@par(AbstractSimulation)} = is_Vreman(LESModelType)
+@inline is_Vreman(s::T) where {T<:AbstractSimulation} = is_Vreman(T)
+is_Vreman(a) = false
+
+statsheader(a::VremanLESModel) = "pr"
+
+stats(a::VremanLESModel,s::VremanLESModel) = (tmean(a.pr.rr,s),)
+
+msg(a::VremanLESModel) = "\nLES model: Vreman\nConstant: $(a.c)\nFilter Width: $(sqrt(a.Δ²))\n"
+
+
 # Smagorinsky+P Model Start ======================================================
 
 struct SandP{T<:Real,Smodel<:EddyViscosityModel} <: AbstractLESModel
