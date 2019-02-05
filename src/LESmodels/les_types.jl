@@ -114,6 +114,7 @@ stats(a::VremanLESModel,s::VremanLESModel) = (tmean(a.pr.rr,s),)
 
 msg(a::VremanLESModel) = "\nLES model: Vreman\nConstant: $(a.c)\nFilter Width: $(sqrt(a.Δ²))\n"
 
+include("VremanLESmodel.jl")
 
 # Smagorinsky+P Model Start ======================================================
 
@@ -135,6 +136,7 @@ is_SandP(a::Union{<:SandP,Type{<:SandP}}) = true
 @inline is_SandP(s::T) where {T<:AbstractSimulation} = is_SandP(T)
 
 @inline is_Smagorinsky(a::Union{<:SandP{t,S},<:Type{SandP{t,S}}}) where {t,S} = is_Smagorinsky(S)
+@inline is_Vreman(a::Union{<:SandP{t,S},<:Type{SandP{t,S}}}) where {t,S} = is_Vreman(S)
 @inline is_dynamic_les(a::Union{<:SandP{t,S},<:Type{SandP{t,S}}}) where {t,S} = is_dynamic_les(S)
 
 statsheader(a::SandP) = "pr"

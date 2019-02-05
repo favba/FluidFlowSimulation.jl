@@ -43,7 +43,7 @@ end
         Sa = s.lesmodel.S.rr
         Δ̂² = s.lesmodel.Δ̂²
         cmin = s.lesmodel.cmin
-    elseif is_Smagorinsky(A)
+    elseif is_Smagorinsky(A) || is_Vreman(A)
         c = s.lesmodel.c
         α = c*c*Δ²
     end
@@ -68,7 +68,10 @@ end
             ca[i] = c
         elseif is_Smagorinsky(A)
             νt = α*norm(S)
-            t = νt*S
+            t = 2*νt*S
+        elseif is_Vreman(A)
+            νt = Vreman_eddy_viscosity(S,w,c,Δ²)
+            t = 2*νt*S
         end
 
         if is_SandP(A)

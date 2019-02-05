@@ -405,8 +405,8 @@ function parameters(d::Dict)
         lestypescalar = if haskey(d,:lesModel)
             if haskey(d,:scalarLesModel)
                 if d[:scalarLesModel] == "vorticityDiffusion"
-                    local c = haskey(d,:scalarVorticityCoefficient) ? parse(Float64,d[:scalarVorticityCoefficient]) : 1.0
-                    VorticityDiffusion(p)
+                    c = haskey(d,:scalarVorticityCoefficient) ? parse(Float64,d[:scalarVorticityCoefficient]) : 1.0
+                    VorticityDiffusion(c)
                 else
                     EddyDiffusion()
                 end
@@ -471,6 +471,10 @@ function parameters(d::Dict)
             c = haskey(d,:smagorinskyConstant) ? Float64(eval(Meta.parse(d[:smagorinskyConstant]))) : 0.17 
             Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
             lestype = Smagorinsky(c,Δ,(nx,ny,nz))
+        elseif d[:lesModel] == "Vreman"
+            c = haskey(d,:vremanConstant) ? Float64(eval(Meta.parse(d[:vremanConstant]))) : 2*(0.17)^2
+            Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
+            lestype = VremanLESModel(c,Δ,(nx,ny,nz))
         elseif d[:lesModel] == "dynamicSmagorinsky"
             Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)
             tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ
@@ -482,6 +486,10 @@ function parameters(d::Dict)
                 c = haskey(d,:smagorinskyConstant) ? Float64(eval(Meta.parse(d[:smagorinskyConstant]))) : 0.17 
                 Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
                 Smagorinsky(c,Δ,(nx,ny,nz))
+            elseif d[:sLesModel] == "Vreman"
+                c = haskey(d,:vremanConstant) ? Float64(eval(Meta.parse(d[:vremanConstant]))) : 2*(0.17)^2
+                Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
+                lestype = VremanLESModel(c,Δ,(nx,ny,nz))
             elseif d[:sLesModel] == "dynamicSmagorinsky"
                 Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)
                 tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ
