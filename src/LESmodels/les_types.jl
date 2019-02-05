@@ -114,7 +114,7 @@ stats(a::VremanLESModel,s::VremanLESModel) = (tmean(a.pr.rr,s),)
 
 msg(a::VremanLESModel) = "\nLES model: Vreman\nConstant: $(a.c)\nFilter Width: $(sqrt(a.Δ²))\n"
 
-include("VremanLESmodel.jl")
+include("VremanLESModel.jl")
 
 # Smagorinsky+P Model Start ======================================================
 
