@@ -449,8 +449,8 @@ function parameters(d::Dict)
         lestypedensity = if haskey(d,:lesModel)
             if haskey(d,:densityLesModel)
                 if d[:densityLesModel] == "vorticityDiffusion"
-                    local c = haskey(d,:densityVorticityCoefficient) ? parse(Float64,d[:densityVorticityCoefficient]) : 1.0
-                    VorticityDiffusion()
+                    c = haskey(d,:densityVorticityCoefficient) ? parse(Float64,d[:densityVorticityCoefficient]) : 1.0
+                    VorticityDiffusion(c)
                 else
                     EddyDiffusion()
                 end
