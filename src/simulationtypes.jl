@@ -162,6 +162,7 @@ Scalar diffusivity: $(α)
 Scalar mean gradient: $(dρdz)
 Scalar mean gradient direction: $(Gdirec)
 Scalar time-stepping method: $(TT)
+Scalar LES model: $(L)
 
 """
 # ==========================================================================================================
@@ -242,6 +243,7 @@ g/ρ₀ : $(g)
 Density mean gradient : $(dρdz)
 Density mean gradient direction: $(Gdirec)
 Density time-stepping method: $(TT)
+Density LES model: $(L)
 
 """
 
