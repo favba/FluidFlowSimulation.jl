@@ -39,9 +39,7 @@ end
     @show finaltime = s.time[]+lenghtime
 
     while (s.iteration[]<finalstep && s.time[]<finaltime)
-        s.iteration[] += 1
         advance_in_time!(s)
-        s.time[] += get_dt(s)
         mod(s.iteration[],s.dtstats) == 0 && writestats(s)
     end
     
