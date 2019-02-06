@@ -116,6 +116,37 @@ msg(a::VremanLESModel) = "\nLES model: Vreman\nConstant: $(a.c)\nFilter Width: $
 
 include("VremanLESModel.jl")
 
+# Vreman Model Start ======================================================
+
+struct ProductionViscosityLESModel{T} <: EddyViscosityModel
+    c::T
+    Δ²::T
+    tau::SymTrTenField{T,3,2,false}
+    reduction::Vector{T}
+    pr::ScalarField{T,3,2,false}
+end
+
+function ProductionViscosityLESModel(c::T,Δ::Real,dim::NTuple{3,Integer}) where {T<:Real}
+    data = SymTrTenField{T}(dim,(LX,LY,LZ))
+    pr = ScalarField{T}(dim,(LX,LY,LZ))
+    #fill!(data,0)
+    reduction = zeros(THR ? Threads.nthreads() : 1)
+    return ProductionViscosityLESModel{T}(c,Δ^2, data,reduction,pr)
+end
+
+is_production_model(a::Type{T}) where {T<:ProductionViscosityLESModel} = true
+@inline @par is_production_model(s::Type{T}) where {T<:@par(AbstractSimulation)} = is_production_model(LESModelType)
+@inline is_production_model(s::T) where {T<:AbstractSimulation} = is_production_model(T)
+is_production_model(a) = false
+
+statsheader(a::ProductionViscosityLESModel) = "pr"
+
+stats(a::ProductionViscosityLESModel,s::AbstractSimulation) = (tmean(a.pr.rr,s),)
+
+msg(a::ProductionViscosityLESModel) = "\nLES model: Production Viscosity\nConstant: $(a.c)\nFilter Width: $(sqrt(a.Δ²))\n"
+
+include("ProductionViscosityLESModel.jl")
+
 # Smagorinsky+P Model Start ======================================================
 
 struct SandP{T<:Real,Smodel<:EddyViscosityModel} <: AbstractLESModel
@@ -138,6 +169,7 @@ is_SandP(a::Union{<:SandP,Type{<:SandP}}) = true
 @inline is_Smagorinsky(a::Union{<:SandP{t,S},<:Type{SandP{t,S}}}) where {t,S} = is_Smagorinsky(S)
 @inline is_Vreman(a::Union{<:SandP{t,S},<:Type{SandP{t,S}}}) where {t,S} = is_Vreman(S)
 @inline is_dynamic_les(a::Union{<:SandP{t,S},<:Type{SandP{t,S}}}) where {t,S} = is_dynamic_les(S)
+@inline is_production_model(a::Union{<:SandP{t,S},<:Type{SandP{t,S}}}) where {t,S} = is_production_model(S)
 
 statsheader(a::SandP) = "pr"
 

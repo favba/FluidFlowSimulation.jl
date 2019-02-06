@@ -477,6 +477,10 @@ function parameters(d::Dict)
             c = haskey(d,:vremanConstant) ? Float64(eval(Meta.parse(d[:vremanConstant]))) : 2*(0.17)^2
             Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
             lestype = VremanLESModel(c,Δ,(nx,ny,nz))
+        elseif d[:lesModel] == "productionViscosity"
+            c = haskey(d,:productionConstant) ? Float64(eval(Meta.parse(d[:productionConstant]))) : 0.5
+            Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
+            lestype = ProductionViscosityLESModel(c,Δ,(nx,ny,nz))
         elseif d[:lesModel] == "dynamicSmagorinsky"
             Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)
             tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ
@@ -492,6 +496,10 @@ function parameters(d::Dict)
                 c = haskey(d,:vremanConstant) ? Float64(eval(Meta.parse(d[:vremanConstant]))) : 2*(0.17)^2
                 Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
                 lestype = VremanLESModel(c,Δ,(nx,ny,nz))
+            elseif d[:sLesModel] == "productionViscosity"
+                c = haskey(d,:productionConstant) ? Float64(eval(Meta.parse(d[:productionConstant]))) : 0.5
+                Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
+                lestype = ProductionViscosityLESModel(c,Δ,(nx,ny,nz))
             elseif d[:sLesModel] == "dynamicSmagorinsky"
                 Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)
                 tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ

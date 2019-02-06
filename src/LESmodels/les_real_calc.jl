@@ -43,7 +43,7 @@ end
         Sa = s.lesmodel.S.rr
         Δ̂² = s.lesmodel.Δ̂²
         cmin = s.lesmodel.cmin
-    elseif is_Smagorinsky(A) || is_Vreman(A)
+    elseif is_Smagorinsky(A) || is_Vreman(A) || is_production_model(A)
         c = s.lesmodel.c
         α = c*c*Δ²
     end
@@ -71,6 +71,9 @@ end
             t = 2*νt*S
         elseif is_Vreman(A)
             νt = Vreman_eddy_viscosity(S,w,c,Δ²)
+            t = 2*νt*S
+        elseif is_production_model(A)
+            νt = production_eddy_viscosity(S,AntiSymTen(-0.5w),c,Δ²)
             t = 2*νt*S
         end
 
