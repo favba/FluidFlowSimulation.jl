@@ -110,7 +110,7 @@ is_Vreman(a) = false
 
 statsheader(a::VremanLESModel) = "pr"
 
-stats(a::VremanLESModel,s::VremanLESModel) = (tmean(a.pr.rr,s),)
+stats(a::VremanLESModel,s::AbstractSimulation) = (tmean(a.pr.rr,s),)
 
 msg(a::VremanLESModel) = "\nLES model: Vreman\nConstant: $(a.c)\nFilter Width: $(sqrt(a.Δ²))\n"
 
