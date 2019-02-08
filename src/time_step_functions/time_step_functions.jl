@@ -94,9 +94,9 @@ function (f::VectorTimeStep)(u::VectorField,rhs::VectorField,s::AbstractSimulati
     return nothing
 end
 
-include("time_step_functions/Euller.jl")  
-include("time_step_functions/Adams_Bashforth.jl")  
-include("time_step_functions/ETD.jl")  
+include("Euller.jl")  
+include("Adams_Bashforth.jl")  
+include("ETD.jl")  
 
 @par function set_dt!(s::@par(AbstractSimulation))
     umax = maximum(s.reduction)
