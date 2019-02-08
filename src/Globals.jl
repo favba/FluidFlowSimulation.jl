@@ -1,7 +1,7 @@
 __precompile__(false)
 module Globals
 
-using GlobalFileHelper, FluidTensors, FluidFields
+using GlobalFileHelper, FluidTensors, FluidFields, StaticArrays
 
 export LX,LY,LZ,NX,NY,NZ,NRRX,NRX,ν,DEALIAS_TYPE,KX,KY,KZ,THR,NT,TRANGE,REAL_RANGES,DEALIAS,K,RXRANGE,XRANGE,YRANGE,ZRANGE,RANGEC
 
@@ -82,10 +82,10 @@ end
     s = (NX,NY,NZ)
     const global K = VecArray(HomogeneousArray{1}(KX,s),HomogeneousArray{2}(KY,s),HomogeneousArray{3}(KZ,s))
 
-    const global XRANGE = Base.OneTo(NX)
-    const global RXRANGE = Base.OneTo(NRX)
-    const global YRANGE = Base.OneTo(NY)
-    const global ZRANGE = Base.OneTo(NZ)
-    const global RANGEC = Base.OneTo(NX*NY*NZ)
+    const global XRANGE = StaticArrays.SOneTo(NX)
+    const global RXRANGE = StaticArrays.SOneTo(NRX)
+    const global YRANGE = StaticArrays.SOneTo(NY)
+    const global ZRANGE = StaticArrays.SOneTo(NZ)
+    const global RANGEC = StaticArrays.SOneTo(NX*NY*NZ)
  
 end
