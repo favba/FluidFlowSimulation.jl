@@ -89,7 +89,7 @@ end
     @mthreads for k in ZRANGE
         for j in YRANGE
             @inbounds @msimd for i in RXRANGE
-                result[Threads.threadid()] += f(x[i,j,k])::T
+                result[Threads.threadid()] += f(x[i,j,k])
             end
         end
     end
@@ -99,20 +99,21 @@ end
 
 tmean(x::AbstractArray,s::AbstractSimulation) = tmean(identity,x,s)
 
-@generated function getind(f::F,x::NTuple{N,AbstractArray{T,3}},i::Int,j::Int,k::Int) where {F,T,N}
-    args = Array{Any,1}(N)
+@generated function getind(f::F,x::NT,i::Int,j::Int,k::Int) where {F<:Function,N,NT<:NTuple{N,AbstractArray}}
+    args = Array{Any,1}(undef,N)
     for l=1:N 
        args[l] = :(x[$l][i,j,k])
     end
-    return Base.pushmeta!(Expr(:call,:f,args...),:inline)
+    ex = Expr(:call,:f,args...) 
+    return Expr(:block,Expr(:meta,:inline),Expr(:meta,:propagate_inbounds),ex)
 end
 
-@par function tmean(f::F,x::NTuple{N,AbstractArray{T,3}},s::@par(AbstractSimulation)) where {F,T,N}
-    result = fill!(s.reduction,0.0)
+@par function tmean(f::F,x::NT,reduction::L) where {F<:Function,N,NT<:NTuple{N,AbstractArray},L}
+    result = fill!(reduction,0.0)
     @mthreads for k in ZRANGE
         for j in YRANGE
             @inbounds @msimd for i in RXRANGE
-                result[Threads.threadid()] += getind(f,x,i,j,k)::T
+                result[Threads.threadid()] += getind(f,x,i,j,k)
             end
         end
     end
