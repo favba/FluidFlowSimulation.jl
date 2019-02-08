@@ -1,7 +1,7 @@
 __precompile__(false)
 module Globals
 
-using GlobalFileHelper, FluidTensors
+using GlobalFileHelper, FluidTensors, FluidFields
 
 export LX,LY,LZ,NX,NY,NZ,NRRX,NRX,ν,DEALIAS_TYPE,KX,KY,KZ,THR,NT,TRANGE,REAL_RANGES,DEALIAS,K,RXRANGE,XRANGE,YRANGE,ZRANGE,RANGEC
 
@@ -75,9 +75,9 @@ end
         @. DEALIAS = (kxp^2 > cutoff) | (kyp^2 > cutoff) | (kzp^2 > cutoff)
     end
 
-    const global KX = (kxp...,)
-    const global KY = (kyp...,)
-    const global KZ = (kzp...,)
+    const global KX = FluidFields.RKvec{Float64}(NRX,LX)#(kxp...,)
+    const global KY = FluidFields.Kvec{Float64}(NY,LY)#(kyp...,)
+    const global KZ = FluidFields.Kvec{Float64}(NZ,LZ)#(kzp...,)
 
     s = (NX,NY,NZ)
     const global K = VecArray(HomogeneousArray{1}(KX,s),HomogeneousArray{2}(KY,s),HomogeneousArray{3}(KZ,s))
