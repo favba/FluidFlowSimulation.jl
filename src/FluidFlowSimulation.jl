@@ -25,6 +25,7 @@ function run_simulation()
     s = parameters(par)
     lengthtime = haskey(par,:timeDuration) ? parse(Float64,par[:timeDuration]) : Inf
     nt = haskey(par,:nt) ? parse(Int,par[:nt]) : typemax(Int)
+    nt -= s.iteration[]
     run_simulation(s,nt,lengthtime)
 end
 
