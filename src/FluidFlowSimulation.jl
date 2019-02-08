@@ -2,7 +2,7 @@ __precompile__(false)
 module FluidFlowSimulation
 export run_simulation, advance_in_time!, parameters, readglobal
 
-using FFTW, InplaceRealFFT, FluidTensors, FluidFields, LinearAlgebra, GlobalFileHelper
+using FFTW, InplaceRealFFT, FluidTensors, FluidFields, LinearAlgebra, GlobalFileHelper, Interpolations, DelimitedFiles
 
 include("Globals.jl")
 
@@ -10,8 +10,8 @@ using .Globals
 
 include("macros.jl")
 include("simulationtypes.jl")
-include("spectrum.jl")
-include("forcing.jl")
+include("Forcing_methods/spectrum.jl")
+include("Forcing_methods/forcing.jl")
 include("utils.jl")
 include("vectorfunctions.jl")
 include("time_step_functions.jl")

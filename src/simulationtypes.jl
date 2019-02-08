@@ -250,55 +250,7 @@ Density LES model: $(L)
 # ==========================================================================================
 # Forcing Scheme
 
-abstract type AbstractForcing end
-
-#statsheader(a::AbstractForcing) = ""
-
-    struct NoForcing <: AbstractForcing end
-
-    statsheader(a::NoForcing) = ""
-
-    stats(a::NoForcing,s::AbstractSimulation) = ()
-
-    msg(a::NoForcing) = "\nForcing: No forcing\n"
-
-struct RfForcing{T<:AbstractFloat} #= Tf = 1.0 , α = 1.0  =# <: AbstractForcing
-    Tf::T
-    α::T
-    Kf::T
-    maxDk::T
-    avgK::Vector{T}
-    Zf::Vector{T}
-    Ef::Vector{T} # Velocity Field Spectrum
-    Em::Vector{T} # Target Spectrum
-    R::Vector{T} # Solution to ODE
-  #  Zf::Vector{Float64} # Cutoff function, using as parameter
-    #dRdt::Vector{Float64} # Not needed if I use Euller timestep
-    factor::Vector{T} # Factor to multiply velocity Field
-    forcex::PaddedArray{T,3,2,false} # Final force
-    forcey::PaddedArray{T,3,2,false} # Final force
-    init::Bool # Tell if the initial condition spectra should be used instead of from data
-    hp::Base.RefValue{T}
-    vp::Base.RefValue{T}
-end
-
-    statsheader(a::RfForcing) = "hp,vp"
-
-    stats(a::RfForcing,s::AbstractSimulation) = (a.hp[],a.vp[])
-
-    msg(a::RfForcing) = "\nForcing:  Rf forcing\nTf: $(getTf(a))\nalphac: $(getalpha(a))\nKf: $(getKf(a))\n"
-
-    @inline getTf(f::RfForcing) = f.Tf
-
-    @inline getalpha(f::RfForcing) = f.α
-
-    @inline getKf(f::RfForcing) = f.Kf
-
-    @inline getmaxdk(f::RfForcing) = f.maxDk
-
-    @inline getavgk(f::RfForcing) = f.avgK
-
-    @inline getZf(f::RfForcing) = f.Zf
+include("Forcing_methods/forcing_types.jl")
 
 # Hyper viscosity Type
 
@@ -511,28 +463,8 @@ function parameters(d::Dict)
     else
         lestype = NoLESModel()
     end
-    if haskey(d,:forcing)
-        if d[:forcing] == "rfForcing"
-            TF = parse(Float64,d[:TF])
-            alphac = parse(Float64,d[:alphac])
-            kf = parse(Float64,d[:kf])
-            nShells2D, maxdk2D, numPtsInShell2D, kh = compute_shells2D(KX,KY,ncx,ny)
-            Ef = zeros(length(kh))
-            Em = zeros(length(kh))
-            R = zeros(length(kh))
-            factor = zeros(length(kh))
-            forcex = PaddedArray((nx,ny,nz))
-            forcey = PaddedArray((nx,ny,nz))
-            Zf = calculate_Zf(kf,kh)
-            if !isfile("targSpectrum.dat")
-                forcingtype = RfForcing{Float64}(TF, alphac, kf, maxdk2D, kh,Zf,Ef,Em,R,factor,forcex,forcey,true,Ref(0.0),Ref(0.0))
-            else
-            #todo read spectrum.dat
-            end
-        end
-    else
-        forcingtype = NoForcing()
-    end
+
+    forcingtype = forcing_model(d,nx,ny,nz,ncx)
 
     if haskey(d,:hyperViscosity)
         νh = parse(Float64,d[:hyperViscosity])
