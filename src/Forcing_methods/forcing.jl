@@ -34,10 +34,10 @@ initialize!(f::NoForcing,s) = nothing
     calculate_u1u2_spectrum!(Ef,s.u, cPlaneNumber)
 
     @inbounds for i=2:nShells2d
-        if KX[i] <= _kf
+        if avgWaveNumInShell2d[i] <= _kf
             R[i] += dt*(-2*alpha*omega*R[i] - omega*omega*(Ef[i] - Em[i])) 
             R[i]=max(0.0, R[i])
-            factor[i] = Base.FastMath.sqrt_llvm(R[i]/max(abs(Ef[i]),eps))*Zf[i]*dt     
+            factor[i] = Base.FastMath.sqrt_llvm(R[i]/max(Ef[i],eps))*Zf[i]*dt     
         end
     end
 

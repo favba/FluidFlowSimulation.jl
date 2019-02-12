@@ -8,7 +8,7 @@ stats(a::NoForcing,s::AbstractSimulation) = ()
 
 msg(a::NoForcing) = "\nForcing: No forcing\n"
 
-struct RfForcing{T<:AbstractFloat} #= Tf = 1.0 , α = 1.0  =# <: AbstractForcing
+struct RfForcing{T<:AbstractFloat} <: AbstractForcing
     Tf::T
     α::T
     Kf::T
@@ -65,9 +65,9 @@ function forcing_model(d::AbstractDict,nx::Integer,ny::Integer,nz::Integer,ncx::
             alphac = parse(Float64,d[:alphac])
             kf = parse(Float64,d[:kf])
             nShells2D, maxdk2D, numPtsInShell2D, kh = compute_shells2D(KX,KY,ncx,ny)
-            Ef = zeros(length(kh))
-            Em = zeros(length(kh))
-            R = zeros(length(kh))
+            Ef = zeros(nShells2D)
+            Em = zeros(nShells2D)
+            R = zeros(nShells2D)
             factor = zeros(length(kh))
             forcex = PaddedArray((nx,ny,nz))
             forcey = PaddedArray((nx,ny,nz))
