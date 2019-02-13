@@ -35,9 +35,9 @@ initialize!(f::NoForcing,s) = nothing
 
     @inbounds for i=2:nShells2d
         if avgWaveNumInShell2d[i] <= _kf
-            R[i] += dt*(-2*alpha*omega*R[i] - omega*omega*(Ef[i] - Em[i])) 
-            R[i]=max(0.0, R[i])
-            factor[i] = Base.FastMath.sqrt_llvm(R[i]/max(Ef[i],eps))*Zf[i]*dt     
+            R[i] += dt*(-2*alpha*omega*R[i] - omega*omega*(Ef[i] - Em[i]))
+            #R[i]=max(0.0, R[i])
+            factor[i] = max(0.0,Base.FastMath.sqrt_llvm(R[i]/max(Ef[i],eps))*Zf[i]*dt)
         end
     end
 
