@@ -46,6 +46,16 @@ msg(a::RfForcing) = "\nForcing:  Rf forcing\nTf: $(getTf(a))\nalphac: $(getalpha
 
 @inline getZf(f::RfForcing) = f.Zf
 
+function initialize!(f::RfForcing,s)
+    if f.init
+        calculate_u1u2_spectrum!(f.Em,s.u,1)
+    end
+    if s.iteration[] != 0 
+        copyto!(f.R, vec(readdlm("R.$(s.iteration[])",Float64)))
+    end
+    return nothing
+end
+
 function calculate_Em!(Em,kh)
     data = readdlm("targSpectrum.dat",skipstart=1)
     E = interpolate((data[:,1],),data[:,2],Gridded(Linear()))

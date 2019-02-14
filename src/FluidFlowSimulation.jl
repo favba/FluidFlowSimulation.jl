@@ -24,8 +24,7 @@ function run_simulation()
     par = readglobal()
     s = parameters(par)
     lengthtime = haskey(par,:timeDuration) ? parse(Float64,par[:timeDuration]) : Inf
-    nt = haskey(par,:nt) ? parse(Int,par[:nt]) : typemax(Int)
-    nt -= s.iteration[]
+    nt = haskey(par,:nt) ? parse(Int,par[:nt]) : (typemax(Int) - s.iteration[])
     run_simulation(s,nt,lengthtime)
 end
 
@@ -34,8 +33,8 @@ end
 
     initialize!(s)
 
-    @assert totalnsteps >= s.dtoutput 
-    @assert totalnsteps >= s.dtstats
+    @assert totalnsteps + s.iteration[] >= s.dtoutput 
+    @assert totalnsteps + s.iteration[] >= s.dtstats
     @show finalstep = s.iteration[] + totalnsteps
     @show finaltime = s.time[]+lenghtime
 
@@ -53,6 +52,10 @@ end
         hasles(s) && real!(s.lesmodel.tau)
 
         writeoutput(s)
+    end
+
+    if typeof(s.forcing) <: RfForcing
+        writedlm("R.$(s.iteration[])",s.forcing.R)
     end
 
     return s

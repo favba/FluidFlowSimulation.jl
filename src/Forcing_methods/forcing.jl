@@ -96,10 +96,3 @@ initialize!(f::NoForcing,s) = nothing
     F.vp[] = verticalPower
     return 1/dt
 end
-
-function initialize!(f::RfForcing,s)
-    if f.init
-        calculate_u1u2_spectrum!(f.Em,s.u,1)
-    end
-    return nothing
-end
