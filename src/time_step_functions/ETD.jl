@@ -14,7 +14,7 @@ function ETD3rdO{adp,indt,Hyper}() where {adp,indt,Hyper}
     dt = Ref(indt)
     dt2 = Ref(indt)
     dt3 = Ref(indt)
-    c = zeros(NRX,NY,NZ)
+    c = zeros(NX,NY,NZ)
     At = zero(c)
     Bt = zero(c)
     Ct = zero(c)
@@ -68,7 +68,14 @@ function set_dt!(t::ETD3rdO{true,idt,Hyper},dt::Real) where {idt,Hyper}
     set_ABCt!(t)
 end
 
-@par function set_ABCt!(t::ETD3rdO)
+function set_ABCt!(t::ETD3rdO)
+    @mthreads for j in 1:NT
+        set_ABCt!(t,j)
+    end
+    return nothing
+end
+
+function set_ABCt!(t::ETD3rdO,j::Integer)
     l = t.c
     At = t.At
     Bt = t.Bt
@@ -80,27 +87,6 @@ end
     b0,b1,b2,b3 = get_bts(t)
     c0,c1,c2,c3 = get_cts(t)
 
-    if l[end]*t.dt[] <= 1.0
-        ind1 = Base.OneTo(length(At))
-        ind2 = 1:0
-    else
-        i = findfirst(x -> x*dt >= 1., l) - 1
-        ind1 = 1:i
-        fim = length(l)
-        ind2 = (fim-i+1):fim
-    end
-
-    for i in ind1
-        @inbounds begin
-        l1 = l[i]
-        l2 = l1*l[i]
-        l3 = l2*l[i]
-        At[i] = muladd(a1, l1, muladd(a2, l2, muladd(a3, l3, a0)))
-        Bt[i] = muladd(b1, l1, muladd(b2, l2, muladd(b3, l3, b0)))
-        Ct[i] = muladd(c1, l1, muladd(c2, l2, muladd(c3, l3, c0)))
-        end
-    end
-
     e1 = dt^2 + dt*(2dt2+dt3)
     e2 = dt2*(dt2+dt3)
     e3 = 2dt
@@ -111,18 +97,24 @@ end
     e7 = dt2*dt3
     e8 = dt*(dt+dt2)
     e9 = dt3*(dt2+dt3)
-    for i in ind2
-        @inbounds begin
+ 
+    @inbounds for i in COMPLEX_RANGES[j]
         l1 = l[i]
-        ldt = l1*dt
         l2 = l1*l1
         l3 = l2*l1
+        ldt = l1*dt
+        test = -l1*dt<=1.0
 
-        At[i] = (2expm1(ldt) - l2*(e1 - e2*expm1(ldt)) - l1*(e3 - e4*expm1(ldt))) / (l3*e2)
-        Bt[i] = (e5*l2 - 2expm1(ldt) + l1*(e3 - e6*expm1(ldt)) )/(l3*e7)
-        Ct[i] = (2expm1(ldt) - e8*l2 - l1*(e3 + dt2*expm1(ldt))) / (l3*e9)
-        end
+        At[i] = ifelse(test,
+            muladd(a1, l1, muladd(a2, l2, muladd(a3, l3, a0))),
+            (2expm1(ldt) - l2*(e1 - e2*expm1(ldt)) - l1*(e3 - e4*expm1(ldt))) / (l3*e2))
+        Bt[i] = ifelse(test,
+            muladd(b1, l1, muladd(b2, l2, muladd(b3, l3, b0))),
+            (e5*l2 - 2expm1(ldt) + l1*(e3 - e6*expm1(ldt)) )/(l3*e7))
+        Ct[i] = ifelse(test,muladd(c1, l1, muladd(c2, l2, muladd(c3, l3, c0))),
+            (2expm1(ldt) - e8*l2 - l1*(e3 + dt2*expm1(ldt))) / (l3*e9))
     end
+
     return nothing
 end
 

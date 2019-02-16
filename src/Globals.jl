@@ -3,7 +3,7 @@ module Globals
 
 using GlobalFileHelper, FluidTensors, FluidFields, StaticArrays
 
-export LX,LY,LZ,NX,NY,NZ,NRRX,NRX,ν,DEALIAS_TYPE,KX,KY,KZ,THR,NT,TRANGE,REAL_RANGES,DEALIAS,K,RXRANGE,XRANGE,YRANGE,ZRANGE,RANGEC
+export LX,LY,LZ,NX,NY,NZ,NRRX,NRX,ν,DEALIAS_TYPE,KX,KY,KZ,THR,NT,TRANGE,REAL_RANGES,DEALIAS,K,RXRANGE,XRANGE,YRANGE,ZRANGE,RANGEC, COMPLEX_RANGES
 
 function splitrange(lr,nt)
     a = UnitRange{Int}[]
@@ -60,6 +60,7 @@ end
     const global TRANGE = Base.OneTo(NT)
   
     const global REAL_RANGES = splitrange(NRRX*NY*NZ, NT)
+    const global COMPLEX_RANGES = splitrange(NX*NY*NZ, NT)
   
     haskey(d,:dealias) ? (Dealiastype = Symbol(d[:dealias])) : (Dealiastype = :sphere)
     haskey(d,:cutoff) ? (cutoffr = Float64(eval(Meta.parse(d[:cutoff])))) : (cutoffr = 15/16)
