@@ -50,7 +50,7 @@ end
 @par function init_c!(t::ETD3rdO{adp,indt,true},c::AbstractArray,aux,s::@par(AbstractSimulation)) where {adp,indt}
     mν::Float64 = -ν
     mνh::Float64 = -nuh(s)
-    M::Int = get_hyperviscosity_exponent(s)
+    M::Int = 2*get_hyperviscosity_exponent(s)
     @mthreads for k in ZRANGE
         for j in YRANGE
             @inbounds @msimd for i in XRANGE

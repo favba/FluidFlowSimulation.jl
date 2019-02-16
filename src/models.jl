@@ -227,7 +227,7 @@ end
         mν = -ν
         if hashyperviscosity(A)
             mνh = -nuh(A)
-            M = get_hyperviscosity_exponent(A)
+            M = 2*get_hyperviscosity_exponent(A)
         end
     end
 
