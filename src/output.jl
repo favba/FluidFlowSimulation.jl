@@ -31,4 +31,7 @@ function writeoutput(s::AbstractSimulation)
         write("T23.$init",t.rr.yz)
         write("pr.$init",s.lesmodel.pr)
     end
+    if typeof(s.forcing) <: RfForcing
+        writedlm("R.$init",s.forcing.R)
+    end
 end
