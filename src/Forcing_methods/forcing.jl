@@ -37,7 +37,7 @@ initialize!(f::NoForcing,s) = nothing
         if avgWaveNumInShell2d[i] <= _kf
             R[i] += dt*(-2*alpha*omega*R[i] - omega*omega*(Ef[i] - Em[i])) 
             R[i]=max(0.0, R[i])
-            factor[i] = Base.FastMath.sqrt_llvm(R[i]/max(Ef[i],eps))*Zf[i]*dt     
+            factor[i] = fsqrt(R[i]/max(Ef[i],eps))*Zf[i]*dt     
         end
     end
 
@@ -49,7 +49,7 @@ initialize!(f::NoForcing,s) = nothing
     @inbounds for j=YRANGE
         conjFactX=1.0
         for i=XRANGE
-            k = @fastmath sqrt(muladd(KX[i],KX[i],KY[j]^2))
+            k = fsqrt(muladd(KX[i],KX[i],KY[j]^2))
             n = round(Int,k/maxdk) + 1
             if (1 < n <= nShells2d)
                 if avgWaveNumInShell2d[n] <= _kf
@@ -77,7 +77,7 @@ initialize!(f::NoForcing,s) = nothing
     umag = 0.0
     #     // get the sum of the existing velocites
     @inbounds for k = 2:6
-        umag += @fastmath sqrt(abs2(u1[1,1,k]) + abs2(u2[1,1,k])) + sqrt(abs2(u1[1,1,NZ-k+2]) + abs2(u2[1,1,NZ-k+2]))
+        umag += fsqrt(abs2(u1[1,1,k]) + abs2(u2[1,1,k])) + fsqrt(abs2(u1[1,1,NZ-k+2]) + abs2(u2[1,1,NZ-k+2]))
     end
 
     f = dt*sqrt(2.0*horizontalPower*(1.0-powerFraction))/umag

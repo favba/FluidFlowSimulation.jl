@@ -8,7 +8,7 @@ function calculate_u1u2_spectrum!(Ef,u,cplane)
     @inbounds for j in YRANGE
         conjFactX=1.0
         for i in XRANGE
-            k = @fastmath sqrt(KX[i]^2 + KY[j]^2)
+            k = fsqrt(KX[i]^2 + KY[j]^2)
             n = round(Int, k/maxdk2d) + 1
             if n <= nshells
                 magsq = abs2(ux[i,j,cplane]) + abs2(uy[i,j,cplane])

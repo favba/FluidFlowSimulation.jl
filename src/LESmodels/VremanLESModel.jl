@@ -4,5 +4,5 @@
     β = Δ2 * symmetric(α' ⋅ α)
     B = β.xx*(β.yy + β.zz) + β.yy*β.zz - (β.xy^2 + β.xz^2 + β.yz^2)
     B = ifelse(B<0.0,0.0,B)
-    return @fastmath c*sqrt(B/(α:α))
+    return c*fsqrt(B/(α:α))
 end

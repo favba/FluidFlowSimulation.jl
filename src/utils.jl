@@ -8,6 +8,8 @@ function rfftfreq(n::Integer,s::Real)::Vector{Float64}
     Float64[(n/2 - i)/s for i = n/2:-1:0]
 end
 
+@inline fsqrt(x) = @fastmath(sqrt(x))
+
 function fftfreq(n::Integer,s::Real)::Vector{Float64}
     if iseven(n)
         return vcat(Float64[(n/2 - i)/s for i = n/2:-1:1],Float64[-i/s for i = n/2:-1:1])
@@ -126,7 +128,7 @@ function compute_shells2D(kx,ky,Nx,Ny)
 
     @inbounds for j=1:Ny
         for i=1:Nx
-            K = sqrt(kx[i]^2 + ky[j]^2)
+            K = fsqrt(kx[i]^2 + ky[j]^2)
             ii = round(Int,K/maxdk2D)+1
             ii > nShells2D && break
             kh[ii] += K
@@ -157,7 +159,7 @@ end
 @inline Gaussfilter(Δ²::Real, i::Integer,j::Integer,k::Integer) = Gaussfilter(Δ²,K[i,j,k]⋅K[i,j,k])
 
 @inline function boxfilter(Δ²::Real, k2::Real)
-    aux = 0.5*sqrt(Δ²*k2)
+    aux = 0.5*fsqrt(Δ²*k2)
     return k2 == zero(k2) ? oneunit(k2) : sin(aux)/aux
 end
 
