@@ -112,7 +112,7 @@ function set_ABCt!(t::ETD3rdO,j::Integer)
             muladd(b1, l1, muladd(b2, l2, muladd(b3, l3, b0))),
             (e5*l2 - 2expm1(ldt) + l1*(e3 - e6*expm1(ldt)) )/(l3*e7))
         Ct[i] = ifelse(test,muladd(c1, l1, muladd(c2, l2, muladd(c3, l3, c0))),
-            (2expm1(ldt) - e8*l2 - l1*(e3 + dt2*expm1(ldt))) / (l3*e9))
+            (2expm1(ldt) - e8*l2 - l1*(e3 - dt2*expm1(ldt))) / (l3*e9))
     end
 
     return nothing
