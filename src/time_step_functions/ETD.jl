@@ -103,7 +103,7 @@ function set_ABCt!(t::ETD3rdO,j::Integer)
         l2 = l1*l1
         l3 = l2*l1
         ldt = l1*dt
-        test = -l1*dt<=1.0
+        test = -l1*dt<=0.01
 
         At[i] = ifelse(test,
             muladd(a1, l1, muladd(a2, l2, muladd(a3, l3, a0))),
