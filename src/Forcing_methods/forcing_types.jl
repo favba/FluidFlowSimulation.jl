@@ -52,6 +52,8 @@ function initialize!(f::RfForcing,s)
     end
     if s.iteration[] != 0 
         copyto!(f.R, vec(readdlm("R.$(s.iteration[])",Float64)))
+    else
+        fill!(f.R,0.0)
     end
     return nothing
 end
