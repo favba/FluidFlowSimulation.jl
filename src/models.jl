@@ -18,14 +18,15 @@ end
     hasles(A) && setfourier!(s.lesmodel.tau)
     is_dynamic_les(A) && (setfourier!(s.lesmodel.û); setfourier!(s.lesmodel.M))
 
-    # calculate forcing
-    hasforcing(A) && s.forcing(s)
 
     #actual calculation
     fourierspacep1!(s)
     realspace!(s)
     has_variable_timestep(s) && set_dt!(s)
     fourierspacep2!(s)
+
+    # calculate forcing
+    hasforcing(A) && s.forcing(s)
     return nothing
 end
 

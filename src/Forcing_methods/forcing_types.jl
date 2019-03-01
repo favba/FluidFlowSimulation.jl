@@ -50,10 +50,8 @@ function initialize!(f::RfForcing,s)
     if f.init
         calculate_u1u2_spectrum!(f.Em,s.u,1)
     end
-    if s.iteration[] != 0 
+    if isfile("R.$(s.iteration[])")
         copyto!(f.R, vec(readdlm("R.$(s.iteration[])",Float64)))
-    else
-        fill!(f.R,0.0)
     end
     return nothing
 end
