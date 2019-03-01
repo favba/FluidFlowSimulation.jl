@@ -84,8 +84,8 @@ function set_ABCt!(t::ETD3rdO,j::Integer)
     dt2 = t.dt2[]
     dt3 = t.dt3[]
     a0,a1,a2,a3 = get_ats(t)
-    b0,b1,b2,b3 = get_bts(t)
-    c0,c1,c2,c3 = get_cts(t)
+    b0,b1,b2 = get_bts(t)
+    c0,c1,c2 = get_cts(t)
 
     e1 = dt^2 + dt*(2dt2+dt3)
     e2 = dt2*(dt2+dt3)
@@ -103,15 +103,15 @@ function set_ABCt!(t::ETD3rdO,j::Integer)
         l2 = l1*l1
         l3 = l2*l1
         ldt = l1*dt
-        test = -l1*dt<=0.01
+        test = -l1*dt<=1e-4
 
         At[i] = ifelse(test,
             muladd(a1, l1, muladd(a2, l2, muladd(a3, l3, a0))),
             (2expm1(ldt) - l2*(e1 - e2*expm1(ldt)) - l1*(e3 - e4*expm1(ldt))) / (l3*e2))
         Bt[i] = ifelse(test,
-            muladd(b1, l1, muladd(b2, l2, muladd(b3, l3, b0))),
+            muladd(b1, l1, muladd(b2, l2, b0)),
             (e5*l2 - 2expm1(ldt) + l1*(e3 - e6*expm1(ldt)) )/(l3*e7))
-        Ct[i] = ifelse(test,muladd(c1, l1, muladd(c2, l2, muladd(c3, l3, c0))),
+        Ct[i] = ifelse(test,muladd(c1, l1, muladd(c2, l2, c0)),
             (2expm1(ldt) - e8*l2 - l1*(e3 - dt2*expm1(ldt))) / (l3*e9))
     end
 
@@ -124,8 +124,8 @@ end
     dt3 = t.dt3[]
     a0 = (dt*(2*dt*dt + 6dt2*(dt2 + dt3) + 3dt*(2dt2 + dt3)))/(6*dt2*(dt2+dt3))
     a1 = (dt*dt*(dt^2 + 6dt2*(dt2 + dt3) + 2dt*(2dt2 + dt3)))/(12dt2*(dt2 + dt3))
-    a2 = (dt*dt*dt*(2*dt^2 + 20dt2*(dt2 + dt3) + 5dt*(2dt2 + dt3)))/(120dt2*(dt2 + dt3))
-    a3 = (dt*dt*dt*dt*(dt^2 + 15dt2*(dt2 + dt3) + 3dt*(2dt2 + dt3)))/(360dt2*(dt2 + dt3))
+    a2 = (dt*dt*dt*(4dt2*(dt2 + dt3) + dt*(2dt2 + dt3)))/(24*dt2*(dt2+dt3))
+    a3 = dt*dt*dt*dt/24 
     return a0,a1,a2,a3
 end
 
@@ -135,9 +135,8 @@ end
     dt3 = t.dt3[]
     b0 = -((dt^2 * (2dt + 3*(dt2 + dt3)))/(6*(dt2*dt3)))
     b1 = -(((dt*dt*dt*(dt + 2*(dt2 + dt3))))/(12*(dt2*dt3)))
-    b2 = -((dt*dt*dt*dt*(2dt + 5*(dt2 + dt3)))/(120*(dt2*dt3)))
-    b3 = -(((dt*dt*dt*dt*(dt + 3*(dt2 + dt3))))/(360*(dt2*dt3)))
-    return b0,b1,b2,b3
+    b2 = -((dt*dt*dt*dt*(dt2 + dt3))/(24*(dt2*dt3)))
+    return b0,b1,b2
 end
 
 @inline function get_cts(t::ETD3rdO)
@@ -146,9 +145,8 @@ end
     dt3 = t.dt3[]
     c0 = (dt*dt*(2dt + 3dt2))/(6dt3*(dt2 + dt3))
     c1 = (dt*dt*dt*(dt + 2dt2))/(12dt3*(dt2 + dt3))
-    c2 = (dt*dt*dt*dt*(2dt + 5dt2))/(120dt3*(dt2 + dt3))
-    c3 = (dt^5 * (dt + 3dt2))/(360dt3*(dt2 + dt3))
-    return c0,c1,c2,c3
+    c2 = (dt*dt*dt*dt*dt2)/(24*dt3*(dt2 + dt3))
+    return c0,c1,c2
 end
 
 @par function (f::ETD3rdO)(ρ::AbstractArray{<:Complex,3},ρrhs::AbstractArray{<:Complex,3}, s::@par(AbstractSimulation))
