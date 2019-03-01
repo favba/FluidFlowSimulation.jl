@@ -3,6 +3,7 @@ include("LESmodels/les_real_calc.jl")
 @inline @par function advance_in_time!(s::A) where {A<:@par(AbstractSimulation)}
     s.iteration[] += 1
     calculate_rhs!(s)
+    hasforcing(A) && s.forcing(s)
     time_step!(s)
     s.time[] += get_dt(s)
     return nothing
@@ -25,8 +26,6 @@ end
     has_variable_timestep(s) && set_dt!(s)
     fourierspacep2!(s)
 
-    # calculate forcing
-    hasforcing(A) && s.forcing(s)
     return nothing
 end
 

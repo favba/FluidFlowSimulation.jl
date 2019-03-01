@@ -65,8 +65,6 @@ function initialize!(s::AbstractSimulation)
     s.iteration[] == 0 && writeheader(s)
     myfourier!(s.u)
 
-    initialize!(s.forcing,s)
-
     if haspassivescalar(s)
         myfourier!(s.passivescalar.φ) 
     end
@@ -77,6 +75,7 @@ function initialize!(s::AbstractSimulation)
 
     calculate_rhs!(s)
 
+    initialize!(s.forcing,s)
     initialize!(s.timestep,s.rhs,s)
     initialize!(s.passivescalar,s)
     initialize!(s.densitystratification,s)
