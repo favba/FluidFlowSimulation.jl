@@ -18,8 +18,6 @@ struct RfForcing{T<:AbstractFloat} <: AbstractForcing
     Ef::Vector{T} # Velocity Field Spectrum
     Em::Vector{T} # Target Spectrum
     R::Vector{T} # Solution to ODE
-  #  Zf::Vector{Float64} # Cutoff function, using as parameter
-    #dRdt::Vector{Float64} # Not needed if I use Euller timestep
     factor::Vector{T} # Factor to multiply velocity Field
     forcex::PaddedArray{T,3,2,false} # Final force
     forcey::PaddedArray{T,3,2,false} # Final force
