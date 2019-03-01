@@ -79,7 +79,7 @@ function forcing_model(d::AbstractDict,nx::Integer,ny::Integer,nz::Integer,ncx::
             factor = zeros(length(kh))
             forcex = PaddedArray((nx,ny,nz))
             forcey = PaddedArray((nx,ny,nz))
-            Zf = calculate_Zf(kf,kh)
+            Zf = calculate_Zf(d,kf,kh)
             if !isfile("targSpectrum.dat")
                 forcingtype = RfForcing{Float64}(TF, alphac, kf, maxdk2D, kh,Zf,Ef,Em,R,factor,forcex,forcey,true,Ref(0.0),Ref(0.0))
             else
