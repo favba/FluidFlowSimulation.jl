@@ -98,7 +98,7 @@ function set_ABCt!(t::ETD3rdO,j::Integer)
     e8 = dt*(dt+dt2)
     e9 = dt3*(dt2+dt3)
  
-    @inbounds for i in COMPLEX_RANGES[j]
+    @inbounds @msimd for i in COMPLEX_RANGES[j]
         l1 = l[i]
         l2 = l1*l1
         l3 = l2*l1
