@@ -252,7 +252,7 @@ function parameters(d::Dict)
         #@. dealias = (kxp^2 > cutoff) | (kyp^2 > cutoff) | (kzp^2 > cutoff)
     #end
   
-    integrator = haskey(d,:velocityTimeStep) ? Symbol(d[:velocityTimeStep]) : :Adams_Bashforth3rdO
+    integrator = haskey(d,:velocityTimeStep) ? Symbol(d[:velocityTimeStep]) : :ETD3rdO
     variableTimeStep = haskey(d,:variableTimestepFlag) ? parse(Bool,d[:variableTimestepFlag]) : true
     cfl = haskey(d,:cfl) ? parse(Float64,d[:cfl]) : 0.18
     idt = haskey(d,:dt) ? Float64(eval(Meta.parse(d[:dt]))) : 0.0
