@@ -275,7 +275,7 @@ function parameters(d::Dict)
         elseif integrator === :Adams_Bashforth3rdO
             Adams_Bashforth3rdO{variableTimeStep,idt}()
         else
-            ETD3rdO{variableTimeStep,idt,false}()
+            ETD3rdO{variableTimeStep,idt,haskey(d,:hyperViscosity) ? true : false}()
         end 
 
         lestypescalar = if haskey(d,:lesModel)
