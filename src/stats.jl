@@ -30,34 +30,26 @@ stats(s::AbstractSimulation) =
     u2 = real(s.u.c.y[1,1,1])
     u3 = real(s.u.c.z[1,1,1])
 
-    mycopy!(s.rhs,s.u)
-    setfourier!(s.rhs)
-    real!(s.rhs)
-    u12 = tmean(x->x^2,s.rhs.rr.x,s)
-    u22 = tmean(x->x^2,s.rhs.rr.y,s)
-    u32 = tmean(x->x^2,s.rhs.rr.z,s)
+    u12 = squared_mean(s.reduction, s.u.c.x)
+    u22 = squared_mean(s.reduction, s.u.c.y)
+    u32 = squared_mean(s.reduction, s.u.c.z)
     k = (u12+u22+u32)/2
 
-    grad!(s.rhs,s.u.c.x,s)
     setfourier!(s.rhs)
-    real!(s.rhs)
-    d1d1 = tmean(x->x^2,s.rhs.rr.x,s)
-    d1d2 = tmean(x->x^2,s.rhs.rr.y,s)
-    d1d3 = tmean(x->x^2,s.rhs.rr.z,s)
+    grad!(s.rhs,s.u.c.x,s)
+    d1d1 = squared_mean(s.reduction, s.rhs.c.x)
+    d1d2 = squared_mean(s.reduction, s.rhs.c.y)
+    d1d3 = squared_mean(s.reduction, s.rhs.c.z)
 
     grad!(s.rhs,s.u.c.y,s)
-    setfourier!(s.rhs)
-    real!(s.rhs)
-    d2d1 = tmean(x->x^2,s.rhs.rr.x,s)
-    d2d2 = tmean(x->x^2,s.rhs.rr.y,s)
-    d2d3 = tmean(x->x^2,s.rhs.rr.z,s)
+    d2d1 = squared_mean(s.reduction, s.rhs.c.x)
+    d2d2 = squared_mean(s.reduction, s.rhs.c.y)
+    d2d3 = squared_mean(s.reduction, s.rhs.c.z)
 
     grad!(s.rhs,s.u.c.z,s)
-    setfourier!(s.rhs)
-    real!(s.rhs)
-    d3d1 = tmean(x->x^2,s.rhs.rr.x,s)
-    d3d2 = tmean(x->x^2,s.rhs.rr.y,s)
-    d3d3 = tmean(x->x^2,s.rhs.rr.z,s)
+    d3d1 = squared_mean(s.reduction, s.rhs.c.x)
+    d3d2 = squared_mean(s.reduction, s.rhs.c.y)
+    d3d3 = squared_mean(s.reduction, s.rhs.c.z)
 
     ε = 2ν*(d1d1+d2d2+d3d3+ 2*((d1d2+d2d1)/2 + (d1d3+d3d1)/2 + (d2d3+d3d2)/2))
 
@@ -66,17 +58,13 @@ end
 
 @par function scalar_stats(ρ,s1,s::@par(AbstractSimulation))
     rho = real(ρ[1,1,1])
-    mycopy!(s1.rhs,ρ)
-    setfourier!(s1.rhs)
-    real!(s1.rhs)
-    rho2 = tmean(x->x^2,parent(real(s1.rhs)),s)
+    rho2 = squared_mean(s1.reduction,ρ)
 
-    grad!(s.rhs,complex(ρ),s)
     setfourier!(s.rhs)
-    real!(s.rhs)
-    drd1 = tmean(x->x^2,s.rhs.rr.x,s)
-    drd2 = tmean(x->x^2,s.rhs.rr.y,s)
-    drd3 = tmean(x->x^2,s.rhs.rr.z,s)
+    grad!(s.rhs,ρ,s)
+    drd1 = squared_mean(s1.reduction, s.rhs.c.x)
+    drd2 = squared_mean(s1.reduction, s.rhs.c.y)
+    drd3 = squared_mean(s1.reduction, s.rhs.c.z)
 
     return rho, rho2, drd1, drd2, drd3
 end
@@ -118,4 +106,43 @@ end
         end
     end
     return sum(result)/(NRX*NY*NZ)
+end
+
+function squared_mean(reduction,u::ScalarField{T}) where {T}
+    isrealspace(u) && fourier!(u)
+    result = fill!(reduction,zero(T))
+    @mthreads for l in ZRANGE
+        ee = zero(T)
+        ii = Threads.threadid()
+        @inbounds for j in YRANGE
+            magsq = abs2(u[1,j,l])
+            ee += magsq
+            @simd for i in 2:NX
+                magsq = abs2(u[i,j,l])
+                ee += 2*magsq 
+            end
+        end
+        result[ii] += ee
+    end
+    return sum(result)
+end
+
+function proj_mean(reduction,u::ScalarField{T},v) where {T}
+    isrealspace(u) && fourier!(u)
+    #isrealspace(v) && fourier!(v)
+    result = fill!(reduction,zero(T))
+    @mthreads for l in ZRANGE
+        ee = zero(T)
+        ii = Threads.threadid()
+        @inbounds for j in YRANGE
+            magsq = proj(u[1,j,l],v[1,j,l])
+            ee += magsq
+            @simd for i in 2:NX
+                magsq = proj(u[i,j,l],v[i,j,l])
+                ee += 2*magsq 
+            end
+        end
+        result[ii] += ee
+    end
+    return sum(result)
 end

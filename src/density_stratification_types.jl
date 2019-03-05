@@ -34,7 +34,7 @@ abstract type AbstractDensityStratification{L,TT,α,dρdz,g,Gdirec} end
 
     statsheader(a::AbstractDensityStratification) = "rho,rhop2,drhodxp2,drhodyp2,drhodzp2,u.g*rho"
 
-    stats(a::AbstractDensityStratification,s::A) where {A<:AbstractSimulation} = (scalar_stats(a.ρ,a,s)..., buoyancy_flux(a,s))
+    stats(a::AbstractDensityStratification,s::A) where {A<:AbstractSimulation} = (scalar_stats(a.ρ,a,s)...,)# buoyancy_flux(a,s))
 
 struct NoDensityStratification <: AbstractDensityStratification{NoLESScalar,nothing,nothing,nothing,nothing,nothing} end
 
