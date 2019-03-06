@@ -200,6 +200,10 @@ end
     @inline nuh(::Type{<:HyperViscosity{n,M}}) where {n,M} = n
     @inline get_hyperviscosity_exponent(::Type{<:HyperViscosity{n,M}}) where {n,M} = M
 
+    statsheader(a::HyperViscosity) = "hdiss"
+
+    stats(a::AbstractHyperViscosity,s::AbstractSimulation) = (hyperviscosity_stats(s.reduction,s.u,s))
+
     msg(a::HyperViscosity{nh,M}) where {nh,M} = "\nHyper viscosity: νh = $(nh), m = $(M)\n\n"
 
 # Initializan function =========================================================================================================================================================================================================

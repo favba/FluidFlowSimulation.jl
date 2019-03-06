@@ -115,11 +115,9 @@ function squared_mean(reduction,u::ScalarField{T}) where {T}
         ee = zero(T)
         ii = Threads.threadid()
         @inbounds for j in YRANGE
-            magsq = abs2(u[1,j,l])
-            ee += magsq
-            @simd for i in 2:NX
+            @simd for i in XRANGE
                 magsq = abs2(u[i,j,l])
-                ee += 2*magsq 
+                ee += (1 + (i>1))*magsq 
             end
         end
         result[ii] += ee
@@ -135,14 +133,40 @@ function proj_mean(reduction,u::ScalarField{T},v) where {T}
         ee = zero(T)
         ii = Threads.threadid()
         @inbounds for j in YRANGE
-            magsq = proj(u[1,j,l],v[1,j,l])
-            ee += magsq
-            @simd for i in 2:NX
+            @simd for i in XRANGE
                 magsq = proj(u[i,j,l],v[i,j,l])
-                ee += 2*magsq 
+                ee += (1 + (i>1))*magsq 
             end
         end
         result[ii] += ee
     end
     return sum(result)
+end
+
+@inline mag2(u::Vec{T}) where T<:Complex = muladd(u.x.re, u.x.re, muladd(u.x.im, u.x.im,
+                                   muladd(u.y.re, u.y.re, muladd(u.y.im, u.y.im,
+                                   muladd(u.z.re, u.z.re, u.z.im*u.z.im)))))
+
+@inline mag2(u::Vec{T}) where T<:Real = u⋅u
+
+function hyperviscosity_stats(reduction,u::VectorField{T},s) where {T}
+    isrealspace(u) && fourier!(u)
+    result = fill!(reduction,zero(T))
+    @mthreads for l in ZRANGE
+        ee = zero(T)
+        ii = Threads.threadid()
+        M::Int = get_hyperviscosity_exponent(s)
+        @inbounds kz2 = KZ[l]*KZ[l]
+        @inbounds for j in YRANGE
+            kyz2 = muladd(KY[j], KY[j], kz2)
+            @simd for i in XRANGE
+                k2 = muladd(KX[i], KX[i], kyz2)
+                magsq = mag2(u[i,j,l])
+                ee += (1 + (i>1)) * (k2^M)*magsq 
+            end
+        end
+        result[ii] += ee
+    end
+    mν = nuh(s)
+    return mν*sum(result)
 end
