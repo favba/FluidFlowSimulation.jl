@@ -1,7 +1,7 @@
 function statsheader(s::AbstractSimulation)
-    simulaitionheader = "iteration,time,u1,u2,u3,u1p2,u2p2,u3p2,k,du1dx1p2,du1dx2p2,du1dx3p2,du2dx1p2,du2dx2p2,du2dx3p2,du3dx1p2,du3dx2p2,du3dx3p2,diss"
+    simulationheader = "iteration,time,u1,u2,u3,u1p2,u2p2,u3p2,k,du1dx1p2,du1dx2p2,du1dx3p2,du2dx1p2,du2dx2p2,du2dx3p2,du3dx1p2,du3dx2p2,du3dx3p2,diss"
     header = join(Iterators.filter(x->x !== "",
-      (simulaitionheader,statsheader.(getfield.(Ref(s),sim_fields))...,"\n")),
+      (simulationheader,statsheader.(getfield.(Ref(s),sim_fields))...,"\n")),
       ",","")
     return header
 end 
