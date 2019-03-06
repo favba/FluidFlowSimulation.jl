@@ -81,7 +81,7 @@ Kinematic Viscosity: $(ν)
 
 Velocity time-stepping method: $(typeof(s.timestep.x))
 Dealias type: $(DEALIAS_TYPE[1]) $(DEALIAS_TYPE[2])
-Threaded: $THR
+Number of Threads: $NT
 """
 smsg = join((smsg,msg.(getfield.(Ref(s),sim_fields))...))#msg(s.passivescalar),
 #  msg(s.densitystratification),
