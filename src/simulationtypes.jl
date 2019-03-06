@@ -202,7 +202,7 @@ end
 
     statsheader(a::HyperViscosity) = "hdiss"
 
-    stats(a::AbstractHyperViscosity,s::AbstractSimulation) = (hyperviscosity_stats(s.reduction,s.u,s))
+    stats(a::AbstractHyperViscosity,s::AbstractSimulation) = (hyperviscosity_stats(s.reduction,s.u,s),)
 
     msg(a::HyperViscosity{nh,M}) where {nh,M} = "\nHyper viscosity: νh = $(nh), m = $(M)\n\n"
 
