@@ -1,13 +1,13 @@
 include("LESmodels/les_real_calc.jl")
 
 @inline @par function advance_in_time!(s::A) where {A<:@par(AbstractSimulation)}
-    s.iteration[] += 1
     calculate_rhs!(s)
     hasforcing(A) && s.forcing(s)
 
     mod(s.iteration[],s.dtstats) == 0 && writestats(s)
     time_step!(s)
 
+    s.iteration[] += 1
     s.time[] += get_dt(s)
     return nothing
 end
