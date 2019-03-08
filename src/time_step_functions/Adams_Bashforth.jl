@@ -7,6 +7,7 @@ struct Adams_Bashforth3rdO{Adaptative} <: AbstractScalarTimeStep{Adaptative,2}
     dt::Base.RefValue{Float64}
     dt2::Base.RefValue{Float64}
     dt3::Base.RefValue{Float64}
+    iteration::Base.RefValue{Int}
 end
 
 function Adams_Bashforth3rdO(adp,indt)
@@ -18,7 +19,7 @@ function Adams_Bashforth3rdO(adp,indt)
     dt3 = Ref(indt)
     fm1 = ScalarField{Float64}((NRX,NY,NZ),(LX,LY,LZ))
     fm2 = ScalarField{Float64}((NRX,NY,NZ),(LX,LY,LZ))
-    return Adams_Bashforth3rdO{adp}(fm1,fm2,at,bt,ct,dt,dt2,dt3)
+    return Adams_Bashforth3rdO{adp}(fm1,fm2,at,bt,ct,dt,dt2,dt3,Ref(0))
 end
 
 get_dt(t::Adams_Bashforth3rdO) = 
@@ -87,7 +88,13 @@ get_Ct(t::Type{Adams_Bashforth3rdO{false}}) =
 @inline get_Ct(t::A) where {A<:Adams_Bashforth3rdO{false}} =
     get_Ct(A)
 
+function set_coefficients!(t::Adams_Bashforth3rdO,rhs)
+    i = t.iteration[] += 1
+    i == 2 && fix_fm2!(t.fm2,t.fm1,rhs,t.dt2[],t.dt3[])
+end
+
 @par function (f::Adams_Bashforth3rdO)(ρ::AbstractArray{<:Complex,3},ρrhs::AbstractArray{<:Complex,3}, s::@par(AbstractSimulation))
+    set_coefficients!(f,ρrhs)
     @mthreads for kk in ZRANGE
         _tAdams_Bashforth3rdO!(kk, ρ,ρrhs,f.fm1,f.fm2,f,s)
     end
@@ -113,6 +120,7 @@ end
 
 # with forcing
 @par function (f::Adams_Bashforth3rdO)(ρ::AbstractArray{<:Complex,3},ρrhs::AbstractArray{<:Complex,3}, forcing::AbstractArray{<:Complex,3}, s::@par(AbstractSimulation))
+    set_coefficients!(f,ρrhs)
     @mthreads for kk in ZRANGE
         _tAdams_Bashforth3rdO!(kk, ρ,ρrhs, forcing, f.fm1,f.fm2,f,s)
     end
