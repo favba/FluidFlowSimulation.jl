@@ -81,7 +81,6 @@ function initialize!(s::AbstractSimulation)
     initialize!(s.densitystratification,s)
   
 
-    s.iteration[] == 0 && writestats(s)
     return nothing
 end
 
