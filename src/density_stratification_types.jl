@@ -82,6 +82,14 @@ function stratificationtype(d::AbstractDict,start,integrator,nx,ny,nz,lx,ly,lz,v
     
     s = NoDensityStratification()
 
+    if haskey(d,:hyperViscosity)
+        νh = parse(Float64,d[:hyperViscosity])
+        m = haskey(d,:hyperViscosityM) ? parse(Int,d[:hyperViscosityM]) : 2
+        hyperviscositytype = HyperViscosity{νh,m}()
+    else
+        hyperviscositytype = NoHyperViscosity()
+    end
+
     if haskey(d,:densityStratification) 
 
         haskey(d,:gravityDirection) ? (gdir = Symbol(d[:gravityDirection])) : (gdir = :z)
@@ -104,7 +112,7 @@ function stratificationtype(d::AbstractDict,start,integrator,nx,ny,nz,lx,ly,lz,v
         elseif integrator === :Adams_Bashforth3rdO
             Adams_Bashforth3rdO{variableTimeStep,idt}()
         else
-            ETD3rdO{variableTimeStep,idt,haskey(d,:hyperViscosity) ? true : false}()
+            ETD3rdO(variableTimeStep,idt,hyperviscositytype,α)
         end 
 
         lestypedensity = if haskey(d,:lesModel)

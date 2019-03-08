@@ -249,13 +249,15 @@ function parameters(d::Dict)
 
     cutoff = (cutoffr*kxp[end])^2
 
-#    dealias = BitArray(undef,(ncx,ny,nz))
-    #if Dealiastype == :sphere
-        #@. dealias = (kxp^2 + kyp^2 + kzp^2) > cutoff
-    #elseif Dealiastype == :cube
-        #@. dealias = (kxp^2 > cutoff) | (kyp^2 > cutoff) | (kzp^2 > cutoff)
-    #end
-  
+     if haskey(d,:hyperViscosity)
+        νh = parse(Float64,d[:hyperViscosity])
+        m = haskey(d,:hyperViscosityM) ? parse(Int,d[:hyperViscosityM]) : 2
+        hyperviscositytype = HyperViscosity{νh,m}()
+    else
+        hyperviscositytype = NoHyperViscosity()
+    end
+
+ 
     integrator = haskey(d,:velocityTimeStep) ? Symbol(d[:velocityTimeStep]) : :ETD3rdO
     variableTimeStep = haskey(d,:variableTimestepFlag) ? parse(Bool,d[:variableTimestepFlag]) : true
     cfl = haskey(d,:cfl) ? parse(Float64,d[:cfl]) : 0.18
@@ -265,7 +267,7 @@ function parameters(d::Dict)
     elseif integrator === :Adams_Bashforth3rdO
         VectorTimeStep{cfl}(Adams_Bashforth3rdO{variableTimeStep,idt}(),Adams_Bashforth3rdO{variableTimeStep,idt}(),Adams_Bashforth3rdO{variableTimeStep,idt}())
     else
-        VectorTimeStep{cfl}(ETD3rdO{variableTimeStep,idt,haskey(d,:hyperViscosity) ? true : false}(),ETD3rdO{variableTimeStep,idt,haskey(d,:hyperViscosity) ? true : false}(),ETD3rdO{variableTimeStep,idt, haskey(d,:hyperViscosity) ? true : false}())
+        VectorTimeStep{cfl}(ETD3rdO(variableTimeStep,idt,hyperviscositytype,ν),ETD3rdO(variableTimeStep,idt,hyperviscositytype,ν),ETD3rdO(variableTimeStep,idt,hyperviscositytype,ν))
     end
 
     if haskey(d,:passiveScalar)
@@ -279,7 +281,7 @@ function parameters(d::Dict)
         elseif integrator === :Adams_Bashforth3rdO
             Adams_Bashforth3rdO{variableTimeStep,idt}()
         else
-            ETD3rdO{variableTimeStep,idt,haskey(d,:hyperViscosity) ? true : false}()
+            ETD3rdO(variableTimeStep,idt,hyperviscositytype,α)
         end 
 
         lestypescalar = if haskey(d,:lesModel)
@@ -349,14 +351,6 @@ function parameters(d::Dict)
     end
 
     forcingtype = forcing_model(d,nx,ny,nz,ncx)
-
-    if haskey(d,:hyperViscosity)
-        νh = parse(Float64,d[:hyperViscosity])
-        m = haskey(d,:hyperViscosityM) ? parse(Int,d[:hyperViscosityM]) : 2
-        hyperviscositytype = HyperViscosity{νh,m}()
-    else
-        hyperviscositytype = NoHyperViscosity()
-    end
 
     s = Simulation{typeof(vtimestep),
         typeof(scalartype),typeof(densitytype),typeof(lestype),typeof(forcingtype),

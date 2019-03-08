@@ -1,43 +1,59 @@
-struct ETD3rdO{Adaptative,initdt,Hyper} <: AbstractScalarTimeStepWithIF{Adaptative,initdt,2}
-    fm1::ScalarField{Float64,3,2,false} #Store latest step
-    fm2::ScalarField{Float64,3,2,false} #Store 2 steps before
+struct ETD3rdO_Coefficients{Adptive,HyperviscosityType}
     c::Array{Float64,3}
     At::Array{Float64,3}
     Bt::Array{Float64,3}
     Ct::Array{Float64,3}
+    hyperviscosity::HyperviscosityType
+    citeration::Base.RefValue{Int}
+end
+
+const ETD3rdO_coefficients_dict = Dict()
+
+struct ETD3rdO{Adaptative, HyperViscosityType} <: AbstractScalarTimeStepWithIF{Adaptative,2}
+    fm1::ScalarField{Float64,3,2,false} #Store latest step
+    fm2::ScalarField{Float64,3,2,false} #Store 2 steps before
+    coefficients::Base.RefValue{ETD3rdO_Coefficients{Adaptative,HyperViscosityType}}
     dt::Base.RefValue{Float64}
     dt2::Base.RefValue{Float64}
     dt3::Base.RefValue{Float64}
+    iteration::Base.RefValue{Int}
 end
 
-function ETD3rdO{adp,indt,Hyper}() where {adp,indt,Hyper}
+@inline function Base.getproperty(t::ETD3rdO,s::Symbol)
+    if s in (:c, :At, :Bt, :Ct, :hyperviscosity,:citeration)
+        return getfield(getindex(getfield(t,:coefficients)),s)
+    else
+        return getfield(t,s)
+    end
+end
+
+function ETD3rdO(adp::Bool,indt::Real,hviscosity,ν::Real)
     dt = Ref(indt)
     dt2 = Ref(indt)
     dt3 = Ref(indt)
-    c = zeros(NX,NY,NZ)
-    At = zero(c)
-    Bt = zero(c)
-    Ct = zero(c)
+    p = ν => hviscosity 
+
+    if haskey(ETD3rdO_coefficients_dict, p)
+        coef = ETD3rdO_coefficients_dict[p]
+    else
+        c = zeros(NX,NY,NZ)
+        At = zeros(size(c))
+        Bt = zeros(size(c))
+        Ct = zeros(size(c))
+        init_c!(c,ν,hviscosity)
+        coef = Ref(ETD3rdO_Coefficients{adp,typeof(hviscosity)}(c,At,Bt,Ct,hviscosity,Ref(0)))
+        ETD3rdO_coefficients_dict[p] = coef
+    end
+
     fm1 = ScalarField{Float64}((NRX,NY,NZ),(LX,LY,LZ))
     fm2 = ScalarField{Float64}((NRX,NY,NZ),(LX,LY,LZ))
-    return ETD3rdO{adp,indt,Hyper}(fm1,fm2,c,At,Bt,Ct,dt,dt2,dt3)
+    return ETD3rdO{adp,typeof(hviscosity)}(fm1,fm2,coef,dt,dt2,dt3,Ref(0))
 end
 
-get_dt(t::ETD3rdO{true,idt,H}) where {idt,H} = 
-    getindex(t.dt)
+init_c!(c::Array{Float64,3},ν::Real,::NoHyperViscosity) = init_c!(c,-ν)
+init_c!(c::Array{Float64,3},ν::Real,hv::HyperViscosity) = init_c_hv!(c,-ν,hv)
 
-function initialize!(t::ETD3rdO,rhs::AbstractArray,vis,s::AbstractSimulation)
-    mycopy!(data(t.fm1),rhs) 
-    mycopy!(data(t.fm2), data(t.fm1)) 
-    setindex!(t.dt,get_dt(s))
-    setindex!(t.dt2,t.dt[])
-    setindex!(t.dt3,t.dt[])
-    init_c!(t,t.c,-vis,s)
-    set_ABCt!(t)
-    return nothing
-end
-
-@par function init_c!(t::ETD3rdO{adp,indt,false},c::AbstractArray,mν,s::@par(AbstractSimulation)) where{adp,indt}
+function init_c!(c::AbstractArray,mν::Real)
     @mthreads for k in ZRANGE
         for j in YRANGE
             @inbounds @msimd for i in XRANGE
@@ -47,10 +63,8 @@ end
     end
 end
 
-@par function init_c!(t::ETD3rdO{adp,indt,true},c::AbstractArray,aux,s::@par(AbstractSimulation)) where {adp,indt}
-    mν::Float64 = -ν
-    mνh::Float64 = -nuh(s)
-    M::Int = get_hyperviscosity_exponent(s)
+function init_c_hv!(c::AbstractArray,mν::Real,hv::HyperViscosity{n,M}) where {n,M}
+    mνh::Float64 = -n
     @mthreads for k in ZRANGE
         for j in YRANGE
             @inbounds @msimd for i in XRANGE
@@ -61,11 +75,28 @@ end
     end
 end
 
-function set_dt!(t::ETD3rdO{true,idt,Hyper},dt::Real) where {idt,Hyper} 
+
+get_dt(t::ETD3rdO) = getindex(t.dt)
+
+function initialize!(t::ETD3rdO,rhs::AbstractArray,vis,s::AbstractSimulation)
+    mycopy!(data(t.fm1),rhs) 
+    mycopy!(data(t.fm2), data(t.fm1)) 
+    setindex!(t.dt,get_dt(s))
+    setindex!(t.dt2,t.dt[])
+    setindex!(t.dt3,t.dt[])
+    set_dt!(t,t.dt[])
+    return nothing
+end
+
+function set_dt!(t::ETD3rdO{true,Hyper},dt::Real) where {Hyper} 
+    i = t.iteration[] += 1
     setindex!(t.dt3,t.dt2[])
     setindex!(t.dt2,t.dt[])
     setindex!(t.dt,dt)
-    set_ABCt!(t)
+    if i > t.citeration[]
+        t.citeration[] += 1
+        set_ABCt!(t)
+    end
 end
 
 function set_ABCt!(t::ETD3rdO)

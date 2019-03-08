@@ -1,4 +1,4 @@
-struct Euller{Adptative,initdt} <: AbstractScalarTimeStep{Adptative,initdt,0}
+struct Euller{Adptative} <: AbstractScalarTimeStep{Adptative,0}
     dt::Base.RefValue{Float64} 
 end
 
@@ -7,9 +7,9 @@ function initialize!(t::Euller,rhs,vis,s)
     return nothing
 end
   
-get_dt(t::Euller{true,idt}) where {idt} = getindex(t.dt)
+get_dt(t::Euller) = getindex(t.dt)
 
-set_dt!(t::Euller{true,idt},dt::Real) where {idt} = setindex!(t.dt,dt)
+set_dt!(t::Euller{true},dt::Real) = setindex!(t.dt,dt)
 
 @par function (f::Euller)(ρ::AbstractArray{<:Real,3},rhs::AbstractArray{<:Real,3},s::@par(AbstractSimulation))
     dt = get_dt(f)

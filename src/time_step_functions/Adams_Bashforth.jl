@@ -1,4 +1,4 @@
-struct Adams_Bashforth3rdO{Adaptative,initdt} <: AbstractScalarTimeStep{Adaptative,initdt,2}
+struct Adams_Bashforth3rdO{Adaptative} <: AbstractScalarTimeStep{Adaptative,2}
     fm1::ScalarField{Float64,3,2,false} #Store latest step
     fm2::ScalarField{Float64,3,2,false} #Store 2 steps before
     At::Base.RefValue{Float64} # 23*dt/12 for constant time stepping
@@ -9,7 +9,7 @@ struct Adams_Bashforth3rdO{Adaptative,initdt} <: AbstractScalarTimeStep{Adaptati
     dt3::Base.RefValue{Float64}
 end
 
-function Adams_Bashforth3rdO{adp,indt}() where {adp,indt}
+function Adams_Bashforth3rdO(adp,indt)
     at = Ref(23*indt/12)
     bt = Ref(-16*indt/12)
     ct = Ref(5*indt/12)
@@ -18,10 +18,10 @@ function Adams_Bashforth3rdO{adp,indt}() where {adp,indt}
     dt3 = Ref(indt)
     fm1 = ScalarField{Float64}((NRX,NY,NZ),(LX,LY,LZ))
     fm2 = ScalarField{Float64}((NRX,NY,NZ),(LX,LY,LZ))
-    return Adams_Bashforth3rdO{adp,indt}(fm1,fm2,at,bt,ct,dt,dt2,dt3)
+    return Adams_Bashforth3rdO{adp}(fm1,fm2,at,bt,ct,dt,dt2,dt3)
 end
 
-get_dt(t::Adams_Bashforth3rdO{true,idt}) where {idt} = 
+get_dt(t::Adams_Bashforth3rdO) = 
     getindex(t.dt)
 
 function initialize!(t::Adams_Bashforth3rdO,rhs::AbstractArray,vis,s::AbstractSimulation)
@@ -33,13 +33,13 @@ function initialize!(t::Adams_Bashforth3rdO,rhs::AbstractArray,vis,s::AbstractSi
     return nothing
 end
 
-function set_dt!(t::Adams_Bashforth3rdO{true,idt},dt::Real) where {idt} 
+function set_dt!(t::Adams_Bashforth3rdO{true},dt::Real)
     setindex!(t.dt3,t.dt2[])
     setindex!(t.dt2,t.dt[])
     setindex!(t.dt,dt)
 end
 
-function get_At(t::Adams_Bashforth3rdO{true,idt}) where {idt} 
+function get_At(t::Adams_Bashforth3rdO{true})
     dt = t.dt[]
     dt2 = t.dt2[]
     dt3 = t.dt3[]
@@ -49,13 +49,13 @@ function get_At(t::Adams_Bashforth3rdO{true,idt}) where {idt}
     return At
 end
 
-get_At(t::Type{Adams_Bashforth3rdO{false,idt}}) where {idt} =
-    23*idt/12
+get_At(t::Type{Adams_Bashforth3rdO{false}}) =
+    23*get_dt(t)/12
 
-@inline get_At(t::A) where {indt,A<:Adams_Bashforth3rdO{false,indt}} = 
+@inline get_At(t::A) where {A<:Adams_Bashforth3rdO{false}} = 
     get_At(A)
 
-function get_Bt(t::Adams_Bashforth3rdO{true,idt}) where {idt} 
+function get_Bt(t::Adams_Bashforth3rdO{true})
     dt = t.dt[]
     dt2 = t.dt2[]
     dt3 = t.dt3[]
@@ -65,26 +65,26 @@ function get_Bt(t::Adams_Bashforth3rdO{true,idt}) where {idt}
     return Bt
 end
 
-get_Bt(t::Type{Adams_Bashforth3rdO{false,idt}}) where {idt} =
-    -16*idt/12
+get_Bt(t::Type{Adams_Bashforth3rdO{false}}) =
+    -16*get_dt(t)/12
 
-@inline get_Bt(t::A) where {indt,A<:Adams_Bashforth3rdO{false,indt}} =
+@inline get_Bt(t::A) where {A<:Adams_Bashforth3rdO{false}} =
     get_Bt(A)
 
-function get_Ct(t::Adams_Bashforth3rdO{true,idt}) where {idt} 
+function get_Ct(t::Adams_Bashforth3rdO{true})
     dt = t.dt[]
     dt2 = t.dt2[]
     dt3 = t.dt3[]
     
-    Ct= dt*dt*(2*dt + 3*dt2)/(6*dt3*(dt + dt2 + dt3)*(dt2 + dt3))
+    Ct = dt*dt*(2*dt + 3*dt2)/(6*dt3*(dt + dt2 + dt3)*(dt2 + dt3))
     Ct*=(dt+dt2+dt3)
     return Ct
 end
     
-get_Ct(t::Type{Adams_Bashforth3rdO{false,idt}}) where {idt} =
-    5*idt/12
+get_Ct(t::Type{Adams_Bashforth3rdO{false}}) =
+    5*get_det(t)/12
 
-@inline get_Ct(t::A) where {indt,A<:Adams_Bashforth3rdO{false,indt}} =
+@inline get_Ct(t::A) where {A<:Adams_Bashforth3rdO{false}} =
     get_Ct(A)
 
 @par function (f::Adams_Bashforth3rdO)(ρ::AbstractArray{<:Complex,3},ρrhs::AbstractArray{<:Complex,3}, s::@par(AbstractSimulation))

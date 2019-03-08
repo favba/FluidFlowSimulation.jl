@@ -1,27 +1,21 @@
 abstract type AbstractTimeStep end
-abstract type AbstractScalarTimeStep{Adp,initdt,N} <: AbstractTimeStep end
-abstract type AbstractScalarTimeStepWithIF{Adp,initdt,N} <: AbstractScalarTimeStep{Adp,initdt,N} end
+abstract type AbstractScalarTimeStep{Adp,N} <: AbstractTimeStep end
+abstract type AbstractScalarTimeStepWithIF{Adp,N} <: AbstractScalarTimeStep{Adp,N} end
 
 @inline is_implicit(::Type{<:AbstractScalarTimeStep}) = false
 @inline is_implicit(::Type{<:AbstractScalarTimeStepWithIF}) = true
 @inline @par is_implicit(::Type{<:@par(AbstractSimulation)}) = is_implicit(VelocityTimeStepType)
 
-has_variable_timestep(t::Type{<:AbstractScalarTimeStep{adp,idt,N}}) where {adp,idt,N} =
+has_variable_timestep(t::Type{<:AbstractScalarTimeStep{adp,N}}) where {adp,N} =
     adp
 
-@inline has_variable_timestep(t::AbstractScalarTimeStep{adp,idt,N}) where {adp,idt,N} =
+@inline has_variable_timestep(t::AbstractScalarTimeStep{adp,N}) where {adp,N} =
     has_variable_timestep(typeof(t))
   
-get_dt(t::Type{<:AbstractScalarTimeStep{false,idt,N}}) where {idt,N} =
-    idt
-
-@inline get_dt(t::AbstractScalarTimeStep{false,idt,N}) where {idt,N} =
-    get_dt(typeof(t))
-
-set_dt!(t::Type{<:AbstractScalarTimeStep{false,idt,N}},dt::Real) where {idt,N} =
+set_dt!(t::Type{<:AbstractScalarTimeStep{false,N}},dt::Real) where {N} =
     nothing
 
-@inline set_dt!(t::AbstractScalarTimeStep{false,idt,N},dt::Real) where {idt,N} =
+@inline set_dt!(t::AbstractScalarTimeStep{false,N},dt::Real) where {N} =
     set_dt!(typeof(t))
 
 struct VectorTimeStep{cfl,Tx<:AbstractScalarTimeStep,Ty<:AbstractScalarTimeStep,Tz<:AbstractScalarTimeStep} <: AbstractTimeStep
