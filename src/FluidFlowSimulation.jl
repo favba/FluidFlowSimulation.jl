@@ -41,7 +41,6 @@ end
 
     while (s.iteration[]<finalstep && s.time[]<finaltime)
         advance_in_time!(s)
-        mod(s.iteration[],s.dtstats) == 0 && writestats(s)
     end
     
     calculate_rhs!(s)

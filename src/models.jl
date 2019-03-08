@@ -4,7 +4,10 @@ include("LESmodels/les_real_calc.jl")
     s.iteration[] += 1
     calculate_rhs!(s)
     hasforcing(A) && s.forcing(s)
+
+    mod(s.iteration[],s.dtstats) == 0 && writestats(s)
     time_step!(s)
+
     s.time[] += get_dt(s)
     return nothing
 end
