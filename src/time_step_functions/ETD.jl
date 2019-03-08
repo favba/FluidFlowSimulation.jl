@@ -89,13 +89,36 @@ function initialize!(t::ETD3rdO,rhs::AbstractArray,vis,s::AbstractSimulation)
 end
 
 function set_dt!(t::ETD3rdO{true,Hyper},dt::Real) where {Hyper} 
-    i = t.iteration[] += 1
     setindex!(t.dt3,t.dt2[])
     setindex!(t.dt2,t.dt[])
     setindex!(t.dt,dt)
+end
+
+function set_coefficients!(t::ETD3rdO{true},rhs)
+    i = t.iteration[] += 1
     if i > t.citeration[]
         t.citeration[] += 1
         set_ABCt!(t)
+    end
+    if i == 2
+        fix_fm2!(t.fm2,t.fm1,rhs,t.dt2[],t.dt3[])
+    end
+end
+
+function set_coefficients!(t::ETD3rdO{false},rhs)
+    i = t.iteration[] += 1
+    i == 2 && fix_fm2!(t.fm2,t.fm1,rhs,t.dt2[],t.dt3[])
+end
+
+function fix_fm2!(fm2::AbstractArray,fm1::AbstractArray,rhs::AbstractArray,dt2::Real,dt3::Real)
+    @mthreads for j in 1:NT
+        fix_fm2!(fm2,fm1,rhs,dt2,dt3,j)
+    end
+end
+
+function fix_fm2!(fm2::AbstractArray,fm1::AbstractArray,rhs::AbstractArray,dt2::Real,dt3::Real,j::Integer)
+    @inbounds @msimd for i in COMPLEX_RANGES[j]
+        fm2[i] = -(dt3+dt2)*(rhs[i] - fm1[i])/dt2 + rhs[i]
     end
 end
 
@@ -181,6 +204,7 @@ end
 end
 
 @par function (f::ETD3rdO)(ρ::AbstractArray{<:Complex,3},ρrhs::AbstractArray{<:Complex,3}, s::@par(AbstractSimulation))
+    set_coefficients!(f,ρrhs)
     @mthreads for kk = ZRANGE
         _tETD3rdO!(kk, ρ,ρrhs,f.fm1,f.fm2,f,s)
     end
@@ -206,6 +230,7 @@ end
 
 # with forcing
 @par function (f::ETD3rdO)(ρ::AbstractArray{<:Complex,3},ρrhs::AbstractArray{<:Complex,3}, forcing::AbstractArray{<:Complex,3}, s::@par(AbstractSimulation))
+    set_coefficients!(f,ρrhs)
     @mthreads for kk = ZRANGE
         _tETD3rdO!(kk, ρ,ρrhs, forcing, f.fm1,f.fm2,f,s)
     end
