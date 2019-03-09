@@ -35,9 +35,15 @@ function initialize!(t::Adams_Bashforth3rdO,rhs::AbstractArray,vis,s::AbstractSi
 end
 
 function set_dt!(t::Adams_Bashforth3rdO{true},dt::Real)
-    setindex!(t.dt3,t.dt2[])
-    setindex!(t.dt2,t.dt[])
-    setindex!(t.dt,dt)
+    if t.iteration[] == 0
+        setindex!(t.dt3,dt/2)
+        setindex!(t.dt2,dt/2)
+        setindex!(t.dt,dt/2)
+    else
+        setindex!(t.dt3,t.dt2[])
+        setindex!(t.dt2,t.dt[])
+        setindex!(t.dt,dt)
+    end
 end
 
 function get_At(t::Adams_Bashforth3rdO{true})
@@ -132,7 +138,7 @@ end
     At = get_At(f)
     Bt = get_Bt(f)
     Ct = get_Ct(f)
-    if (6 < k < NZ-k+1)
+    if (6 < k < NZ-4)
         for j in YRANGE
             @msimd for i in XRANGE
                 #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])

@@ -1,3 +1,5 @@
+include("ETD1stand2ndO.jl")
+
 struct ETD3rdO_Coefficients{Adptive,HyperviscosityType}
     c::Array{Float64,3}
     At::Array{Float64,3}
@@ -5,6 +7,7 @@ struct ETD3rdO_Coefficients{Adptive,HyperviscosityType}
     Ct::Array{Float64,3}
     hyperviscosity::HyperviscosityType
     citeration::Base.RefValue{Int}
+    ETD3rdO_Coefficients{A,H}(c,At,Bt,Ct,h) where {A,H} = new{A,H}(c,At,Bt,Ct,h,Ref(2))
 end
 
 const ETD3rdO_coefficients_dict = Dict()
@@ -20,7 +23,7 @@ struct ETD3rdO{Adaptative, HyperViscosityType} <: AbstractScalarTimeStepWithIF{A
 end
 
 @inline function Base.getproperty(t::ETD3rdO,s::Symbol)
-    if s in (:c, :At, :Bt, :Ct, :hyperviscosity,:citeration)
+    if s  === :c || s === :At || s === :Bt || s === :Ct || s === :hyperviscosity || s === :citeration
         return getfield(getindex(getfield(t,:coefficients)),s)
     else
         return getfield(t,s)
@@ -41,7 +44,7 @@ function ETD3rdO(adp::Bool,indt::Real,hviscosity,ν::Real)
         Bt = zeros(size(c))
         Ct = zeros(size(c))
         init_c!(c,ν,hviscosity)
-        coef = Ref(ETD3rdO_Coefficients{adp,typeof(hviscosity)}(c,At,Bt,Ct,hviscosity,Ref(0)))
+        coef = Ref(ETD3rdO_Coefficients{adp,typeof(hviscosity)}(c,At,Bt,Ct,hviscosity))
         ETD3rdO_coefficients_dict[p] = coef
     end
 
@@ -89,25 +92,29 @@ function initialize!(t::ETD3rdO,rhs::AbstractArray,vis,s::AbstractSimulation)
 end
 
 function set_dt!(t::ETD3rdO{true,Hyper},dt::Real) where {Hyper} 
-    setindex!(t.dt3,t.dt2[])
-    setindex!(t.dt2,t.dt[])
-    setindex!(t.dt,dt)
+    if t.iteration[] == 0
+        setindex!(t.dt3,dt/2)
+        setindex!(t.dt2,dt/2)
+        setindex!(t.dt,dt/2)
+    else
+        setindex!(t.dt3,t.dt2[])
+        setindex!(t.dt2,t.dt[])
+        setindex!(t.dt,dt)
+    end
 end
 
 function set_coefficients!(t::ETD3rdO{true},rhs)
-    i = t.iteration[] += 1
+    i = t.iteration[]
     if i > t.citeration[]
         t.citeration[] += 1
         set_ABCt!(t)
     end
-    if i == 2
-        fix_fm2!(t.fm2,t.fm1,rhs,t.dt2[],t.dt3[])
-    end
+    return nothing
 end
 
 function set_coefficients!(t::ETD3rdO{false},rhs)
-    i = t.iteration[] += 1
-    i == 2 && fix_fm2!(t.fm2,t.fm1,rhs,t.dt2[],t.dt3[])
+    i = t.iteration[]
+    return nothing
 end
 
 function fix_fm2!(fm2::AbstractArray,fm1::AbstractArray,rhs::AbstractArray,dt2::Real,dt3::Real)
@@ -204,14 +211,23 @@ end
 end
 
 @par function (f::ETD3rdO)(ρ::AbstractArray{<:Complex,3},ρrhs::AbstractArray{<:Complex,3}, s::@par(AbstractSimulation))
-    set_coefficients!(f,ρrhs)
-    @mthreads for kk = ZRANGE
-        _tETD3rdO!(kk, ρ,ρrhs,f.fm1,f.fm2,f,s)
+    i = f.iteration[] += 1
+    if i == 1
+        ETD1stO!(ρ,ρrhs,f.c,f.dt[])
+    elseif i == 2
+        ETD2ndO!(ρ,ρrhs,f.c,f.fm1,f.dt[],f.dt2[])
+    else
+        set_coefficients!(f,ρrhs)
+        @mthreads for kk = ZRANGE
+            _tETD3rdO!(kk, ρ,ρrhs,f.fm1,f.fm2,f,s)
+        end
     end
+    mycopy!(f.fm2,f.fm1)
+    mycopy!(f.fm1,ρrhs)
     return nothing
 end
 
-@inline @par function _tETD3rdO!(k::Integer, u::AbstractArray{T,3}, rhs::AbstractArray, rm1::AbstractArray, rm2::AbstractArray, f, s::@par(AbstractSimulation)) where {T}
+@par function _tETD3rdO!(k::Integer, u::AbstractArray{T,3}, rhs::AbstractArray, rm1::AbstractArray, rm2::AbstractArray, f, s::@par(AbstractSimulation)) where {T}
 @inbounds begin
     At = f.At
     Bt = f.Bt
@@ -221,8 +237,6 @@ end
     for j in YRANGE
         @msimd for i in XRANGE
             u[i,j,k] = muladd(At[i,j,k], rhs[i,j,k], muladd(Bt[i,j,k], rm1[i,j,k], muladd(Ct[i,j,k], rm2[i,j,k], exp(c[i,j,k]*dt)*u[i,j,k])))
-            rm2[i,j,k] = rm1[i,j,k]
-            rm1[i,j,k] = rhs[i,j,k]
         end
     end
 end
@@ -234,6 +248,8 @@ end
     @mthreads for kk = ZRANGE
         _tETD3rdO!(kk, ρ,ρrhs, forcing, f.fm1,f.fm2,f,s)
     end
+    mycopy!(f.fm2,f.fm1)
+    mycopy!(f.fm1,ρrhs)
     return nothing
 end
 
@@ -244,20 +260,16 @@ end
     Ct = f.Ct
     c = f.c
     dt = get_dt(f)
-    if (6 < k < NZ-k+1)
+    if (6 < k < NZ-4)
         for j in YRANGE
             @msimd for i in XRANGE
                 u[i,j,k] = muladd(At[i,j,k], rhs[i,j,k], muladd(Bt[i,j,k], rm1[i,j,k], muladd(Ct[i,j,k], rm2[i,j,k], exp(c[i,j,k]*dt)*u[i,j,k])))
-                rm2[i,j,k] = rm1[i,j,k]
-                rm1[i,j,k] = rhs[i,j,k]
             end
         end
     else
         for j in YRANGE
             @msimd for i in XRANGE
                 u[i,j,k] = muladd(At[i,j,k], rhs[i,j,k], muladd(Bt[i,j,k], rm1[i,j,k], muladd(Ct[i,j,k], rm2[i,j,k],muladd(exp(c[i,j,k]*dt), u[i,j,k], forcing[i,j,k]))))
-                rm2[i,j,k] = rm1[i,j,k]
-                rm1[i,j,k] = rhs[i,j,k]
             end
         end
     end

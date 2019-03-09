@@ -44,7 +44,10 @@ end
     end
     
     calculate_rhs!(s)
-    mod(s.iteration[],s.dtstats) == 0 || writestats(s)
+    hasforcing(s) && s.forcing(s)
+
+    writestats(s)
+
     if !(mod(s.iteration[],s.dtoutput) == 0)
         real!(s.u)
         hasdensity(s) && real!(s.densitystratification.ρ)
