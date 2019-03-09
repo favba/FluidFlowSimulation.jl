@@ -71,19 +71,11 @@ has_variable_timestep(t::Type{VectorTimeStep{cfl,Tx,Ty,Tz}}) where {cfl,Tx,Ty,Tz
     has_variable_timestep(A)
 
 function (f::VectorTimeStep)(u::VectorField,rhs::VectorField,s::AbstractSimulation)
-    if hasforcing(s)
-        f.x(u.c.x,rhs.c.x,s.forcing.forcex,s)
-        f.y(u.c.y,rhs.c.y,s.forcing.forcey,s)
-        if typeof(s.forcing) <: RfForcing
-            f.z(u.c.z,rhs.c.z,s)
-        else
-            f.z(u.c.z,rhs.c.z,s.forcing.forcez,s)
-        end
-    else
-        f.x(u.c.x,rhs.c.x,s)
-        f.y(u.c.y,rhs.c.y,s)
-        f.z(u.c.z,rhs.c.z,s)
-    end
+    f.x(u.c.x,rhs.c.x,s)
+    f.y(u.c.y,rhs.c.y,s)
+    f.z(u.c.z,rhs.c.z,s)
+
+    add_forcing!(u,s.forcing)
     pressure_projection!(u.c.x,u.c.y,u.c.z,s)
     return nothing
 end

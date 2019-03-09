@@ -8,6 +8,8 @@ stats(a::NoForcing,s::AbstractSimulation) = ()
 
 msg(a::NoForcing) = "\nForcing: No forcing\n"
 
+add_forcing!(u,::NoForcing) = nothing
+
 struct RfForcing{T<:AbstractFloat} <: AbstractForcing
     Tf::T
     α::T
@@ -43,6 +45,23 @@ msg(a::RfForcing) = "\nForcing:  Rf forcing\nTf: $(getTf(a))\nalphac: $(getalpha
 @inline getavgk(f::RfForcing) = f.avgK
 
 @inline getZf(f::RfForcing) = f.Zf
+
+function add_forcing!(u,f::RfForcing)
+    add_Rf_forcing!(u.c.x,f.forcex)
+    add_Rf_forcing!(u.c.y,f.forcey)
+end
+
+function add_Rf_forcing!(ui,f)
+    @mthreads for j in YRANGE
+        @inbounds for i in XRANGE
+            ui[i,j,1] += f[i,j,1]
+        end
+    end
+
+    for k in (2,3,4,5,6,NZ-4,NZ-3,NZ-2,NZ-1,NZ)
+        @inbounds ui[1,1,k] += f[1,1,k]
+    end
+end
 
 function initialize!(f::RfForcing,s)
     if f.init
