@@ -32,9 +32,9 @@ abstract type AbstractDensityStratification{L,TT,α,dρdz,g,Gdirec} end
 
     initialize!(a::AbstractDensityStratification,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.rhs)),diffusivity(a),s)
 
-    statsheader(a::AbstractDensityStratification) = "rho,rhop2,drhodxp2,drhodyp2,drhodzp2"#,u.g*rho"
+    statsheader(a::AbstractDensityStratification) = "rho,rhop2,drhodxp2,drhodyp2,drhodzp2,rhodiss,u.g*rho"
 
-    stats(a::AbstractDensityStratification,s::A) where {A<:AbstractSimulation} = (scalar_stats(a.ρ,a,s)...,)# buoyancy_flux(a,s))
+    stats(a::AbstractDensityStratification,s::A) where {A<:AbstractSimulation} = (scalar_stats(a.ρ,a,s)..., buoyancy_flux(a,s))
 
 struct NoDensityStratification <: AbstractDensityStratification{NoLESScalar,nothing,nothing,nothing,nothing,nothing} end
 
@@ -137,12 +137,13 @@ end
 
 function buoyancy_flux(a::AbstractDensityStratification,s::AbstractSimulation) 
     gdir = graddir(a)
+    g = gravity(s)
     if gdir === :z
-       return buoyancy_flux(s.u.c.z.rr ,a.ρ.rr,gravity(s).z,s.reduction)
+       return g.z*proj_mean(s.reduction,s.u.c.z,a.ρ)
     elseif gdir === :y
-       return buoyancy_flux(s.u.c.y.rr ,a.ρ.rr,gravity(s).y,s.reduction)
+       return g.y*proj_mean(s.reduction,s.u.c.y,a.ρ)
     elseif gdir === :x
-       return buoyancy_flux(s.u.c.x.rr ,a.ρ.rr,gravity(s).x,s.reduction)
+       return g.x*proj_mean(s.reduction,s.u.c.x,a.ρ)
     end
 end
 

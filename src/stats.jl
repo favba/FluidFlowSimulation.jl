@@ -35,21 +35,17 @@ stats(s::AbstractSimulation) =
     u32 = squared_mean(s.reduction, s.u.c.z)
     k = (u12+u22+u32)/2
 
-    setfourier!(s.rhs)
-    grad!(s.rhs,s.u.c.x,s)
-    d1d1 = squared_mean(s.reduction, s.rhs.c.x)
-    d1d2 = squared_mean(s.reduction, s.rhs.c.y)
-    d1d3 = squared_mean(s.reduction, s.rhs.c.z)
+    d1d1 = dx_squared_mean(s.reduction, s.u.c.x)
+    d1d2 = dy_squared_mean(s.reduction, s.u.c.x)
+    d1d3 = dz_squared_mean(s.reduction, s.u.c.x)
 
-    grad!(s.rhs,s.u.c.y,s)
-    d2d1 = squared_mean(s.reduction, s.rhs.c.x)
-    d2d2 = squared_mean(s.reduction, s.rhs.c.y)
-    d2d3 = squared_mean(s.reduction, s.rhs.c.z)
+    d2d1 = dx_squared_mean(s.reduction, s.u.c.y)
+    d2d2 = dy_squared_mean(s.reduction, s.u.c.y)
+    d2d3 = dz_squared_mean(s.reduction, s.u.c.y)
 
-    grad!(s.rhs,s.u.c.z,s)
-    d3d1 = squared_mean(s.reduction, s.rhs.c.x)
-    d3d2 = squared_mean(s.reduction, s.rhs.c.y)
-    d3d3 = squared_mean(s.reduction, s.rhs.c.z)
+    d3d1 = dx_squared_mean(s.reduction, s.u.c.z)
+    d3d2 = dy_squared_mean(s.reduction, s.u.c.z)
+    d3d3 = dz_squared_mean(s.reduction, s.u.c.z)
 
     ε = 2ν*(d1d1+d2d2+d3d3+ 2*((d1d2+d2d1)/2 + (d1d3+d3d1)/2 + (d2d3+d3d2)/2))
 
@@ -60,13 +56,13 @@ end
     rho = real(ρ[1,1,1])
     rho2 = squared_mean(s1.reduction,ρ)
 
-    setfourier!(s.rhs)
-    grad!(s.rhs,ρ,s)
-    drd1 = squared_mean(s1.reduction, s.rhs.c.x)
-    drd2 = squared_mean(s1.reduction, s.rhs.c.y)
-    drd3 = squared_mean(s1.reduction, s.rhs.c.z)
+    drd1 = dx_squared_mean(s1.reduction, ρ)
+    drd2 = dy_squared_mean(s1.reduction, ρ)
+    drd3 = dz_squared_mean(s1.reduction, ρ)
 
-    return rho, rho2, drd1, drd2, drd3
+    rhodiss = diffusivity(s1)*(drd1^2 + drd2^2 + drd3^2)
+
+    return rho, rho2, drd1, drd2, drd3, rhodiss
 end
 
 #ape(s::AbstractSimulation) = tmean(x->x^2,parent(real(s.ρ)),s)
@@ -124,6 +120,60 @@ function squared_mean(reduction,u::ScalarField{T}) where {T}
     end
     return sum(result)
 end
+
+function dx_squared_mean(reduction,u::ScalarField{T}) where {T}
+    isrealspace(u) && fourier!(u)
+    result = fill!(reduction,zero(T))
+    @mthreads for l in ZRANGE
+        ee = zero(T)
+        ii = Threads.threadid()
+        @inbounds for j in YRANGE
+            @simd for i in XRANGE
+                magsq = abs2(im*KX[i]*u[i,j,l])
+                ee += (1 + (i>1))*magsq 
+            end
+        end
+        result[ii] += ee
+    end
+    return sum(result)
+end
+
+function dy_squared_mean(reduction,u::ScalarField{T}) where {T}
+    isrealspace(u) && fourier!(u)
+    result = fill!(reduction,zero(T))
+    @mthreads for l in ZRANGE
+        ee = zero(T)
+        ii = Threads.threadid()
+        @inbounds for j in YRANGE
+            ky = KY[j]
+            @simd for i in XRANGE
+                magsq = abs2(im*ky*u[i,j,l])
+                ee += (1 + (i>1))*magsq 
+            end
+        end
+        result[ii] += ee
+    end
+    return sum(result)
+end
+
+function dz_squared_mean(reduction,u::ScalarField{T}) where {T}
+    isrealspace(u) && fourier!(u)
+    result = fill!(reduction,zero(T))
+    @mthreads for l in ZRANGE
+        ee = zero(T)
+        ii = Threads.threadid()
+        kz = KZ[l]
+        @inbounds for j in YRANGE
+            @simd for i in XRANGE
+                magsq = abs2(im*kz*u[i,j,l])
+                ee += (1 + (i>1))*magsq 
+            end
+        end
+        result[ii] += ee
+    end
+    return sum(result)
+end
+
 
 function proj_mean(reduction,u::ScalarField{T},v) where {T}
     isrealspace(u) && fourier!(u)

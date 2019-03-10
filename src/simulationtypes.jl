@@ -123,7 +123,7 @@ abstract type AbstractPassiveScalar{L,TT,α,dρdz,Gdirec} end
 
     initialize!(a::AbstractPassiveScalar,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.rhs)),diffusivity(a),s)
 
-    statsheader(a::AbstractPassiveScalar) = "scalar,scalarp2,dscalardxp2,dscalardyp2,dscalardzp2"
+    statsheader(a::AbstractPassiveScalar) = "scalar,scalarp2,dscalardxp2,dscalardyp2,dscalardzp2,scalardiss"
 
     stats(a::AbstractPassiveScalar,s::AbstractSimulation) = scalar_stats(a.φ,a,s)
 
