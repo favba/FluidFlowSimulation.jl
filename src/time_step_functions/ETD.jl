@@ -92,15 +92,9 @@ function initialize!(t::ETD3rdO,rhs::AbstractArray,vis,s::AbstractSimulation)
 end
 
 function set_dt!(t::ETD3rdO{true,Hyper},dt::Real) where {Hyper} 
-    if t.iteration[] == 0
-        setindex!(t.dt3,dt/2)
-        setindex!(t.dt2,dt/2)
-        setindex!(t.dt,dt/2)
-    else
         setindex!(t.dt3,t.dt2[])
         setindex!(t.dt2,t.dt[])
         setindex!(t.dt,dt)
-    end
 end
 
 function set_coefficients!(t::ETD3rdO{true},rhs)
