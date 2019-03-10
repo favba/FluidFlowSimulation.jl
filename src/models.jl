@@ -332,46 +332,46 @@ end
 #end
 
 
-function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,s::AbstractSimulation)
-    if hashyperviscosity(s)
-        _add_hviscosity!(rhs.c.x,u.c.x,s)
-        _add_hviscosity!(rhs.c.y,u.c.y,s)
-        _add_hviscosity!(rhs.c.z,u.c.z,s)
-    else
-        _add_viscosity!(rhs.c.x,u.c.x,-ν,s)
-        _add_viscosity!(rhs.c.y,u.c.y,-ν,s)
-        _add_viscosity!(rhs.c.z,u.c.z,-ν,s)
-    end
-end
-
-@par function _add_viscosity!(rhs::AbstractArray,u::AbstractArray,mν::Real,s::@par(AbstractSimulation))
-    @mthreads for k in ZRANGE
-        for j in YRANGE
-            @inbounds @msimd for i in XRANGE
-                #rhs[i,j,k] = (kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])*mŒΩ*u[i,j,k] + rhs[i,j,k]
-                rhs[i,j,k] = muladd(muladd(KX[i], KX[i], muladd(KY[j], KY[j], KZ[k]*KZ[k])), mν*u[i,j,k], rhs[i,j,k])
-            end
-        end
-    end
-end
-
-@par function _add_hviscosity!(rhs::AbstractArray,u::AbstractArray,s::@par(AbstractSimulation))
-    mν = -nu(s)
-    mνh = -nuh(s)
-    M = get_hyperviscosity_exponent(s)
-    @mthreads for k in ZRANGE
-        for j in YRANGE
-            @inbounds @msimd for i in XRANGE
-                modk2 = muladd(KX[i], KX[i], muladd(KY[j], KY[j], KZ[k]*KZ[k]))
-                rhs[i,j,k] = muladd(muladd(modk2, mν, modk2^M * mνh), u[i,j,k], rhs[i,j,k])
-            end
-        end
-    end
-end
-
-function add_scalar_difusion!(rhs::AbstractArray,u::AbstractArray,ν::Real,s::AbstractSimulation)
-    _add_viscosity!(rhs,u,-ν,s)
-end
+#function add_viscosity!(rhs::VectorField,u::VectorField,ν::Real,s::AbstractSimulation)
+#    if hashyperviscosity(s)
+#        _add_hviscosity!(rhs.c.x,u.c.x,s)
+#        _add_hviscosity!(rhs.c.y,u.c.y,s)
+#        _add_hviscosity!(rhs.c.z,u.c.z,s)
+#    else
+#        _add_viscosity!(rhs.c.x,u.c.x,-ν,s)
+#        _add_viscosity!(rhs.c.y,u.c.y,-ν,s)
+#        _add_viscosity!(rhs.c.z,u.c.z,-ν,s)
+#    end
+#end
+#
+#@par function _add_viscosity!(rhs::AbstractArray,u::AbstractArray,mν::Real,s::@par(AbstractSimulation))
+#    @mthreads for k in ZRANGE
+#        for j in YRANGE
+#            @inbounds @msimd for i in XRANGE
+#                #rhs[i,j,k] = (kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])*mŒΩ*u[i,j,k] + rhs[i,j,k]
+#                rhs[i,j,k] = muladd(muladd(KX[i], KX[i], muladd(KY[j], KY[j], KZ[k]*KZ[k])), mν*u[i,j,k], rhs[i,j,k])
+#            end
+#        end
+#    end
+#end
+#
+#@par function _add_hviscosity!(rhs::AbstractArray,u::AbstractArray,s::@par(AbstractSimulation))
+#    mν = -nu(s)
+#    mνh = -nuh(s)
+#    M = get_hyperviscosity_exponent(s)
+#    @mthreads for k in ZRANGE
+#        for j in YRANGE
+#            @inbounds @msimd for i in XRANGE
+#                modk2 = muladd(KX[i], KX[i], muladd(KY[j], KY[j], KZ[k]*KZ[k]))
+#                rhs[i,j,k] = muladd(muladd(modk2, mν, modk2^M * mνh), u[i,j,k], rhs[i,j,k])
+#            end
+#        end
+#    end
+#end
+#
+#function add_scalar_difusion!(rhs::AbstractArray,u::AbstractArray,ν::Real,s::AbstractSimulation)
+#    _add_viscosity!(rhs,u,-ν,s)
+#end
 
  @par function pressure_projection!(rhsx,rhsy,rhsz,s::@par(AbstractSimulation))
     @inbounds a = (rhsx[1],rhsy[1],rhsz[1])
@@ -389,15 +389,15 @@ end
     @inbounds rhsx[1],rhsy[1],rhsz[1] = a
 end
 
-@par function addgravity!(rhs,ρ,g::Real,s::@par(AbstractSimulation))
-    @mthreads for k in ZRANGE
-        for j in YRANGE
-            @inbounds @msimd for i in XRANGE
-                rhs[i,j,k] = muladd(ρ[i,j,k],g,rhs[i,j,k])
-            end
-        end
-    end
-end
+#@par function addgravity!(rhs,ρ,g::Real,s::@par(AbstractSimulation))
+    #@mthreads for k in ZRANGE
+        #for j in YRANGE
+            #@inbounds @msimd for i in XRANGE
+                #rhs[i,j,k] = muladd(ρ[i,j,k],g,rhs[i,j,k])
+            #end
+        #end
+    #end
+#end
 
 @par function time_step!(s::A) where {A<:@par(AbstractSimulation)}
     s.timestep(s.u,s.rhs,s)

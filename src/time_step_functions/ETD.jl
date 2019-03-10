@@ -243,35 +243,35 @@ end
 end
 
 # with forcing
-@par function (f::ETD3rdO)(ρ::AbstractArray{<:Complex,3},ρrhs::AbstractArray{<:Complex,3}, forcing::AbstractArray{<:Complex,3}, s::@par(AbstractSimulation))
-    set_coefficients!(f,ρrhs)
-    @mthreads for kk = ZRANGE
-        _tETD3rdO!(kk, ρ,ρrhs, forcing, f.fm1,f.fm2,f,s)
-    end
-    mycopy!(f.fm2,f.fm1)
-    mycopy!(f.fm1,ρrhs)
-    return nothing
-end
+#@par function (f::ETD3rdO)(ρ::AbstractArray{<:Complex,3},ρrhs::AbstractArray{<:Complex,3}, forcing::AbstractArray{<:Complex,3}, s::@par(AbstractSimulation))
+#    set_coefficients!(f,ρrhs)
+#    @mthreads for kk = ZRANGE
+#        _tETD3rdO!(kk, ρ,ρrhs, forcing, f.fm1,f.fm2,f,s)
+#    end
+#    mycopy!(f.fm2,f.fm1)
+#    mycopy!(f.fm1,ρrhs)
+#    return nothing
+#end
 
-@inline @par function _tETD3rdO!(k::Integer, u::AbstractArray{Complex{Float64},3}, rhs::AbstractArray, forcing, rm1::AbstractArray, rm2::AbstractArray, f,s::@par(AbstractSimulation)) 
-@inbounds begin
-    At = f.At
-    Bt = f.Bt
-    Ct = f.Ct
-    c = f.c
-    dt = get_dt(f)
-    if (6 < k < NZ-4)
-        for j in YRANGE
-            @msimd for i in XRANGE
-                u[i,j,k] = muladd(At[i,j,k], rhs[i,j,k], muladd(Bt[i,j,k], rm1[i,j,k], muladd(Ct[i,j,k], rm2[i,j,k], exp(c[i,j,k]*dt)*u[i,j,k])))
-            end
-        end
-    else
-        for j in YRANGE
-            @msimd for i in XRANGE
-                u[i,j,k] = muladd(At[i,j,k], rhs[i,j,k], muladd(Bt[i,j,k], rm1[i,j,k], muladd(Ct[i,j,k], rm2[i,j,k],muladd(exp(c[i,j,k]*dt), u[i,j,k], forcing[i,j,k]))))
-            end
-        end
-    end
-end
-end
+#@inline @par function _tETD3rdO!(k::Integer, u::AbstractArray{Complex{Float64},3}, rhs::AbstractArray, forcing, rm1::AbstractArray, rm2::AbstractArray, f,s::@par(AbstractSimulation)) 
+#@inbounds begin
+#    At = f.At
+#    Bt = f.Bt
+#    Ct = f.Ct
+#    c = f.c
+#    dt = get_dt(f)
+#    if (6 < k < NZ-4)
+#        for j in YRANGE
+#            @msimd for i in XRANGE
+#                u[i,j,k] = muladd(At[i,j,k], rhs[i,j,k], muladd(Bt[i,j,k], rm1[i,j,k], muladd(Ct[i,j,k], rm2[i,j,k], exp(c[i,j,k]*dt)*u[i,j,k])))
+#            end
+#        end
+#    else
+#        for j in YRANGE
+#            @msimd for i in XRANGE
+#                u[i,j,k] = muladd(At[i,j,k], rhs[i,j,k], muladd(Bt[i,j,k], rm1[i,j,k], muladd(Ct[i,j,k], rm2[i,j,k],muladd(exp(c[i,j,k]*dt), u[i,j,k], forcing[i,j,k]))))
+#            end
+#        end
+#    end
+#end
+#end
