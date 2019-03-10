@@ -7,7 +7,7 @@ struct ETD3rdO_Coefficients{Adptive,HyperviscosityType}
     Ct::Array{Float64,3}
     hyperviscosity::HyperviscosityType
     citeration::Base.RefValue{Int}
-    ETD3rdO_Coefficients{A,H}(c,At,Bt,Ct,h) where {A,H} = new{A,H}(c,At,Bt,Ct,h,Ref(2))
+    ETD3rdO_Coefficients{A,H}(c,At,Bt,Ct,h) where {A,H} = new{A,H}(c,At,Bt,Ct,h,Ref(0))
 end
 
 const ETD3rdO_coefficients_dict = Dict()
@@ -206,16 +206,16 @@ end
 
 @par function (f::ETD3rdO)(ρ::AbstractArray{<:Complex,3},ρrhs::AbstractArray{<:Complex,3}, s::@par(AbstractSimulation))
     i = f.iteration[] += 1
-    if i == 1
-        ETD1stO!(ρ,ρrhs,f.c,f.dt[])
-    elseif i == 2
-        ETD2ndO!(ρ,ρrhs,f.c,f.fm1,f.dt[],f.dt2[])
-    else
+    #if i == 1
+        #ETD1stO!(ρ,ρrhs,f.c,f.dt[])
+    #elseif i == 2
+        #ETD2ndO!(ρ,ρrhs,f.c,f.fm1,f.dt[],f.dt2[])
+    #else
         set_coefficients!(f,ρrhs)
         @mthreads for kk = ZRANGE
             _tETD3rdO!(kk, ρ,ρrhs,f.fm1,f.fm2,f,s)
         end
-    end
+    #end
     mycopy!(f.fm2,f.fm1)
     mycopy!(f.fm1,ρrhs)
     return nothing
