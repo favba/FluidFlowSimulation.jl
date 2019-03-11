@@ -35,4 +35,7 @@ function writeoutput(s::AbstractSimulation)
         writedlm("R.$init",s.forcing.R)
         writedlm("Eh.$init",zip(s.forcing.avgK, s.forcing.Ef))
     end
+    if typeof(s.forcing) <: AForcing
+        writedlm("R.$init",s.forcing.R)
+    end
 end
