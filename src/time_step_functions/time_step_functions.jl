@@ -15,8 +15,7 @@ has_variable_timestep(t::Type{<:AbstractScalarTimeStep{adp,N}}) where {adp,N} =
 set_dt!(t::Type{<:AbstractScalarTimeStep{false,N}},dt::Real) where {N} =
     nothing
 
-@inline set_dt!(t::AbstractScalarTimeStep{false,N},dt::Real) where {N} =
-    set_dt!(typeof(t))
+@inline set_dt!(t::AbstractScalarTimeStep{false,N},dt::Real) where {N} = nothing
 
 struct VectorTimeStep{cfl,Tx<:AbstractScalarTimeStep,Ty<:AbstractScalarTimeStep,Tz<:AbstractScalarTimeStep} <: AbstractTimeStep
     x::Tx
