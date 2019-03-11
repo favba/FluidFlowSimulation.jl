@@ -11,7 +11,6 @@ using .Globals
 include("macros.jl")
 include("simulationtypes.jl")
 include("Forcing_methods/spectrum.jl")
-include("Forcing_methods/forcing.jl")
 include("utils.jl")
 include("vectorfunctions.jl")
 include("time_step_functions/time_step_functions.jl")
