@@ -194,22 +194,22 @@ end
             rhsden = (-ρ[i]) * v
             hasdensityles(A) && (rhsden += f[i])
             f[i] = rhsden
-            has_variable_timestep(A) && (ρmax = ifelse(ρmax > abs(ρ[i]),ρmax,abs(ρ[i])))
+            #has_variable_timestep(A) && (ρmax = ifelse(ρmax > abs(ρ[i]),ρmax,abs(ρ[i])))
         end
 
         if haspassivescalar(A)
             rhsp = (-φ[i]) * v
             haspassivescalarles(A) && (rhsp += fφ[i])
             fφ[i] = rhsp
-            has_variable_timestep(A) && (smax = ifelse(smax > abs(φ[i]),smax,abs(φ[i])))
+            #has_variable_timestep(A) && (smax = ifelse(smax > abs(φ[i]),smax,abs(φ[i])))
         end
 
     end
 
     if has_variable_timestep(A) 
         s.reduction[j] = umax
-        hasdensity(A) && (s.densitystratification.reduction[j] = ρmax)
-        haspassivescalar(A) && (s.passivescalar.reduction[j] = smax)
+        #hasdensity(A) && (s.densitystratification.reduction[j] = ρmax)
+        #haspassivescalar(A) && (s.passivescalar.reduction[j] = smax)
     end
 
     return nothing
