@@ -76,9 +76,9 @@ end
         @. DEALIAS = (kxp^2 > cutoff) | (kyp^2 > cutoff) | (kzp^2 > cutoff)
     end
 
-    const global KX = FluidFields.RKvec{Float64}(NRX,LX)#(kxp...,)
-    const global KY = FluidFields.Kvec{Float64}(NY,LY)#(kyp...,)
-    const global KZ = FluidFields.Kvec{Float64}(NZ,LZ)#(kzp...,)
+    const global KX = FluidFields.SRKvec(NRX,LX)#(kxp...,)
+    const global KY = FluidFields.SKvec(NY,LY)#(kyp...,)
+    const global KZ = FluidFields.SKvec(NZ,LZ)#(kzp...,)
 
     s = (NX,NY,NZ)
     const global K = VecArray(HomogeneousArray{1}(KX,s),HomogeneousArray{2}(KY,s),HomogeneousArray{3}(KZ,s))
