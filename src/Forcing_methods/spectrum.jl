@@ -12,7 +12,7 @@ function calculate_u1u2_spectrum!(Ef,u,cplane)
             n = round(Int, k/maxdk2d) + 1
             if n <= nshells
                 magsq = abs2(ux[i,j,cplane]) + abs2(uy[i,j,cplane])
-                ee = 0.5*conjFactX * magsq / maxdk2d;
+                ee = 0.5*conjFactX * magsq;
                 Ef[n]+=ee;
                 conjFactX=2.0;
             end
