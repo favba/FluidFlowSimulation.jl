@@ -22,13 +22,13 @@ include("models.jl")
 function run_simulation()
     par = readglobal()
     s = parameters(par)
-    println(s)
     lengthtime = haskey(par,:timeDuration) ? parse(Float64,par[:timeDuration]) : Inf
     nt = haskey(par,:nt) ? parse(Int,par[:nt]) : (typemax(Int) - s.iteration[])
     run_simulation(s,nt,lengthtime)
 end
 
 @par function run_simulation(s::@par(AbstractSimulation),totalnsteps::Integer,lenghtime::Real)
+    @info(s)
     @info("Simulation started.")
 
     initialize!(s)

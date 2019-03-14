@@ -314,8 +314,6 @@ function parameters(d::Dict)
         typeof(scalartype),typeof(densitytype),typeof(lestype),typeof(forcingtype),
         typeof(hyperviscositytype)}(u,vtimestep,scalartype,densitytype,lestype,forcingtype,hyperviscositytype,Ref(start),Ref(starttime),dtout,dtstat)
   #
-
-    @info(s)
     return s
 end
 
