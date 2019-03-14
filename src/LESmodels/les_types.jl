@@ -167,15 +167,45 @@ is_SandP(a::Union{<:SandP,Type{<:SandP}}) = true
 @inline is_SandP(s::T) where {T<:AbstractSimulation} = is_SandP(T)
 
 @inline is_Smagorinsky(a::Union{<:SandP{t,S},<:Type{SandP{t,S}}}) where {t,S} = is_Smagorinsky(S)
+@inline is_FakeSmagorinsky(a::Union{<:SandP{t,S},<:Type{SandP{t,S}}}) where {t,S} = is_FakeSmagorinsky(S)
 @inline is_Vreman(a::Union{<:SandP{t,S},<:Type{SandP{t,S}}}) where {t,S} = is_Vreman(S)
 @inline is_dynamic_les(a::Union{<:SandP{t,S},<:Type{SandP{t,S}}}) where {t,S} = is_dynamic_les(S)
 @inline is_production_model(a::Union{<:SandP{t,S},<:Type{SandP{t,S}}}) where {t,S} = is_production_model(S)
 
-statsheader(a::SandP) = "pr"
+statsheader(a::SandP) = is_FakeSmagorinsky(a) ? "" : "pr"
 
-stats(a::SandP,s::AbstractSimulation) = (tmean(a.pr.rr,s),)
+stats(a::SandP,s::AbstractSimulation) = is_FakeSmagorinsky(s) ? () : (tmean(a.pr.rr,s),)
 
-msg(a::SandP) = "\nLES model: SandP\nP tensor constant: $(a.cb)\nEddy Viscosity model: [$(msg(a.Smodel))]\n"
+msg(a::SandP) = "\nLES model: SandP\nP tensor constant: $(a.cb)\nEddy Viscosity model: {$(msg(a.Smodel))}\n"
+
+
+# Fake Smagorinsky Model Start ======================================================
+
+struct FakeSmagorinsky{T} <: EddyViscosityModel
+    Δ²::T
+    tau::SymTrTenField{T,3,2,false}
+    reduction::Vector{T}
+end
+
+function FakeSmagorinsky(Δ::T,dim::NTuple{3,Integer}) where {T<:Real}
+    data = SymTrTenField{T}(dim,(LX,LY,LZ))
+    #fill!(data,0)
+    reduction = zeros(THR ? Threads.nthreads() : 1)
+    return FakeSmagorinsky{T}(Δ^2, data,reduction)
+end
+
+is_FakeSmagorinsky(a::Union{<:FakeSmagorinsky,Type{<:FakeSmagorinsky}}) = true
+@inline @par is_FakeSmagorinsky(s::Type{T}) where {T<:@par(AbstractSimulation)} = is_FakeSmagorinsky(LESModelType)
+@inline is_FakeSmagorinsky(s::T) where {T<:AbstractSimulation} = is_FakeSmagorinsky(T)
+is_FakeSmagorinsky(a) = false
+
+statsheader(a::FakeSmagorinsky) = ""
+
+stats(a::FakeSmagorinsky,s::AbstractSimulation) = ()
+
+msg(a::FakeSmagorinsky) = "\nLES model: FakeSmagorinsky (nut = 0)\nFilter Width: $(sqrt(a.Δ²))\n"
+
+# Fake Smagorinsky Model End ======================================================
 
 # Scalar models =====================================================================
 
@@ -193,3 +223,58 @@ VorticityDiffusion() = VorticityDiffusion{Float64}(1.3)
 
 is_vorticity_model(::Any) = false
 is_vorticity_model(::Type{T}) where {T<:VorticityDiffusion} = true
+
+
+function les_types(d,nx,ny,nz,lx,ly,lz)
+
+    lestype = NoLESModel()
+    if haskey(d,:lesModel)
+        if d[:lesModel] == "Smagorinsky"
+            c = haskey(d,:smagorinskyConstant) ? Float64(eval(Meta.parse(d[:smagorinskyConstant]))) : 0.17 
+            Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
+            lestype = Smagorinsky(c,Δ,(nx,ny,nz))
+        elseif d[:lesModel] == "Vreman"
+            c = haskey(d,:vremanConstant) ? Float64(eval(Meta.parse(d[:vremanConstant]))) : 2*(0.17)^2
+            Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
+            lestype = VremanLESModel(c,Δ,(nx,ny,nz))
+        elseif d[:lesModel] == "productionViscosity"
+            c = haskey(d,:productionConstant) ? Float64(eval(Meta.parse(d[:productionConstant]))) : 0.4
+            Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
+            lestype = ProductionViscosityLESModel(c,Δ,(nx,ny,nz))
+        elseif d[:lesModel] == "dynamicSmagorinsky"
+            Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)
+            tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ
+            backscatter = haskey(d,:cmin) ? parse(Float64,d[:cmin]) : 0.0
+            lestype = DynamicSmagorinsky(Δ,tΔ,(nx,ny,nz), backscatter)
+        elseif d[:lesModel] == "fakeSmagorinsky"
+            Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
+            lestype = FakeSmagorinsky(Δ,(nx,ny,nz))
+        elseif d[:lesModel] == "SandP"
+            cb = haskey(d,:pConstant) ? Float64(eval(Meta.parse(d[:pConstant]))) : 0.1
+            Slestype = if d[:sLesModel] == "Smagorinsky"
+                c = haskey(d,:smagorinskyConstant) ? Float64(eval(Meta.parse(d[:smagorinskyConstant]))) : 0.17 
+                Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
+                Smagorinsky(c,Δ,(nx,ny,nz))
+            elseif d[:sLesModel] == "Vreman"
+                c = haskey(d,:vremanConstant) ? Float64(eval(Meta.parse(d[:vremanConstant]))) : 2*(0.17)^2
+                Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
+                lestype = VremanLESModel(c,Δ,(nx,ny,nz))
+            elseif d[:sLesModel] == "productionViscosity"
+                c = haskey(d,:productionConstant) ? Float64(eval(Meta.parse(d[:productionConstant]))) : 0.4
+                Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
+                lestype = ProductionViscosityLESModel(c,Δ,(nx,ny,nz))
+            elseif d[:sLesModel] == "dynamicSmagorinsky"
+                Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)
+                tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ
+                backscatter = haskey(d,:cmin) ? parse(Float64,d[:cmin]) : 0.0
+                DynamicSmagorinsky(Δ,tΔ,(nx,ny,nz), backscatter)
+            elseif d[:sLesModel] == "fakeSmagorinsky"
+                Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)  
+                FakeSmagorinsky(Δ,(nx,ny,nz))
+            end
+            lestype = SandP(cb,Slestype)
+        end
+    end
+
+    return lestype
+end

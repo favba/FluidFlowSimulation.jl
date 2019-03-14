@@ -52,7 +52,7 @@ end
         β = s.lesmodel.cb*Δ²
     end
 
-    pr = s.lesmodel.pr.rr
+    is_FakeSmagorinsky(A) || (pr = s.lesmodel.pr.rr)
 
     @inbounds @msimd for i in REAL_RANGES[j]
         w = rhs[i]
@@ -79,13 +79,22 @@ end
 
         if is_SandP(A)
             P = Lie(S,AntiSymTen(-0.5*w))
-            t += β*P
+            if is_FakeSmagorinsky(A)
+                t = β*P
+            else
+                t += β*P
+            end
         end
 
-        pr[i] = t:S
-        τ[i] = t
+        is_FakeSmagorinsky(A) || (pr[i] = t:S)
+
+        if !(is_FakeSmagorinsky(A) && !is_SandP(A))
+            τ[i] = t
+        end
+
 
         if hasdensityles(A)
+            is_FakeSmagorinsky(A) && (νt = 0.0)
             ∇ρ = f[i]
             rhsden = νt*∇ρ
             if has_les_density_vorticity_model(A)
@@ -95,6 +104,7 @@ end
         end
 
         if haspassivescalarles(A)
+            is_FakeSmagorinsky(A) && (νt = 0.0)
             ∇φ = fφ[i]
             rhsp = νt*fφ[i]
             if has_les_scalar_vorticity_model(A)

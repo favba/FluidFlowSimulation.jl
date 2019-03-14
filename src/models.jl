@@ -138,8 +138,10 @@ end
     end
 
     if hasles(s)
-        myfourier!(s.lesmodel.tau)
-        dealias!(s.lesmodel.tau)
+        if !(!is_SandP(A) && is_FakeSmagorinsky(A))
+            myfourier!(s.lesmodel.tau)
+            dealias!(s.lesmodel.tau)
+        end
     end
 
     return nothing
@@ -264,7 +266,9 @@ end
             end
 
             if hasles(A)
-                rhs += (im*kh)⋅τ[i,j,k]
+                if !(!is_SandP(A) && is_FakeSmagorinsky(A))
+                    rhs += (im*kh)⋅τ[i,j,k]
+                end
             end
 
             if hasdensity(A)
