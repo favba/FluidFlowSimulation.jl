@@ -108,15 +108,17 @@ function squared_mean(reduction,u::ScalarField{T}) where {T}
     isrealspace(u) && fourier!(u)
     result = fill!(reduction,zero(T))
     @mthreads for l in ZRANGE
-        ee = zero(T)
-        ii = Threads.threadid()
-        @inbounds for j in YRANGE
-            @simd for i in XRANGE
-                magsq = abs2(u[i,j,l])
-                ee += (1 + (i>1))*magsq 
+        @inbounds begin
+            ee = zero(T)
+            ii = Threads.threadid()
+            @inbounds for j in YRANGE
+                @simd for i in XRANGE
+                    magsq = abs2(u[i,j,l])
+                    ee += (1 + (i>1))*magsq 
+                end
             end
+            result[ii] += ee
         end
-        result[ii] += ee
     end
     return sum(result)
 end
@@ -125,15 +127,17 @@ function dx_squared_mean(reduction,u::ScalarField{T}) where {T}
     isrealspace(u) && fourier!(u)
     result = fill!(reduction,zero(T))
     @mthreads for l in ZRANGE
-        ee = zero(T)
-        ii = Threads.threadid()
-        @inbounds for j in YRANGE
-            @simd for i in XRANGE
-                magsq = abs2(im*KX[i]*u[i,j,l])
-                ee += (1 + (i>1))*magsq 
+        @inbounds begin
+            ee = zero(T)
+            ii = Threads.threadid()
+            @inbounds for j in YRANGE
+                @simd for i in XRANGE
+                    magsq = abs2(im*KX[i]*u[i,j,l])
+                    ee += (1 + (i>1))*magsq 
+                end
             end
+            result[ii] += ee
         end
-        result[ii] += ee
     end
     return sum(result)
 end
@@ -142,16 +146,18 @@ function dy_squared_mean(reduction,u::ScalarField{T}) where {T}
     isrealspace(u) && fourier!(u)
     result = fill!(reduction,zero(T))
     @mthreads for l in ZRANGE
-        ee = zero(T)
-        ii = Threads.threadid()
-        @inbounds for j in YRANGE
-            ky = KY[j]
-            @simd for i in XRANGE
-                magsq = abs2(im*ky*u[i,j,l])
-                ee += (1 + (i>1))*magsq 
+        @inbounds begin
+            ee = zero(T)
+            ii = Threads.threadid()
+            @inbounds for j in YRANGE
+                ky = KY[j]
+                @simd for i in XRANGE
+                    magsq = abs2(im*ky*u[i,j,l])
+                    ee += (1 + (i>1))*magsq 
+                end
             end
+            result[ii] += ee
         end
-        result[ii] += ee
     end
     return sum(result)
 end
@@ -160,16 +166,18 @@ function dz_squared_mean(reduction,u::ScalarField{T}) where {T}
     isrealspace(u) && fourier!(u)
     result = fill!(reduction,zero(T))
     @mthreads for l in ZRANGE
-        ee = zero(T)
-        ii = Threads.threadid()
-        kz = KZ[l]
-        @inbounds for j in YRANGE
-            @simd for i in XRANGE
-                magsq = abs2(im*kz*u[i,j,l])
-                ee += (1 + (i>1))*magsq 
+        @inbounds begin
+            ee = zero(T)
+            ii = Threads.threadid()
+            kz = KZ[l]
+            @inbounds for j in YRANGE
+                @simd for i in XRANGE
+                    magsq = abs2(im*kz*u[i,j,l])
+                    ee += (1 + (i>1))*magsq 
+                end
             end
+            result[ii] += ee
         end
-        result[ii] += ee
     end
     return sum(result)
 end
@@ -180,15 +188,17 @@ function proj_mean(reduction,u::ScalarField{T},v) where {T}
     #isrealspace(v) && fourier!(v)
     result = fill!(reduction,zero(T))
     @mthreads for l in ZRANGE
-        ee = zero(T)
-        ii = Threads.threadid()
-        @inbounds for j in YRANGE
-            @simd for i in XRANGE
-                magsq = proj(u[i,j,l],v[i,j,l])
-                ee += (1 + (i>1))*magsq 
+        @inbounds begin
+            ee = zero(T)
+            ii = Threads.threadid()
+            @inbounds for j in YRANGE
+                @simd for i in XRANGE
+                    magsq = proj(u[i,j,l],v[i,j,l])
+                    ee += (1 + (i>1))*magsq 
+                end
             end
+            result[ii] += ee
         end
-        result[ii] += ee
     end
     return sum(result)
 end
@@ -203,19 +213,21 @@ function hyperviscosity_stats(reduction,u::VectorField{T},s) where {T}
     isrealspace(u) && fourier!(u)
     result = fill!(reduction,zero(T))
     @mthreads for l in ZRANGE
-        ee = zero(T)
-        ii = Threads.threadid()
-        M::Int = get_hyperviscosity_exponent(s)
-        @inbounds kz2 = KZ[l]*KZ[l]
-        @inbounds for j in YRANGE
-            kyz2 = muladd(KY[j], KY[j], kz2)
-            @simd for i in XRANGE
-                k2 = muladd(KX[i], KX[i], kyz2)
-                magsq = mag2(u[i,j,l])
-                ee += (1 + (i>1)) * (k2^M)*magsq 
+        @inbounds begin
+            ee = zero(T)
+            ii = Threads.threadid()
+            M::Int = get_hyperviscosity_exponent(s)
+            kz2 = KZ[l]*KZ[l]
+            for j in YRANGE
+                kyz2 = muladd(KY[j], KY[j], kz2)
+                @simd for i in XRANGE
+                    k2 = muladd(KX[i], KX[i], kyz2)
+                    magsq = mag2(u[i,j,l])
+                    ee += (1 + (i>1)) * (k2^M)*magsq 
+                end
             end
+            result[ii] += ee
         end
-        result[ii] += ee
     end
     mν = nuh(s)
     return mν*sum(result)
