@@ -78,7 +78,7 @@ end
         end
 
         if is_SandP(A)
-            P = Lie(S,AntiSymTen(-0.5*w))
+            P = Lie(S,AntiSymTen(0.5*w))
             if is_FakeSmagorinsky(A)
                 t = β*P
             else
