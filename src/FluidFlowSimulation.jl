@@ -1,6 +1,6 @@
 __precompile__(false)
 module FluidFlowSimulation
-export run_simulation, advance_in_time!, parameters, readglobal
+export run_simulation, advance_in_time!, parameters, readglobal, initialize!
 
 using FFTW, InplaceRealFFT, FluidTensors, FluidFields, LinearAlgebra, GlobalFileHelper, Interpolations, DelimitedFiles
 
