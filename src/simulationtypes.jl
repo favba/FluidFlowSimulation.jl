@@ -176,35 +176,7 @@ include("Forcing_methods/forcing_types.jl")
 
 # Hyper viscosity Type
 
-abstract type AbstractHyperViscosity end
-
-#statsheader(a::AbstractForcing) = ""
-
-struct NoHyperViscosity <: AbstractHyperViscosity end
-
-    statsheader(a::AbstractHyperViscosity) = ""
-
-    stats(a::AbstractHyperViscosity,s::AbstractSimulation) = ()
-
-    msg(a::NoHyperViscosity) = "\nHyper viscosity: no hyperviscosity\n\n"
-
-    @inline nuh(::Type{NoHyperViscosity}) = nothing
-    @inline nuh(a::AbstractHyperViscosity) = nuh(typeof(a))
-
-    @inline get_hyperviscosity_exponent(::Type{NoHyperViscosity}) = nothing
-    @inline get_hyperviscosity_exponent(a::AbstractHyperViscosity) = get_hyperviscosity_exponent(typeof(a))
-
-struct HyperViscosity{νh,M} <: AbstractHyperViscosity
-end
-
-    @inline nuh(::Type{<:HyperViscosity{n,M}}) where {n,M} = n
-    @inline get_hyperviscosity_exponent(::Type{<:HyperViscosity{n,M}}) where {n,M} = M
-
-    statsheader(a::HyperViscosity) = "hdiss"
-
-    stats(a::HyperViscosity,s::AbstractSimulation) = (hyperviscosity_stats(s.reduction,s.u,s),)
-
-    msg(a::HyperViscosity{nh,M}) where {nh,M} = "\nHyper viscosity: νh = $(nh), m = $(M)\n\n"
+include("Hyperviscosity/hyperviscosity_types.jl")
 
 # Initializan function =========================================================================================================================================================================================================
 
@@ -249,10 +221,16 @@ function parameters(d::Dict)
 
     cutoff = (cutoffr*kxp[end])^2
 
-     if haskey(d,:hyperViscosity)
-        νh = parse(Float64,d[:hyperViscosity])
-        m = haskey(d,:hyperViscosityM) ? parse(Int,d[:hyperViscosityM]) : 2
-        hyperviscositytype = HyperViscosity{νh,m}()
+    if haskey(d,:hyperViscosity)
+        if d[:hyperViscosity] == "spectralBarrier"
+            initkp = haskey(d,:initk) ? parse(Float64,d[:initk]) : KX[end] / 2
+            endK = haskey(d,:endk) ? parse(Float64,d[:endk]) : KX[end]
+            hyperviscositytype = SpectralBarrier(initkp,endK)
+        else
+            νh = parse(Float64,d[:hyperViscosityCoefficient])
+            m = haskey(d,:hyperViscosityM) ? parse(Int,d[:hyperViscosityM]) : 2
+            hyperviscositytype = HyperViscosity{νh,m}()
+        end
     else
         hyperviscositytype = NoHyperViscosity()
     end

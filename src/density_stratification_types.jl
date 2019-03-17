@@ -83,9 +83,15 @@ function stratificationtype(d::AbstractDict,start,integrator,nx,ny,nz,lx,ly,lz,v
     s = NoDensityStratification()
 
     if haskey(d,:hyperViscosity)
-        νh = parse(Float64,d[:hyperViscosity])
-        m = haskey(d,:hyperViscosityM) ? parse(Int,d[:hyperViscosityM]) : 2
-        hyperviscositytype = HyperViscosity{νh,m}()
+        if d[:hyperViscosity] == "spectralBarrier"
+            initkp = haskey(d,:initk) ? parse(Float64,d[:initk]) : KX[end] / 2
+            endK = haskey(d,:endk) ? parse(Float64,d[:endk]) : KX[end]
+            hyperviscositytype = SpectralBarrier(initkp,endK)
+        else
+            νh = parse(Float64,d[:hyperViscosityCoefficient])
+            m = haskey(d,:hyperViscosityM) ? parse(Int,d[:hyperViscosityM]) : 2
+            hyperviscositytype = HyperViscosity{νh,m}()
+        end
     else
         hyperviscositytype = NoHyperViscosity()
     end

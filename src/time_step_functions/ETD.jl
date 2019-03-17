@@ -55,12 +55,25 @@ end
 
 init_c!(c::Array{Float64,3},ν::Real,::NoHyperViscosity) = init_c!(c,-ν)
 init_c!(c::Array{Float64,3},ν::Real,hv::HyperViscosity) = init_c_hv!(c,-ν,hv)
+init_c!(c::Array{Float64,3},ν::Real,hv::SpectralBarrier) = init_c_spectral_barrier!(c,-ν,hv)
 
 function init_c!(c::AbstractArray,mν::Real)
     @mthreads for k in ZRANGE
         for j in YRANGE
             @inbounds @msimd for i in XRANGE
                 c[i,j,k] = muladd(KX[i], KX[i], muladd(KY[j], KY[j], KZ[k]*KZ[k]))*mν
+            end
+        end
+    end
+end
+
+function init_c_spectral_barrier!(c::AbstractArray,mν::Real,hv::SpectralBarrier)
+    @mthreads for k in ZRANGE
+        f = hv.func
+        for j in YRANGE
+            @inbounds @msimd for i in XRANGE
+                modk = muladd(KX[i], KX[i], muladd(KY[j], KY[j], KZ[k]*KZ[k])) 
+                c[i,j,k] = muladd(modk, mν, f(sqrt(modk))) 
             end
         end
     end
@@ -77,7 +90,6 @@ function init_c_hv!(c::AbstractArray,mν::Real,hv::HyperViscosity{n,M}) where {n
         end
     end
 end
-
 
 get_dt(t::ETD3rdO) = getindex(t.dt)
 
@@ -159,15 +171,16 @@ function set_ABCt!(t::ETD3rdO,j::Integer)
         l3 = l2*l1
         ldt = l1*dt
         test = -l1*dt<=1e-4
+        test2 = l1 == -Inf
 
-        At[i] = ifelse(test,
+        At[i] = ifelse(test2, 0.0, ifelse(test,
             muladd(a1, l1, muladd(a2, l2, muladd(a3, l3, a0))),
-            (2expm1(ldt) - l2*(e1 - e2*expm1(ldt)) - l1*(e3 - e4*expm1(ldt))) / (l3*e2))
-        Bt[i] = ifelse(test,
+            (2expm1(ldt) - l2*(e1 - e2*expm1(ldt)) - l1*(e3 - e4*expm1(ldt))) / (l3*e2)))
+        Bt[i] = ifelse(test2, 0.0, ifelse(test,
             muladd(b1, l1, muladd(b2, l2, b0)),
-            (e5*l2 - 2expm1(ldt) + l1*(e3 - e6*expm1(ldt)) )/(l3*e7))
-        Ct[i] = ifelse(test,muladd(c1, l1, muladd(c2, l2, c0)),
-            (2expm1(ldt) - e8*l2 - l1*(e3 - dt2*expm1(ldt))) / (l3*e9))
+            (e5*l2 - 2expm1(ldt) + l1*(e3 - e6*expm1(ldt)) )/(l3*e7)))
+        Ct[i] = ifelse(test2, 0.0, ifelse(test,muladd(c1, l1, muladd(c2, l2, c0)),
+            (2expm1(ldt) - e8*l2 - l1*(e3 - dt2*expm1(ldt))) / (l3*e9)))
     end
 
     return nothing

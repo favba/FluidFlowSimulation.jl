@@ -15,8 +15,9 @@ function ETD1stO!(u::AbstractArray,rhs::AbstractArray,cc::AbstractArray,dt::Real
             c2dt3 = cdt2*cdt
             c3dt4 = c2dt3*cdt
             test = -cdt<=1e-4
+            test2 = c == -Inf
 
-            u[i,j,k] = muladd(exp(cdt), u[i,j,k], ifelse(test, dt + 0.5*cdt2 + c2dt3/6 + c3dt4/24, expm1(cdt)/c)*rhs[i,j,k])
+            u[i,j,k] = muladd(exp(cdt), u[i,j,k], ifelse(test2, 0.0, ifelse(test, dt + 0.5*cdt2 + c2dt3/6 + c3dt4/24, expm1(cdt)/c))*rhs[i,j,k])
         end
     end
 end
@@ -42,16 +43,16 @@ function ETD2ndO!(u::AbstractArray,rhs::AbstractArray,cc::AbstractArray,fm1::Abs
             dtp3 = dtp2*dt
             dtp4 = dtp3*dt
             test = -cdt<=1e-4
-
+            test2 = c == -Inf
             
 
-            At = ifelse(test,
+            At = ifelse(test2, 0.0, ifelse(test,
             dt + cdtp2/2 + (c2dtp3)/6 + (c3dtp4)/24 + dtp2/(2dt2) + (c*dtp3)/(6*dt2) + (cp2* dtp4)/(24*dt2),
-            (expm1cdt - c*(dt - dt2*expm1cdt))/c2dt2)
+            (expm1cdt - c*(dt - dt2*expm1cdt))/c2dt2))
 
-            Bt = ifelse(test,
+            Bt = ifelse(test2, 0.0, ifelse(test,
             (-(dtp2/(2dt2)) - (c*dtp3)/(6dt2) - (cp2*dtp4)/(24dt2)),
-            (cdt - expm1cdt)/c2dt2)
+            (cdt - expm1cdt)/c2dt2))
 
             u[i,j,k] = muladd(exp(cdt), u[i,j,k], muladd(At, rhs[i,j,k], Bt*fm1[i,j,k]))
         end
