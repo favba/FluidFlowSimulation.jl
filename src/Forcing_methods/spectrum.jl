@@ -25,3 +25,20 @@ function calculate_u1u2_spectrum(u,cplane,s::AbstractSimulation)
     calculate_u1u2_spectrum!(Ef,u,cplane=1)
     return Ef
 end
+
+function calculate_abs2!(Ef,u,cplane)
+    ux = u.c.x
+    uy = u.c.y
+    # Initialize the shells to zeros
+    fill!(Ef,0)
+    @inbounds for j in YRANGE
+        conjFactX=1.0
+        for i in XRANGE
+            magsq = abs2(ux[i,j,cplane]) + abs2(uy[i,j,cplane])
+            ee = 0.5*conjFactX * magsq;
+            Ef[i,j]=ee;
+            conjFactX=2.0;
+        end
+    end
+end
+

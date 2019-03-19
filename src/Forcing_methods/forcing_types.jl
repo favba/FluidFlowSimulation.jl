@@ -88,16 +88,12 @@ struct AForcing{T<:AbstractFloat} <: AbstractForcing
     Tf::T
     α::T
     Kf::T
-    maxDk::T
-    avgK::Vector{T}
-    npts::Vector{Int}
-    Zf::Vector{T}
-    Em::Vector{T} # Target Spectrum
+    Zf::Matrix{T}
+    Em::Matrix{T} # Target Spectrum
     R::Matrix{T} # Solution to ODE
     factor::Matrix{T} # Factor to multiply velocity Field
     forcex::PaddedArray{T,3,2,false} # Final force
     forcey::PaddedArray{T,3,2,false} # Final force
-    init::Bool # Tell if the initial condition spectra should be used instead of from data
     hp::Base.RefValue{T}
     vp::Base.RefValue{T}
 end
@@ -114,9 +110,7 @@ function add_forcing!(u,f::AForcing)
 end
 
 function initialize!(f::AForcing,s)
-    if f.init
-        calculate_u1u2_spectrum!(f.Em,s.u,1)
-    end
+    calculate_abs2!(f.Em,s.u,1)
     if isfile("R.$(s.iteration[])")
         copyto!(f.R, vec(readdlm("R.$(s.iteration[])",Float64)))
     end
@@ -152,19 +146,13 @@ function forcing_model(d::AbstractDict,nx::Integer,ny::Integer,nz::Integer,ncx::
             TF = parse(Float64,d[:TF])
             alphac = parse(Float64,d[:alphac])
             kf = parse(Float64,d[:kf])
-            nShells2D, maxdk2D, numPtsInShell2D, kh = compute_shells2D(KX,KY,ncx,ny)
-            Em = zeros(nShells2D)
-            R = zeros(nShells2D,ny)
-            factor = zeros(length(kh),ny)
+            Em = zeros(length(KX),ny)
+            R = zeros(length(KX),ny)
+            factor = zeros(length(KX),ny)
             forcex = PaddedArray((nx,ny,nz))
             forcey = PaddedArray((nx,ny,nz))
-            Zf = calculate_Zf(d,kf,kh)
-            if !isfile("targSpectrum.dat")
-                forcingtype = AForcing{Float64}(TF, alphac, kf, maxdk2D, kh, numPtsInShell2D, Zf,Em,R,factor,forcex,forcey,true,Ref(0.0),Ref(0.0))
-            else
-                calculate_Em!(Em,kh)
-                forcingtype = AForcing{Float64}(TF, alphac, kf, maxdk2D, kh, numPtsInShell2D, Zf,Em,R,factor,forcex,forcey,false,Ref(0.0),Ref(0.0))
-            end
+            Zf = calculate_Zf(d,kf,KX,KY)
+            forcingtype = AForcing{Float64}(TF, alphac, kf, Zf,Em,R,factor,forcex,forcey,Ref(0.0),Ref(0.0))
         end
     end
 

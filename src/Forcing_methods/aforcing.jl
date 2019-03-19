@@ -8,10 +8,6 @@ function (F::AForcing)(s::AbstractSimulation)
     alpha = F.α
     eps = Base.eps()
     _kf = F.Kf
-    maxdk = F.maxDk
-    avgWaveNumInShell2d = F.avgK
-    nShells2d = length(avgWaveNumInShell2d)
-    npts = F.npts
 
     R = F.R
     Em = F.Em
@@ -28,12 +24,11 @@ function (F::AForcing)(s::AbstractSimulation)
     @inbounds for j=YRANGE
         for i=XRANGE
             k = fsqrt(muladd(KX[i],KX[i],KY[j]^2))
-            n = round(Int,k/maxdk) + 1
-            if (1 < n <= nShells2d)
-                Ef = 0.5*(1 + (i>1))*(abs2(u1[i,j,1]) + abs2(u2[i,j,1]))/maxdk
-                R[i,j] += dt*(-2*alpha*omega*R[i,j] - omega*omega*(Ef - Em[n]/npts[n])) 
+            if (0 < k <= _kf)
+                Ef = 0.5*(1 + (i>1))*(abs2(u1[i,j,1]) + abs2(u2[i,j,1]))
+                R[i,j] += dt*(-2*alpha*omega*R[i,j] - omega*omega*(Ef - Em[i,j]))
                 R[i,j] = max(0.0, R[i,j])
-                factor[i,j] = fsqrt(R[i,j]/max(Ef,eps))*Zf[n]*dt
+                factor[i,j] = fsqrt(R[i,j]/max(Ef,eps))*Zf[i,j]*dt
             end
         end
     end
@@ -47,15 +42,12 @@ function (F::AForcing)(s::AbstractSimulation)
         conjFactX=1.0
         for i=XRANGE
             k = fsqrt(muladd(KX[i],KX[i],KY[j]^2))
-            n = round(Int,k/maxdk) + 1
-            if (1 < n <= nShells2d)
-                if avgWaveNumInShell2d[n] <= _kf
-                    s1[i,j,1] = u1[i,j,1]*factor[i,j]
-                    s2[i,j,1] = u2[i,j,1]*factor[i,j]
-                    ff += (abs2(s1[i,j,1]) + abs2(s2[i,j,1]))*conjFactX
-                    fv += (proj(u1[i,j,1],s1[i,j,1]) + proj(u2[i,j,1],s2[i,j,1]))*conjFactX
-                    conjFactX=2.0
-                end
+            if (0 < k <= _kf)
+                s1[i,j,1] = u1[i,j,1]*factor[i,j]
+                s2[i,j,1] = u2[i,j,1]*factor[i,j]
+                ff += (abs2(s1[i,j,1]) + abs2(s2[i,j,1]))*conjFactX
+                fv += (proj(u1[i,j,1],s1[i,j,1]) + proj(u2[i,j,1],s2[i,j,1]))*conjFactX
+                conjFactX=2.0
             end
         end
     end

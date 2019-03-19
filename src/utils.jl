@@ -158,6 +158,27 @@ function calculate_Zf(d,kf,kh)
     return Zf
 end
 
+function calculate_Zf(d,kf,kx,ky)
+    Zf = zeros(length(kx),length(ky))
+    zft = haskey(d,:Zf) ? Symbol(d[:Zf]) : :cutoff
+    if zft == :tanh
+        for j in eachindex(ky)
+            for i in eachindex(kx)
+                k = sqrt(kx[i]^2 + ky[j]^2)
+                Zf[i,j] = tanh((kf-k) / (0.25*kf)) * (((kf-k) <= 0.0) ? 0.0 : 1.0)
+            end
+        end
+    else
+        for j in eachindex(ky)
+            for i in eachindex(kx)
+                k = sqrt(kx[i]^2 + ky[j]^2)
+                Zf[i,j] = k <= kf
+            end
+        end
+    end
+    return Zf
+end
+
 @inline function Gaussfilter(Δ²::Real, k2::Real)
     aux = -Δ²/24
     return exp(aux*k2)
