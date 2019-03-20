@@ -57,7 +57,7 @@ end
     const global THR = tr
   
     const global NT = tr ? Threads.nthreads() : 1 
-    const global TRANGE = Base.OneTo(NT)
+    const global TRANGE = SOneTo(NT)
   
     const global REAL_RANGES = splitrange(NRRX*NY*NZ, NT)
     const global COMPLEX_RANGES = splitrange(NX*NY*NZ, NT)
