@@ -1,6 +1,6 @@
 include("LESmodels/les_real_calc.jl")
 
-@inline @par function advance_in_time!(s::A) where {A<:@par(AbstractSimulation)}
+@par function advance_in_time!(s::A) where {A<:@par(AbstractSimulation)}
     calculate_rhs!(s)
     hasforcing(A) && s.forcing(s)
 
