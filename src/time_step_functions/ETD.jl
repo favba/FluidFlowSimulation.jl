@@ -124,7 +124,7 @@ function set_coefficients!(t::ETD3rdO{false},rhs)
 end
 
 function fix_fm2!(fm2::AbstractArray,fm1::AbstractArray,rhs::AbstractArray,dt2::Real,dt3::Real)
-    @mthreads for j in 1:NT
+    @mthreads for j in TRANGE
         fix_fm2!(fm2,fm1,rhs,dt2,dt3,j)
     end
 end
@@ -136,7 +136,7 @@ function fix_fm2!(fm2::AbstractArray,fm1::AbstractArray,rhs::AbstractArray,dt2::
 end
 
 function set_ABCt!(t::ETD3rdO)
-    @mthreads for j in 1:NT
+    @mthreads for j in TRANGE
         set_ABCt!(t,j)
     end
     return nothing
