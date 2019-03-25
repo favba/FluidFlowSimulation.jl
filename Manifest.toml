@@ -23,9 +23,9 @@ version = "0.5.3"
 
 [[Compat]]
 deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
-git-tree-sha1 = "49269e311ffe11ac5b334681d212329002a9832a"
+git-tree-sha1 = "195a3ffcb8b0762684b6821de18f83a16455c6ea"
 uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
-version = "1.5.1"
+version = "2.0.0"
 
 [[Conda]]
 deps = ["Compat", "JSON", "VersionParsing"]
@@ -53,9 +53,9 @@ version = "0.2.4"
 
 [[FluidFields]]
 deps = ["FFTW", "FluidTensors", "InplaceRealFFT", "LinearAlgebra"]
-git-tree-sha1 = "82952ba6231a0f67313f7a19d5d56354b09e0e48"
+git-tree-sha1 = "5538e795a9c884784808107b1cd669de457253e0"
 repo-rev = "master"
-repo-url = "git@github.com:favba/FluidFields.jl.git"
+repo-url = "https://github.com/favba/FluidFields.jl.git"
 uuid = "390a1fbe-c11f-11e8-0e71-0f874e7fb199"
 version = "0.1.0"
 
@@ -69,19 +69,19 @@ version = "0.1.0"
 
 [[GlobalFileHelper]]
 deps = ["FluidFields", "FluidTensors", "InplaceRealFFT", "LinearAlgebra", "ReadGlobal", "Reexport"]
-git-tree-sha1 = "86fad15c833e6f63300e9cb72a78f7115fa2015b"
+git-tree-sha1 = "83298087e6a5ed20badf97d490d9c0f051f70961"
 repo-rev = "master"
 repo-url = "https://github.com/favba/GlobalFileHelper.jl.git"
 uuid = "57078f6c-df9f-11e8-3c9f-6588600d7a86"
 version = "0.1.0"
 
 [[InplaceRealFFT]]
-deps = ["AbstractFFTs", "FFTW", "LinearAlgebra", "Test"]
-git-tree-sha1 = "489461d3bdb58c3ba7d13f5144d5cdbba37aa4ae"
+deps = ["AbstractFFTs", "FFTW", "LinearAlgebra"]
+git-tree-sha1 = "be8d74543bb1436bf7d623ff9f4e5faffa633438"
 repo-rev = "master"
-repo-url = "git@github.com:favba/InplaceRealFFT.jl.git"
-uuid = "de009ea1-38bd-5372-95d3-1fadf153d626"
-version = "0.0.0"
+repo-url = "https://github.com/favba/InplaceRealFFT.jl.git"
+uuid = "370c16e2-4e51-11e9-3235-e391f9c4d929"
+version = "0.1.0"
 
 [[InteractiveUtils]]
 deps = ["Markdown"]
@@ -143,9 +143,9 @@ uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
 [[Ratios]]
 deps = ["Compat"]
-git-tree-sha1 = "fd159bead0a24e6270fd0573a340312bd4645cc2"
+git-tree-sha1 = "cdbbe0f350581296f3a2e3e7a91b214121934407"
 uuid = "c84ed2f1-dad5-54f0-aa8e-dbefe2724439"
-version = "0.3.0"
+version = "0.3.1"
 
 [[ReadGlobal]]
 deps = ["DelimitedFiles"]
