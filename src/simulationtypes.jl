@@ -216,7 +216,7 @@ function parameters(d::Dict)
 
     b = Globals.splitrange(lrs, nt)
 
-    haskey(d,:dealias) ? (Dealiastype = Symbol(d[:dealias])) : (Dealiastype = :sphere)
+    haskey(d,:dealias) ? (Dealiastype = Symbol(d[:dealias])) : (Dealiastype = :cube)
     haskey(d,:cutoff) ? (cutoffr = Float64(eval(Meta.parse(d[:cutoff])))) : (cutoffr = 15/16)
 
     cutoff = (cutoffr*kxp[end])^2
