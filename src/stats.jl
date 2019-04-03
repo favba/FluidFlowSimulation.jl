@@ -182,10 +182,13 @@ function dz_squared_mean(reduction,u::ScalarField{T}) where {T}
     return sum(result)
 end
 
+@inline proj(u::Vec{<:Complex},v::Vec{<:Complex}) = proj(u.x,v.x) + proj(u.y,v.y) + proj(u.z,v.z)
+@inline proj(a::SymTen{<:Complex},b::SymTen{<:Complex}) =
+    proj(a.xx,b.xx) + proj(a.yy,b.yy) + proj(a.zz,b.zz) + 2*(proj(a.xy,b.xy) + proj(a.xz,b.xz) + proj(a.yz,b.yz))
 
-function proj_mean(reduction,u::ScalarField{T},v) where {T}
+function proj_mean(reduction,u::AbstractField{T},v::AbstractField{T}) where {T}
     isrealspace(u) && fourier!(u)
-    #isrealspace(v) && fourier!(v)
+    isrealspace(v) && fourier!(v)
     result = fill!(reduction,zero(T))
     @mthreads for l in ZRANGE
         @inbounds begin
