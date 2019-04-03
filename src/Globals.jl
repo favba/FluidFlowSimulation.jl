@@ -62,7 +62,7 @@ end
     const global REAL_RANGES = splitrange(NRRX*NY*NZ, NT)
     const global COMPLEX_RANGES = splitrange(NX*NY*NZ, NT)
   
-    haskey(d,:dealias) ? (Dealiastype = Symbol(d[:dealias])) : (Dealiastype = :sphere)
+    haskey(d,:dealias) ? (Dealiastype = Symbol(d[:dealias])) : (Dealiastype = :cube)
     haskey(d,:cutoff) ? (cutoffr = Float64(eval(Meta.parse(d[:cutoff])))) : (cutoffr = 15/16)
     const global DEALIAS_TYPE = (Dealiastype,cutoffr) 
 
