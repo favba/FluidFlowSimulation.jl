@@ -67,13 +67,16 @@ end
     const global DEALIAS_TYPE = (Dealiastype,cutoffr) 
 
     cutoff = (cutoffr*kxp[end])^2
+    cutoffx = (cutoffr*kxp[end])^2
+    cutoffy = (cutoffr*maximum(abs,kyp))^2
+    cutoffz = (cutoffr*maximum(abs,kzp))^2
 
     const global DEALIAS = BitArray(undef,(NX,NY,NZ))
 
     if Dealiastype == :sphere
         @. DEALIAS = (kxp^2 + kyp^2 + kzp^2) > cutoff
     elseif Dealiastype == :cube
-        @. DEALIAS = (kxp^2 > cutoff) | (kyp^2 > cutoff) | (kzp^2 > cutoff)
+        @. DEALIAS = (kxp^2 > cutoffx) | (kyp^2 > cutoffy) | (kzp^2 > cutoffz)
     end
 
     const global KX = FluidFields.SRKvec(NRX,LX)#(kxp...,)
