@@ -199,3 +199,22 @@ end
 end
 
 @inline cutofffilter(Δ²::Real,i::Integer,j::Integer,k::Integer) = boxfilter(Δ²,K[i,j,k]⋅K[i,j,k])
+
+mymax(x::Float64,y::Float64) = max(abs(x),abs(y))
+mymax(x::Float64,v::Vec{Float64}) = mymax(x,max(abs(v.x),abs(v.y),abs(v.z)))
+mymax(v::Vec{Float64},x::Float64) = mymax(x,v)
+mymax(v::Vec{Float64}) = mymax(v.x,mymax(v.y,v.z))
+mymax(x::Float64) = abs(x)
+
+function find_max(reduction,v)
+    @mthreads for k in ZRANGE
+        ti = Threads.threadid()
+        umax = mymax(v[1,1,k])
+        @inbounds for j in YRANGE
+            for i in RXRANGE
+                umax = mymax(umax,mymax(v[i,j,k]))
+            end
+        end
+        reduction[ti] = max(umax,reduction[ti])
+    end
+end

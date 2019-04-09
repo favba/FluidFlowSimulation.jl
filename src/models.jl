@@ -125,6 +125,10 @@ end
     realspace_LES_calculation!(s)
     realspacecalculation!(s)
 
+    if has_variable_timestep(s)
+        find_max(s.reduction,s.u.r)
+    end
+
     s.timestep.x.iteration[] != 0 && mod(s.iteration[],s.dtoutput) == 0 && writeoutput(s)
 
     if is_vorticityEquation(A)
@@ -173,34 +177,26 @@ end
 end
 
 @par function realspacecalculation!(s::A,j::Integer) where {A<:@par(AbstractSimulation)} 
+
     u = s.u.rr
     rhs = s.rhs.rr
+
     if !is_vorticityEquation(A)
         uu = s.equation.uu.rr
     end
-    if has_variable_timestep(A)
-        umaxhere = 0.0
-        umax = 0.0
-        if hasdensity(A)
-            ρmax = 0.0
-        end
-        haspassivescalar(A) && (smax = 0.0)
-        if hasles(A)
-            vis = ν
-            numax = 0.
-            # ep = eps()
-        end
-    end
+
     if haspassivescalar(A)
         φ = s.passivescalar.φ.field.data
         fφ = s.passivescalar.flux.rr
     end
+
     if hasdensity(A)
         ρ = s.densitystratification.ρ.field.data
         f = s.densitystratification.flux.rr
     end
 
     @inbounds @msimd for i in REAL_RANGES[j]
+
         v = u[i]
         if is_vorticityEquation(A)
             w = rhs[i]
@@ -209,32 +205,18 @@ end
             uu[i] = traceless(symouter(v,-v))
         end
 
-        if has_variable_timestep(A)
-            umaxhere = ifelse(abs(v.x)>abs(v.y),abs(v.x),abs(v.y))
-            umaxhere = ifelse(umaxhere>abs(v.z),umaxhere,abs(v.z))
-            umax = ifelse(umaxhere>umax,umaxhere,umax)
-        end
-
         if hasdensity(A)
             rhsden = (-ρ[i]) * v
             hasdensityles(A) && (rhsden += f[i])
             f[i] = rhsden
-            #has_variable_timestep(A) && (ρmax = ifelse(ρmax > abs(ρ[i]),ρmax,abs(ρ[i])))
         end
 
         if haspassivescalar(A)
             rhsp = (-φ[i]) * v
             haspassivescalarles(A) && (rhsp += fφ[i])
             fφ[i] = rhsp
-            #has_variable_timestep(A) && (smax = ifelse(smax > abs(φ[i]),smax,abs(φ[i])))
         end
 
-    end
-
-    if has_variable_timestep(A) 
-        s.reduction[j] = umax
-        #hasdensity(A) && (s.densitystratification.reduction[j] = ρmax)
-        #haspassivescalar(A) && (s.passivescalar.reduction[j] = smax)
     end
 
     return nothing
