@@ -65,7 +65,10 @@ end
         @msimd for i in XRANGE 
             v = u[i,j,k]
             ∇ = im*K[i,j,k]  
-            rhs[i,j,k] = ∇ × v
+
+            if need_vorticity(A)
+                rhs[i,j,k] = ∇ × v
+            end
 
             if hasles(A)
                 S = symouter(∇,v)
@@ -91,7 +94,12 @@ end
 
 @par function realspace!(s::A) where {A<:@par(AbstractSimulation)}
     real!(s.u)
-    real!(s.rhs)
+    if need_vorticity(A)
+        real!(s.rhs)
+    end
+    if !is_vorticityEquation(A)
+        setreal!(s.equation.uu)
+    end
   
     haspassivescalar(A) && real!(s.passivescalar.φ)
     hasdensity(A) && real!(s.densitystratification.ρ)
@@ -119,11 +127,17 @@ end
 
     s.timestep.x.iteration[] != 0 && mod(s.iteration[],s.dtoutput) == 0 && writeoutput(s)
 
-    myfourier!(s.rhs)
+    if is_vorticityEquation(A)
+        myfourier!(s.rhs)
+        dealias!(s.rhs)
+    else
+        myfourier!(s.equation.uu)
+        dealias!(s.equation.uu)
+        setfourier!(s.rhs)
+    end
     # fix for erros on u×ω calculation
     #s.rhs[1] = zero(Vec{ComplexF64})
-    dealias!(s.rhs)
-    
+
     myfourier!(s.u)
 
     if haspassivescalar(A) 
@@ -159,6 +173,9 @@ end
 @par function realspacecalculation!(s::A,j::Integer) where {A<:@par(AbstractSimulation)} 
     u = s.u.rr
     rhs = s.rhs.rr
+    if !is_vorticityEquation(A)
+        uu = s.equation.uu.rr
+    end
     if has_variable_timestep(A)
         umaxhere = 0.0
         umax = 0.0
@@ -183,8 +200,12 @@ end
 
     @inbounds @msimd for i in REAL_RANGES[j]
         v = u[i]
-        w = rhs[i]
-        rhs[i] = v × w
+        if is_vorticityEquation(A)
+            w = rhs[i]
+            rhs[i] = v × w
+        else
+            uu[i] = traceless(symouter(v,-v))
+        end
 
         if has_variable_timestep(A)
             umaxhere = ifelse(abs(v.x)>abs(v.y),abs(v.x),abs(v.y))
@@ -227,6 +248,9 @@ end
 @inline @par function fourierspacep2_velocity!(k,s::A) where {A<:@par(AbstractSimulation)}
     u = s.u.c
     rhsv = s.rhs.c
+    if !is_vorticityEquation(A)
+        uu = s.equation.uu.c
+    end
 
     if !is_implicit(A)
         mν = -ν
@@ -248,10 +272,14 @@ end
     @inbounds for j in YRANGE
         @msimd for i in XRANGE 
 
-            v = u[i,j,k]
-            rhs = rhsv[i,j,k]
             kh = K[i,j,k]
             K2 = kh⋅kh
+            v = u[i,j,k]
+            if is_vorticityEquation(A)
+                rhs = rhsv[i,j,k]
+            else
+                rhs = (im*kh)⋅uu[i,j,k]
+            end
 
             if !is_implicit(A)
                 if hashyperviscosity(A)

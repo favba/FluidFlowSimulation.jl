@@ -34,10 +34,19 @@ hasforcing(s::AbstractSimulation) = hasforcing(typeof(s))
     HyperViscosityType !== NoHyperViscosity
 hashyperviscosity(s::AbstractSimulation) = hashyperviscosity(typeof(s))
 
+@par is_vorticityEquation(s::Type{T}) where {T<:@par(AbstractSimulation)} =
+    EquationType === VorticityEquation
+is_vorticityEquation(s::AbstractSimulation) = is_vorticityEquation(typeof(s))
+
+@par need_vorticity(s::Type{T}) where {T<:@par(AbstractSimulation)} =
+    is_vorticityEquation(T) | hasles(T)
+need_vorticity(s::AbstractSimulation) = need_vorticity(typeof(s))
+
 struct @par(Simulation) <: @par(AbstractSimulation)
     u::VectorField{Float64,3,2,false}
     rhs::VectorField{Float64,3,2,false}
     reduction::Vector{Float64}
+    equation::EquationType
     timestep::VelocityTimeStepType
     passivescalar::PassiveScalarType
     densitystratification::DensityStratificationType
@@ -49,16 +58,29 @@ struct @par(Simulation) <: @par(AbstractSimulation)
     dtoutput::Int
     dtstats::Int
   
-    @par function @par(Simulation)(u::VectorField,timestep,passivescalar,densitystratification,lesmodel,forcing,hv,iteration,time,dtout,dtstats) 
+    @par function @par(Simulation)(u::VectorField,equation,timestep,passivescalar,densitystratification,lesmodel,forcing,hv,iteration,time,dtout,dtstats) 
 
         rhs = similar(u)
   
         reduction = zeros(THR ? Threads.nthreads() : 1)
 
-        return @par(new)(u,rhs,reduction,timestep,passivescalar,densitystratification,lesmodel,forcing,hv,iteration,time,dtout,dtstats)
+        return @par(new)(u,rhs,reduction,equation,timestep,passivescalar,densitystratification,lesmodel,forcing,hv,iteration,time,dtout,dtstats)
     end
 
 end
+
+##################################### Equation type #########################################
+
+struct VorticityEquation end
+
+struct NavierStokesEquation{T}
+    uu::SymTrTenField{T,3,2,false}
+end
+
+msg(::VorticityEquation) = "Navier-Stokes in rotational form ((∇×u)×u)"
+msg(::NavierStokesEquation) = "Navier-Stokes in conservation form (∇⋅(uu))"
+
+##################################### Equation type #########################################
 
 @inline @par nuh(s::Type{T}) where {T<:@par(AbstractSimulation)} = nuh(HyperViscosityType)
 @inline nuh(s::AbstractSimulation) = nuh(typeof(s))
@@ -69,6 +91,7 @@ end
 @par function Base.show(io::IO,s::@par(Simulation))
 smsg = """
 Fluid Flow Simulation
+$(msg(s.equation))
 
 nx: $(NRX)
 ny: $NY
@@ -202,6 +225,16 @@ function parameters(d::Dict)
     dtstat = parse(Int,d[:dtStat])
     dtout = parse(Int,d[:writeTime])
 
+    if haskey(d,:equation)
+        if d[:equation] == "NS"
+            equation = NavierStokesEquation{Float64}(SymTrTenField((nx,ny,nz),(lx,ly,lz)))
+        else
+            equation = VorticityEquation()
+        end
+    else
+        equation = VorticityEquation()
+    end
+
     @info("Reading initial velocity field u1.$start u2.$start u3.$start")
     u = VectorField{Float64}("u1.$start","u2.$start","u3.$start")
 
@@ -288,9 +321,9 @@ function parameters(d::Dict)
 
     forcingtype = forcing_model(d,nx,ny,nz,ncx)
 
-    s = Simulation{typeof(vtimestep),
+    s = Simulation{typeof(equation),typeof(vtimestep),
         typeof(scalartype),typeof(densitytype),typeof(lestype),typeof(forcingtype),
-        typeof(hyperviscositytype)}(u,vtimestep,scalartype,densitytype,lestype,forcingtype,hyperviscositytype,Ref(start),Ref(starttime),dtout,dtstat)
+        typeof(hyperviscositytype)}(u,equation,vtimestep,scalartype,densitytype,lestype,forcingtype,hyperviscositytype,Ref(start),Ref(starttime),dtout,dtstat)
   #
     return s
 end
