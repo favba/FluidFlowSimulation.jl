@@ -129,6 +129,8 @@ end
 
     if is_vorticityEquation(A)
         myfourier!(s.rhs)
+        # fix for erros on u×ω calculation
+        s.rhs.c[1] = zero(Vec{ComplexF64})
         dealias!(s.rhs)
     else
         myfourier!(s.equation.uu)
@@ -299,7 +301,7 @@ end
                 rhs += ρ[i,j,k]*g
             end
             
-            p1 = ifelse(k==j==i==1,0.0,-(kh⋅rhs)/K2)
+            p1 = ifelse(K2==0.0,0.0,-(kh⋅rhs)/K2)
             rhsv[i,j,k] = p1*kh + rhs
         end
     end
@@ -395,20 +397,18 @@ end
 #    _add_viscosity!(rhs,u,-ν,s)
 #end
 
- @par function pressure_projection!(rhsx,rhsy,rhsz,s::@par(AbstractSimulation))
-    #@inbounds a = (rhsx[1],rhsy[1],rhsz[1])
+@par function pressure_projection!(rhs,s::@par(AbstractSimulation))
     @mthreads for k in ZRANGE
         for j in YRANGE
             @inbounds @msimd for i in XRANGE
-                #p1 = -(kx[i]*rhsx[i,j,k] + ky[j]*rhsy[i,j,k] + kz[k]*rhsz[i,j,k])/(kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])
-                p1 = ifelse(k==j==i==1,0.0,-muladd(KX[i], rhsx[i,j,k], muladd(KY[j], rhsy[i,j,k], KZ[k]*rhsz[i,j,k]))/muladd(KX[i], KX[i], muladd(KY[j], KY[j],  KZ[k]*KZ[k])))
-                rhsx[i,j,k] = muladd(KX[i],p1,rhsx[i,j,k])
-                rhsy[i,j,k] = muladd(KY[j],p1,rhsy[i,j,k])
-                rhsz[i,j,k] = muladd(KZ[k],p1,rhsz[i,j,k])
+                rhsh = rhs[i,j,k]
+                kh = K[i,j,k]
+                K2 = kh⋅kh
+                p1 = ifelse(K2==0.0,0.0,-(kh⋅rhsh)/K2)
+                rhs[i,j,k] = p1*kh + rhsh
             end
         end
     end
-    #@inbounds rhsx[1],rhsy[1],rhsz[1] = a
 end
 
 #@par function addgravity!(rhs,ρ,g::Real,s::@par(AbstractSimulation))

@@ -75,7 +75,7 @@ function (f::VectorTimeStep)(u::VectorField,rhs::VectorField,s::AbstractSimulati
     f.z(u.c.z,rhs.c.z,s)
 
     add_forcing!(u,s.forcing)
-    pressure_projection!(u.c.x,u.c.y,u.c.z,s)
+    pressure_projection!(u,s)
     return nothing
 end
 
