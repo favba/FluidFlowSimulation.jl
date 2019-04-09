@@ -121,7 +121,7 @@ end
 
     myfourier!(s.rhs)
     # fix for erros on u×ω calculation
-    s.rhs[1] = zero(Vec{ComplexF64})
+    #s.rhs[1] = zero(Vec{ComplexF64})
     dealias!(s.rhs)
     
     myfourier!(s.u)
@@ -245,10 +245,6 @@ end
         g = gravity(s.densitystratification)
     end
     
-    if k == 1
-        a = rhsv[1]
-    end
-
     @inbounds for j in YRANGE
         @msimd for i in XRANGE 
 
@@ -275,17 +271,11 @@ end
                 rhs += ρ[i,j,k]*g
             end
             
-            p1 = -(kh⋅rhs)/K2
+            p1 = ifelse(k==j==i==1,0.0,-(kh⋅rhs)/K2)
             rhsv[i,j,k] = p1*kh + rhs
         end
     end
 
-    if k == 1 
-        if hasdensity(A)
-            a += ρ[1] * g
-        end
-        rhsv[1] = a
-    end
 end
 
 @par function fourierspacep2!(s::A) where {A<:@par(AbstractSimulation)}
@@ -378,19 +368,19 @@ end
 #end
 
  @par function pressure_projection!(rhsx,rhsy,rhsz,s::@par(AbstractSimulation))
-    @inbounds a = (rhsx[1],rhsy[1],rhsz[1])
+    #@inbounds a = (rhsx[1],rhsy[1],rhsz[1])
     @mthreads for k in ZRANGE
         for j in YRANGE
             @inbounds @msimd for i in XRANGE
                 #p1 = -(kx[i]*rhsx[i,j,k] + ky[j]*rhsy[i,j,k] + kz[k]*rhsz[i,j,k])/(kx[i]*kx[i] + ky[j]*ky[j] + kz[k]*kz[k])
-                p1 = -muladd(KX[i], rhsx[i,j,k], muladd(KY[j], rhsy[i,j,k], KZ[k]*rhsz[i,j,k]))/muladd(KX[i], KX[i], muladd(KY[j], KY[j],  KZ[k]*KZ[k]))
+                p1 = ifelse(k==j==i==1,0.0,-muladd(KX[i], rhsx[i,j,k], muladd(KY[j], rhsy[i,j,k], KZ[k]*rhsz[i,j,k]))/muladd(KX[i], KX[i], muladd(KY[j], KY[j],  KZ[k]*KZ[k])))
                 rhsx[i,j,k] = muladd(KX[i],p1,rhsx[i,j,k])
                 rhsy[i,j,k] = muladd(KY[j],p1,rhsy[i,j,k])
                 rhsz[i,j,k] = muladd(KZ[k],p1,rhsz[i,j,k])
             end
         end
     end
-    @inbounds rhsx[1],rhsy[1],rhsz[1] = a
+    #@inbounds rhsx[1],rhsy[1],rhsz[1] = a
 end
 
 #@par function addgravity!(rhs,ρ,g::Real,s::@par(AbstractSimulation))
