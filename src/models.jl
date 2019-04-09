@@ -301,7 +301,7 @@ end
                 rhs += ρ[i,j,k]*g
             end
             
-            p1 = ifelse(K2==0.0,0.0,-(kh⋅rhs)/K2)
+            p1 = ifelse(k==j==i==1,0.0,-(kh⋅rhs)/K2)
             rhsv[i,j,k] = p1*kh + rhs
         end
     end
@@ -404,7 +404,7 @@ end
                 rhsh = rhs[i,j,k]
                 kh = K[i,j,k]
                 K2 = kh⋅kh
-                p1 = ifelse(K2==0.0,0.0,-(kh⋅rhsh)/K2)
+                p1 = ifelse(k==j==i==1,0.0,-(kh⋅rhsh)/K2)
                 rhs[i,j,k] = p1*kh + rhsh
             end
         end
