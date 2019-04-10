@@ -235,3 +235,24 @@ function hyperviscosity_stats(reduction,u::VectorField{T},s) where {T}
     mν = nuh(s)
     return mν*sum(result)
 end
+
+function les_stats(reduction,τ::AbstractField{T},u::VectorField{T}) where {T}
+    isrealspace(u) && fourier!(u)
+    isrealspace(τ) && fourier!(τ)
+    result = fill!(reduction,zero(T))
+    @mthreads for l in ZRANGE
+        @inbounds begin
+            ee = zero(T)
+            ii = Threads.threadid()
+            @inbounds for j in YRANGE
+                @simd for i in XRANGE
+                    S = symouter(im*K[i,j,l],u[i,j,l])
+                    magsq = proj(τ[i,j,l],S)
+                    ee += (1 + (i>1))*magsq 
+                end
+            end
+            result[ii] += ee
+        end
+    end
+    return sum(result)
+end

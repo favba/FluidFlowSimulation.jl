@@ -52,8 +52,6 @@ end
         β = s.lesmodel.cb*Δ²
     end
 
-    is_FakeSmagorinsky(A) || (pr = s.lesmodel.pr.rr)
-
     @inbounds @msimd for i in REAL_RANGES[j]
         w = rhs[i]
         S = τ[i]
@@ -85,8 +83,6 @@ end
                 t += β*P
             end
         end
-
-        is_FakeSmagorinsky(A) || (pr[i] = t:S)
 
         if !(is_FakeSmagorinsky(A) && !is_SandP(A))
             τ[i] = t

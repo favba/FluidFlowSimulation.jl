@@ -15,6 +15,8 @@ struct NoLESModel <: AbstractLESModel end
 
 # Smagorinsky Model Start ======================================================
 
+stats(a::AbstractLESModel,s::AbstractSimulation) = (les_stats(s.reduction,a.tau,s.u))
+
 abstract type EddyViscosityModel <: AbstractLESModel end
 
 struct Smagorinsky{T} <: EddyViscosityModel
@@ -22,15 +24,13 @@ struct Smagorinsky{T} <: EddyViscosityModel
     Δ²::T
     tau::SymTrTenField{T,3,2,false}
     reduction::Vector{T}
-    pr::ScalarField{T,3,2,false}
 end
 
 function Smagorinsky(c::T,Δ::Real,dim::NTuple{3,Integer}) where {T<:Real}
     data = SymTrTenField{T}(dim,(LX,LY,LZ))
-    pr = ScalarField{T}(dim,(LX,LY,LZ))
     #fill!(data,0)
     reduction = zeros(THR ? Threads.nthreads() : 1)
-    return Smagorinsky{T}(c,Δ^2, data,reduction,pr)
+    return Smagorinsky{T}(c,Δ^2, data,reduction)
 end
 
 is_Smagorinsky(a::Union{<:Smagorinsky,Type{<:Smagorinsky}}) = true
@@ -39,8 +39,6 @@ is_Smagorinsky(a::Union{<:Smagorinsky,Type{<:Smagorinsky}}) = true
 is_Smagorinsky(a) = false
 
 statsheader(a::Smagorinsky) = "pr"
-
-stats(a::Smagorinsky,s::AbstractSimulation) = (tmean(a.pr.rr,s),)
 
 msg(a::Smagorinsky) = "\nLES model: Smagorinsky\nConstant: $(a.c)\nFilter Width: $(sqrt(a.Δ²))\n"
 
@@ -57,7 +55,6 @@ struct DynamicSmagorinsky{T<:Real} <: EddyViscosityModel
     S::SymTrTenField{T,3,2,false}
     û::VectorField{T,3,2,false}
     reduction::Vector{T}
-    pr::ScalarField{T,3,2,false}
 end
 
 function DynamicSmagorinsky(Δ::T, d2::T, dim::NTuple{3,Integer}, cmin::Real=0.0) where {T<:Real}
@@ -69,7 +66,7 @@ function DynamicSmagorinsky(Δ::T, d2::T, dim::NTuple{3,Integer}, cmin::Real=0.0
     u = VectorField{T}(dim,(LX,LY,LZ))
     #fill!(data,0)
     reduction = zeros(THR ? Threads.nthreads() : 1)
-    return DynamicSmagorinsky{T}(Δ^2, d2^2, c, cmin, L, M, tau, S, u, reduction, similar(c))
+    return DynamicSmagorinsky{T}(Δ^2, d2^2, c, cmin, L, M, tau, S, u, reduction)
 end
 
 DynamicSmagorinsky(Δ::T, dim::NTuple{3,Integer},b::Bool=false) where {T<:Real} = DynamicSmagorinsky(Δ, 2Δ, dim,b)
@@ -81,8 +78,6 @@ is_dynamic_les(a) = false
 
 statsheader(a::DynamicSmagorinsky) = "pr"
 
-stats(a::DynamicSmagorinsky,s::AbstractSimulation) = (tmean(a.pr.rr,s),)
-
 msg(a::DynamicSmagorinsky) = "\nLES model: Dynamic Smagorinsky\nFilter Width: $(sqrt(a.Δ²))\nTest Filter Width: $(sqrt(a.Δ̂²))\nMinimum coefficient permitted: $(a.cmin)\n"
 
 # Vreman Model Start ======================================================
@@ -92,15 +87,13 @@ struct VremanLESModel{T} <: EddyViscosityModel
     Δ²::T
     tau::SymTrTenField{T,3,2,false}
     reduction::Vector{T}
-    pr::ScalarField{T,3,2,false}
 end
 
 function VremanLESModel(c::T,Δ::Real,dim::NTuple{3,Integer}) where {T<:Real}
     data = SymTrTenField{T}(dim,(LX,LY,LZ))
-    pr = ScalarField{T}(dim,(LX,LY,LZ))
     #fill!(data,0)
     reduction = zeros(THR ? Threads.nthreads() : 1)
-    return VremanLESModel{T}(c,Δ^2, data,reduction,pr)
+    return VremanLESModel{T}(c,Δ^2, data,reduction)
 end
 
 is_Vreman(a::Union{<:VremanLESModel,Type{<:VremanLESModel}}) = true
@@ -109,8 +102,6 @@ is_Vreman(a::Union{<:VremanLESModel,Type{<:VremanLESModel}}) = true
 is_Vreman(a) = false
 
 statsheader(a::VremanLESModel) = "pr"
-
-stats(a::VremanLESModel,s::AbstractSimulation) = (tmean(a.pr.rr,s),)
 
 msg(a::VremanLESModel) = "\nLES model: Vreman\nConstant: $(a.c)\nFilter Width: $(sqrt(a.Δ²))\n"
 
@@ -123,15 +114,13 @@ struct ProductionViscosityLESModel{T} <: EddyViscosityModel
     Δ²::T
     tau::SymTrTenField{T,3,2,false}
     reduction::Vector{T}
-    pr::ScalarField{T,3,2,false}
 end
 
 function ProductionViscosityLESModel(c::T,Δ::Real,dim::NTuple{3,Integer}) where {T<:Real}
     data = SymTrTenField{T}(dim,(LX,LY,LZ))
-    pr = ScalarField{T}(dim,(LX,LY,LZ))
     #fill!(data,0)
     reduction = zeros(THR ? Threads.nthreads() : 1)
-    return ProductionViscosityLESModel{T}(c,Δ^2, data,reduction,pr)
+    return ProductionViscosityLESModel{T}(c,Δ^2, data,reduction)
 end
 
 is_production_model(a::Type{T}) where {T<:ProductionViscosityLESModel} = true
@@ -140,8 +129,6 @@ is_production_model(a::Type{T}) where {T<:ProductionViscosityLESModel} = true
 is_production_model(a) = false
 
 statsheader(a::ProductionViscosityLESModel) = "pr"
-
-stats(a::ProductionViscosityLESModel,s::AbstractSimulation) = (tmean(a.pr.rr,s),)
 
 msg(a::ProductionViscosityLESModel) = "\nLES model: Production Viscosity\nConstant: $(a.c)\nFilter Width: $(sqrt(a.Δ²))\n"
 
@@ -172,9 +159,7 @@ is_SandP(a::Union{<:SandP,Type{<:SandP}}) = true
 @inline is_dynamic_les(a::Union{<:SandP{t,S},<:Type{SandP{t,S}}}) where {t,S} = is_dynamic_les(S)
 @inline is_production_model(a::Union{<:SandP{t,S},<:Type{SandP{t,S}}}) where {t,S} = is_production_model(S)
 
-statsheader(a::SandP) = is_FakeSmagorinsky(a) ? "" : "pr"
-
-stats(a::SandP,s::AbstractSimulation) = is_FakeSmagorinsky(s) ? () : (tmean(a.pr.rr,s),)
+statsheader(a::SandP) = "pr"
 
 msg(a::SandP) = "\nLES model: SandP\nP tensor constant: $(a.cb)\nEddy Viscosity model: {$(msg(a.Smodel))}\n"
 
@@ -200,8 +185,6 @@ is_FakeSmagorinsky(a::Union{<:FakeSmagorinsky,Type{<:FakeSmagorinsky}}) = true
 is_FakeSmagorinsky(a) = false
 
 statsheader(a::FakeSmagorinsky) = ""
-
-stats(a::FakeSmagorinsky,s::AbstractSimulation) = ()
 
 msg(a::FakeSmagorinsky) = "\nLES model: FakeSmagorinsky (nut = 0)\nFilter Width: $(sqrt(a.Δ²))\n"
 
