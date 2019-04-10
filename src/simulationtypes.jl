@@ -256,8 +256,8 @@ function parameters(d::Dict)
 
     if haskey(d,:hyperViscosity)
         if d[:hyperViscosity] == "spectralBarrier"
-            initkp = haskey(d,:initk) ? parse(Float64,d[:initk]) : KX[end] / 2
-            endK = haskey(d,:endk) ? parse(Float64,d[:endk]) : KX[end]
+            initkp = haskey(d,:initk) ? parse(Float64,d[:initk]) : 2KX[end] / 3
+            endK = haskey(d,:endk) ? parse(Float64,d[:endk]) : sqrt(3)*KX[end]
             hyperviscositytype = SpectralBarrier(initkp,endK)
         else
             νh = parse(Float64,d[:hyperViscosityCoefficient])
