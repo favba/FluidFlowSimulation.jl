@@ -91,11 +91,11 @@ include("ETD.jl")
     newdt =cfl * dx/umax
     # is_implicit(s) || (newdt = min(newdt, (2νt/umax^2)/2))
     if hasdensity(s) 
-        #ρmax = maximum(s.densitystratification.reduction)
-        #g = norm(gravity(s))
+        ρmax = maximum(s.densitystratification.reduction)
+        g = norm(gravity(s))
         #k = diffusivity(s)
-#        newdt = min(newdt, 
-#        cfl * sqrt(dx/(ρmax*g))/2)#,
+        newdt = min(newdt, 
+        cfl * sqrt(dx/(ρmax*g)))#,
         #cfl * (dx^2)/(k)/2)#, 
         #cfl * (((ρmax*g)^(-2/3))*(2k)^(1/3))/2,
         #cfl * (2k/umax^2)/2)

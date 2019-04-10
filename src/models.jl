@@ -127,6 +127,9 @@ end
 
     if has_variable_timestep(s)
         find_max(s.reduction,s.u.r)
+        if hasdensity(s)
+            find_max(s.densitystratification.reduction,s.densitystratification.ρ.r)
+        end
     end
 
     s.timestep.x.iteration[] != 0 && mod(s.iteration[],s.dtoutput) == 0 && writeoutput(s)
