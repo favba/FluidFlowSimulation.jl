@@ -117,6 +117,54 @@ function initialize!(f::AForcing,s)
     return nothing
 end
 #################################################################################################3
+struct NRfForcing{T<:AbstractFloat} <: AbstractForcing
+    Tf::T
+    α::T
+    Kf::T
+    maxDk::T
+    avgK::Vector{T}
+    Zf::Vector{T}
+    Ef::Vector{T} # Velocity Field Spectrum
+    Em::Vector{T} # Target Spectrum
+    R::Vector{T} # Solution to ODE
+    N::Vector{T}
+    Nm1::Vector{T}
+    factor::Vector{T} # Factor to multiply velocity Field
+    forcex::PaddedArray{T,3,2,false} # Final force
+    forcey::PaddedArray{T,3,2,false} # Final force
+    init::Bool # Tell if the initial condition spectra should be used instead of from data
+    hp::Base.RefValue{T}
+    vp::Base.RefValue{T}
+end
+
+statsheader(a::NRfForcing) = "hp,vp"
+
+stats(a::NRfForcing,s::AbstractSimulation) = (a.hp[],a.vp[])
+
+msg(a::NRfForcing) = "\nForcing:  NRf forcing\nTf: $(a.Tf)\nalphac: $(a.α)\nKf: $(a.Kf)\n"
+
+function add_forcing!(u,f::NRfForcing)
+    add_Rf_forcing!(u.c.x,f.forcex)
+    add_Rf_forcing!(u.c.y,f.forcey)
+end
+
+function initialize!(f::NRfForcing,s)
+    if f.init
+        calculate_u1u2_spectrum!(f.Em,s.u,1)
+        calculate_nn_spectrum!(f.N,s.u,s.rhs,1)
+        copyto!(f.Nm1,f.N)
+    end
+    if isfile("R.$(s.iteration[])")
+        copyto!(f.R, vec(readdlm("R.$(s.iteration[])",Float64)))
+    end
+    if isfile("N.$(s.iteration[])")
+        copyto!(f.N, vec(readdlm("N.$(s.iteration[])",Float64)))
+    end
+    return nothing
+end
+
+
+#################################################################################################
 
 
 function forcing_model(d::AbstractDict,nx::Integer,ny::Integer,nz::Integer,ncx::Integer)
@@ -153,6 +201,26 @@ function forcing_model(d::AbstractDict,nx::Integer,ny::Integer,nz::Integer,ncx::
             forcey = PaddedArray((nx,ny,nz))
             Zf = calculate_Zf(d,kf,KX,KY)
             forcingtype = AForcing{Float64}(TF, alphac, kf, Zf,Em,R,factor,forcex,forcey,Ref(0.0),Ref(0.0))
+        elseif d[:forcing] == "nRfForcing"
+            TF = parse(Float64,d[:TF])
+            alphac = parse(Float64,d[:alphac])
+            kf = parse(Float64,d[:kf])
+            nShells2D, maxdk2D, numPtsInShell2D, kh = compute_shells2D(KX,KY,ncx,ny)
+            Ef = zeros(nShells2D)
+            Em = zeros(nShells2D)
+            R = zeros(nShells2D)
+            N = zeros(nShells2D)
+            Nm1 = zeros(nShells2D)
+            factor = zeros(length(kh))
+            forcex = PaddedArray((nx,ny,nz))
+            forcey = PaddedArray((nx,ny,nz))
+            Zf = calculate_Zf(d,kf,kh)
+            if !isfile("targSpectrum.dat")
+                forcingtype = NRfForcing{Float64}(TF, alphac, kf, maxdk2D, kh,Zf,Ef,Em,R,N,Nm1,factor,forcex,forcey,true,Ref(0.0),Ref(0.0))
+            else
+                calculate_Em!(Em,kh)
+                forcingtype = RfForcing{Float64}(TF, alphac, kf, maxdk2D, kh,Zf,Ef,Em,R,N,Nm1,factor,forcex,forcey,false,Ref(0.0),Ref(0.0))
+            end
         end
     end
 
@@ -161,3 +229,4 @@ end
 
 include("forcing.jl")
 include("aforcing.jl")
+include("nrforcing.jl")
