@@ -66,13 +66,16 @@ end
 function initialize!(s::AbstractSimulation)
     s.iteration[] == 0 && writeheader(s)
     myfourier!(s.u)
+    dealias!(s.u)
 
     if haspassivescalar(s)
         myfourier!(s.passivescalar.φ) 
+        dealias!(s.passivescalar.φ) 
     end
 
     if hasdensity(s) 
         myfourier!(s.densitystratification.ρ) 
+        dealias!(s.densitystratification.ρ) 
     end
 
     calculate_rhs!(s)
