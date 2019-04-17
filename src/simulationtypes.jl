@@ -69,6 +69,8 @@ struct @par(Simulation) <: @par(AbstractSimulation)
 
 end
 
+is_output_time(s) = (s.timestep.x.iteration[] != 0) & (mod(s.iteration[],s.dtoutput) == 0)
+
 ##################################### Equation type #########################################
 
 struct VorticityEquation end

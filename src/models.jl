@@ -132,7 +132,7 @@ end
         end
     end
 
-    s.timestep.x.iteration[] != 0 && mod(s.iteration[],s.dtoutput) == 0 && writeoutput(s)
+    is_output_time(s) && writeoutput(s)
 
     if is_vorticityEquation(A)
         myfourier!(s.rhs)
@@ -143,10 +143,18 @@ end
         myfourier!(s.equation.uu)
         dealias!(s.equation.uu)
         setfourier!(s.rhs)
+        div!(s.rhs,s.equation.uu)
     end
-    # fix for erros on u×ω calculation
-    #s.rhs[1] = zero(Vec{ComplexF64})
 
+    if is_output_time(s)
+        real!(s.rhs)
+        init = s.iteration[]
+        write("nn1.$init",s.rhs.rr.x)
+        write("nn2.$init",s.rhs.rr.y)
+        write("nn3.$init",s.rhs.rr.z)
+        myfourier!(s.rhs)
+    end
+ 
     myfourier!(s.u)
 
     if haspassivescalar(A) 
@@ -235,9 +243,6 @@ end
 @inline @par function fourierspacep2_velocity!(k,s::A) where {A<:@par(AbstractSimulation)}
     u = s.u.c
     rhsv = s.rhs.c
-    if !is_vorticityEquation(A)
-        uu = s.equation.uu.c
-    end
 
     if !is_implicit(A)
         mν = -ν
@@ -262,11 +267,7 @@ end
             kh = K[i,j,k]
             K2 = kh⋅kh
             v = u[i,j,k]
-            if is_vorticityEquation(A)
-                rhs = rhsv[i,j,k]
-            else
-                rhs = (im*kh)⋅uu[i,j,k]
-            end
+            rhs = rhsv[i,j,k]
 
             if !is_implicit(A)
                 if hashyperviscosity(A)
@@ -314,6 +315,16 @@ end
         is_implicit(typeof(s.densitystratification.timestep)) || add_scalar_difusion!(complex(s.densitystratification.rhs),complex(s.densitystratification.ρ),diffusivity(s.densitystratification),s)
     end
     return nothing
+end
+
+function div!(out,input)
+    @mthreads for k in ZRANGE
+        @inbounds for j in YRANGE
+            @msimd for i in XRANGE
+                out[i,j,k] = (im*K[i,j,k]) ⋅ input[i,j,k]
+            end
+        end
+    end
 end
 
 #@par function add_residual_tensor!(rhs::VectorField,τ::SymmetricTracelessTensor,s::@par(AbstractSimulation))
