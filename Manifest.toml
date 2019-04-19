@@ -23,9 +23,9 @@ version = "0.5.3"
 
 [[Compat]]
 deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
-git-tree-sha1 = "195a3ffcb8b0762684b6821de18f83a16455c6ea"
+git-tree-sha1 = "84aa74986c5b9b898b0d1acaf3258741ee64754f"
 uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
-version = "2.0.0"
+version = "2.1.0"
 
 [[Conda]]
 deps = ["Compat", "JSON", "VersionParsing"]
@@ -61,7 +61,7 @@ version = "0.1.0"
 
 [[FluidTensors]]
 deps = ["LinearAlgebra"]
-git-tree-sha1 = "914e925c5df9786aa72da0a4ce35ca116fa60e57"
+git-tree-sha1 = "e42f0cdc95fe9fc878b1678d31df66ca96f5a443"
 repo-rev = "master"
 repo-url = "git@github.com:favba/FluidTensors.jl.git"
 uuid = "9c362f20-be79-11e8-0b20-338637273ba1"
@@ -149,7 +149,7 @@ version = "0.3.1"
 
 [[ReadGlobal]]
 deps = ["DelimitedFiles"]
-git-tree-sha1 = "15c72912770ea7444408e4b503907187455da8cc"
+git-tree-sha1 = "81bbb9dd01f4a4a3704b274a05668ed9533b0953"
 repo-rev = "master"
 repo-url = "https://github.com/favba/ReadGlobal.jl.git"
 uuid = "858704a1-3b57-5cfa-b7d3-7513df57bf80"
@@ -180,9 +180,9 @@ uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [[StaticArrays]]
 deps = ["InteractiveUtils", "LinearAlgebra", "Random", "Statistics", "Test"]
-git-tree-sha1 = "1eb114d6e23a817cd3e99abc3226190876d7c898"
+git-tree-sha1 = "3841b39ed5f047db1162627bf5f80a9cd3e39ae2"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "0.10.2"
+version = "0.10.3"
 
 [[Statistics]]
 deps = ["LinearAlgebra", "SparseArrays"]

@@ -14,13 +14,13 @@ end
 
 @par function calculate_rhs!(s::A) where {A<:@par(AbstractSimulation)}
     # Set necessary fields to fourier
-    setfourier!(s.rhs)
-    hasdensity(A) && setfourier!(s.densitystratification.rhs)
-    hasdensityles(A) && setfourier!(s.densitystratification.flux)
-    haspassivescalar(A) && setfourier!(s.passivescalar.rhs)
-    haspassivescalarles(A) && setfourier!(s.passivescalar.flux)
-    hasles(A) && setfourier!(s.lesmodel.tau)
-    is_dynamic_les(A) && (setfourier!(s.lesmodel.û); setfourier!(s.lesmodel.M))
+    mysetfourier!(s.rhs)
+    hasdensity(A) && mysetfourier!(s.densitystratification.rhs)
+    hasdensityles(A) && mysetfourier!(s.densitystratification.flux)
+    haspassivescalar(A) && mysetfourier!(s.passivescalar.rhs)
+    haspassivescalarles(A) && mysetfourier!(s.passivescalar.flux)
+    hasles(A) && mysetfourier!(s.lesmodel.tau)
+    is_dynamic_les(A) && (mysetfourier!(s.lesmodel.û); mysetfourier!(s.lesmodel.M))
 
 
     #actual calculation
@@ -138,11 +138,11 @@ end
         myfourier!(s.rhs)
         # fix for erros on u×ω calculation
         s.rhs.c[1] = zero(Vec{ComplexF64})
-        dealias!(s.rhs)
+        #dealias!(s.rhs)
     else
         myfourier!(s.equation.uu)
-        dealias!(s.equation.uu)
-        setfourier!(s.rhs)
+        #dealias!(s.equation.uu)
+        mysetfourier!(s.rhs)
         div!(s.rhs,s.equation.uu)
     end
 
@@ -159,19 +159,19 @@ end
 
     if haspassivescalar(A) 
         myfourier!(s.passivescalar.flux)
-        dealias!(s.passivescalar.flux)
+        #dealias!(s.passivescalar.flux)
         myfourier!(s.passivescalar.φ)
     end
     if hasdensity(A)
         myfourier!(s.densitystratification.flux)
-        dealias!(s.densitystratification.flux)
+        #dealias!(s.densitystratification.flux)
         myfourier!(s.densitystratification.ρ)
     end
 
     if hasles(s)
         if !(!is_SandP(A) && is_FakeSmagorinsky(A))
             myfourier!(s.lesmodel.tau)
-            dealias!(s.lesmodel.tau)
+            #dealias!(s.lesmodel.tau)
         end
     end
 

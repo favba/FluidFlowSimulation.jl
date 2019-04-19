@@ -4,6 +4,9 @@ module Globals
 using GlobalFileHelper, FluidTensors, FluidFields, StaticArrays
 
 export LX,LY,LZ,NX,NY,NZ,NRRX,NRX,ν,DEALIAS_TYPE,KX,KY,KZ,THR,NT,TRANGE,REAL_RANGES,DEALIAS,K,RXRANGE,XRANGE,YRANGE,ZRANGE,RANGEC, COMPLEX_RANGES
+export RYRANGE, RZRANGE, XRANGE2X
+
+include("CatVec.jl")
 
 function splitrange(lr,nt)
     a = UnitRange{Int}[]
@@ -81,10 +84,17 @@ end
     s = (NX,NY,NZ)
     const global K = VecArray(HomogeneousArray{1}(KX,s),HomogeneousArray{2}(KY,s),HomogeneousArray{3}(KZ,s))
 
-    const global XRANGE = StaticArrays.SOneTo(NX)
     const global RXRANGE = StaticArrays.SOneTo(NRX)
-    const global YRANGE = StaticArrays.SOneTo(NY)
-    const global ZRANGE = StaticArrays.SOneTo(NZ)
+    const global RYRANGE = StaticArrays.SOneTo(NY)
+    const global RZRANGE = StaticArrays.SOneTo(NZ)
     const global RANGEC = StaticArrays.SOneTo(NX*NY*NZ)
+
+    const global XRANGE = StaticArrays.SOneTo(findfirst(view(DEALIAS,:,1,1))-1)
+    const global XRANGE2X = StaticArrays.SOneTo(2length(XRANGE))
+    const global YRANGE = CatVec(StaticArrays.SOneTo(findfirst(view(DEALIAS,1,:,1))-1), 
+                                 StaticArrays.SUnitRange(NY-findfirst(view(DEALIAS,1,:,1)) ,NY))
+
+    const global ZRANGE = CatVec(StaticArrays.SOneTo(findfirst(view(DEALIAS,1,1,:))-1), 
+                                 StaticArrays.SUnitRange(NZ-findfirst(view(DEALIAS,1,1,:)) ,NZ))
  
 end

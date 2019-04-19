@@ -39,11 +39,12 @@ mycopy!(o::SymTrTenField,i::SymTrTenField) = (mycopy!(o.rr.xx,i.rr.xx);
                                               mycopy!(o.rr.yz,i.rr.yz))
 
 @par function myscale!(field::AbstractArray{<:Real,N}) where N
-    @mthreads for j in TRANGE
-        l = REAL_RANGES[j]
+    @mthreads for k in ZRANGE
         x = 1/(NRX*NY*NZ)
-        @msimd for i in l
-            @inbounds field[i] = x*field[i]
+        for j in YRANGE
+            @msimd for i in XRANGE2X
+                @inbounds field[i,j,k] = x*field[i,j,k]
+            end
         end
     end
 end 
@@ -69,6 +70,7 @@ myscale!(o::SymTenField) = (myscale!(o.rr.xx);
 
 function myfourier!(field::A) where {T,N,N2,L,A<:Union{<:ScalarField{T,N,N2,L},<:VectorField{T,N,N2,L},<:SymTrTenField{T,N,N2,L},<:SymTenField{T,N,N2,L}}}
     rfft!(field)
+    dealias!(field)
     myscale!(field)
     return nothing
 end
@@ -207,10 +209,10 @@ mymax(v::Vec{Float64}) = mymax(v.x,mymax(v.y,v.z))
 mymax(x::Float64) = abs(x)
 
 function find_max(reduction,v)
-    @mthreads for k in ZRANGE
+    @mthreads for k in RZRANGE
         ti = Threads.threadid()
         umax = mymax(v[1,1,k])
-        @inbounds for j in YRANGE
+        @inbounds for j in RYRANGE
             for i in RXRANGE
                 umax = mymax(umax,mymax(v[i,j,k]))
             end
@@ -218,3 +220,5 @@ function find_max(reduction,v)
         reduction[ti] = max(umax,reduction[ti])
     end
 end
+
+mysetfourier!(f) = (dealias!(f); setfourier!(f))

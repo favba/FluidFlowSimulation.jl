@@ -136,13 +136,13 @@ function fix_fm2!(fm2::AbstractArray,fm1::AbstractArray,rhs::AbstractArray,dt2::
 end
 
 function set_ABCt!(t::ETD3rdO)
-    @mthreads for j in TRANGE
-        set_ABCt!(t,j)
+    @mthreads for k in ZRANGE
+        set_ABCt!(t,k)
     end
     return nothing
 end
 
-function set_ABCt!(t::ETD3rdO,j::Integer)
+function set_ABCt!(t::ETD3rdO,k::Integer)
     l = t.c
     At = t.At
     Bt = t.Bt
@@ -165,22 +165,24 @@ function set_ABCt!(t::ETD3rdO,j::Integer)
     e8 = dt*(dt+dt2)
     e9 = dt3*(dt2+dt3)
  
-    @inbounds @msimd for i in COMPLEX_RANGES[j]
-        l1 = l[i]
-        l2 = l1*l1
-        l3 = l2*l1
-        ldt = l1*dt
-        test = -l1*dt<=1e-4
-        test2 = l1 == -Inf
+    @inbounds for j in YRANGE
+        @msimd for i in XRANGE
+            l1 = l[i,j,k]
+            l2 = l1*l1
+            l3 = l2*l1
+            ldt = l1*dt
+            test = -l1*dt<=1e-4
+            test2 = l1 == -Inf
 
-        At[i] = ifelse(test2, 0.0, ifelse(test,
-            muladd(a1, l1, muladd(a2, l2, muladd(a3, l3, a0))),
-            (2expm1(ldt) - l2*(e1 - e2*expm1(ldt)) - l1*(e3 - e4*expm1(ldt))) / (l3*e2)))
-        Bt[i] = ifelse(test2, 0.0, ifelse(test,
-            muladd(b1, l1, muladd(b2, l2, b0)),
-            (e5*l2 - 2expm1(ldt) + l1*(e3 - e6*expm1(ldt)) )/(l3*e7)))
-        Ct[i] = ifelse(test2, 0.0, ifelse(test,muladd(c1, l1, muladd(c2, l2, c0)),
-            (2expm1(ldt) - e8*l2 - l1*(e3 - dt2*expm1(ldt))) / (l3*e9)))
+            At[i,j,k] = ifelse(test2, 0.0, ifelse(test,
+                muladd(a1, l1, muladd(a2, l2, muladd(a3, l3, a0))),
+                (2expm1(ldt) - l2*(e1 - e2*expm1(ldt)) - l1*(e3 - e4*expm1(ldt))) / (l3*e2)))
+            Bt[i,j,k] = ifelse(test2, 0.0, ifelse(test,
+                muladd(b1, l1, muladd(b2, l2, b0)),
+                (e5*l2 - 2expm1(ldt) + l1*(e3 - e6*expm1(ldt)) )/(l3*e7)))
+            Ct[i,j,k] = ifelse(test2, 0.0, ifelse(test,muladd(c1, l1, muladd(c2, l2, c0)),
+                (2expm1(ldt) - e8*l2 - l1*(e3 - dt2*expm1(ldt))) / (l3*e9)))
+        end
     end
 
     return nothing

@@ -67,42 +67,42 @@ end
 
 #ape(s::AbstractSimulation) = tmean(x->x^2,parent(real(s.ρ)),s)
 
-@par function tmean(f::F,x::AbstractArray{T,3},s::@par(AbstractSimulation)) where {F<:Function,T<:Number}
+#@par function tmean(f::F,x::AbstractArray{T,3},s::@par(AbstractSimulation)) where {F<:Function,T<:Number}
+#
+#    result = fill!(s.reduction,0.0)
+#    @mthreads for k in ZRANGE
+#        for j in YRANGE
+#            @inbounds @msimd for i in RXRANGE
+#                result[Threads.threadid()] += f(x[i,j,k])
+#            end
+#        end
+#    end
+#
+#    return sum(result)/(NRX*NY*NZ)
+#end
 
-    result = fill!(s.reduction,0.0)
-    @mthreads for k in ZRANGE
-        for j in YRANGE
-            @inbounds @msimd for i in RXRANGE
-                result[Threads.threadid()] += f(x[i,j,k])
-            end
-        end
-    end
+#tmean(x::AbstractArray,s::AbstractSimulation) = tmean(identity,x,s)
 
-    return sum(result)/(NRX*NY*NZ)
-end
-
-tmean(x::AbstractArray,s::AbstractSimulation) = tmean(identity,x,s)
-
-@generated function getind(f::F,x::NT,i::Int,j::Int,k::Int) where {F<:Function,N,NT<:NTuple{N,AbstractArray}}
-    args = Array{Any,1}(undef,N)
-    for l=1:N 
-       args[l] = :(x[$l][i,j,k])
-    end
-    ex = Expr(:call,:f,args...) 
-    return Expr(:block,Expr(:meta,:inline),Expr(:meta,:propagate_inbounds),ex)
-end
-
-@par function tmean(f::F,x::NT,reduction::L) where {F<:Function,N,NT<:NTuple{N,AbstractArray},L}
-    result = fill!(reduction,0.0)
-    @mthreads for k in ZRANGE
-        for j in YRANGE
-            @inbounds @msimd for i in RXRANGE
-                result[Threads.threadid()] += getind(f,x,i,j,k)
-            end
-        end
-    end
-    return sum(result)/(NRX*NY*NZ)
-end
+#@generated function getind(f::F,x::NT,i::Int,j::Int,k::Int) where {F<:Function,N,NT<:NTuple{N,AbstractArray}}
+#    args = Array{Any,1}(undef,N)
+#    for l=1:N 
+#       args[l] = :(x[$l][i,j,k])
+#    end
+#    ex = Expr(:call,:f,args...) 
+#    return Expr(:block,Expr(:meta,:inline),Expr(:meta,:propagate_inbounds),ex)
+#end
+#
+#@par function tmean(f::F,x::NT,reduction::L) where {F<:Function,N,NT<:NTuple{N,AbstractArray},L}
+#    result = fill!(reduction,0.0)
+#    @mthreads for k in ZRANGE
+#        for j in YRANGE
+#            @inbounds @msimd for i in RXRANGE
+#                result[Threads.threadid()] += getind(f,x,i,j,k)
+#            end
+#        end
+#    end
+#    return sum(result)/(NRX*NY*NZ)
+#end
 
 function squared_mean(reduction,u::ScalarField{T}) where {T}
     isrealspace(u) && fourier!(u)

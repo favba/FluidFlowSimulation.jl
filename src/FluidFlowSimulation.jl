@@ -66,7 +66,7 @@ end
 function initialize!(s::AbstractSimulation)
     s.iteration[] == 0 && writeheader(s)
     myfourier!(s.u)
-    dealias!(s.u)
+    #dealias!(s.u)
 
     if haspassivescalar(s)
         myfourier!(s.passivescalar.φ) 
