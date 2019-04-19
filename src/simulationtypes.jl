@@ -105,7 +105,7 @@ z domain size: $(LZ)*2π
 Kinematic Viscosity: $(ν)
 
 Velocity time-stepping method: $(typeof(s.timestep.x))
-Dealias type: $(DEALIAS_TYPE[1]) $(DEALIAS_TYPE[2])
+Dealias cutoff: $(DEALIAS_TYPE)
 Number of Threads: $NT
 """
 smsg = join((smsg,msg.(getfield.(Ref(s),sim_fields))...))#msg(s.passivescalar),
@@ -251,15 +251,14 @@ function parameters(d::Dict)
 
     b = Globals.splitrange(lrs, nt)
 
-    haskey(d,:dealias) ? (Dealiastype = Symbol(d[:dealias])) : (Dealiastype = :cube)
-    haskey(d,:cutoff) ? (cutoffr = Float64(eval(Meta.parse(d[:cutoff])))) : (cutoffr = 15/16)
+    haskey(d,:cutoff) ? (cutoffr = Float64(eval(Meta.parse(d[:cutoff])))) : (cutoffr = 2/3)
 
     cutoff = (cutoffr*kxp[end])^2
 
     if haskey(d,:hyperViscosity)
         if d[:hyperViscosity] == "spectralBarrier"
-            initkp = haskey(d,:initk) ? parse(Float64,d[:initk]) : 2KX[end] / 3
-            endK = haskey(d,:endk) ? parse(Float64,d[:endk]) : sqrt(3)*KX[end]
+            initkp = haskey(d,:initk) ? parse(Float64,d[:initk]) : cutoffr*2KX[end] / 3
+            endK = haskey(d,:endk) ? parse(Float64,d[:endk]) : sqrt(cutoffr*3)*KX[end]
             hyperviscositytype = SpectralBarrier(initkp,endK)
         else
             νh = parse(Float64,d[:hyperViscosityCoefficient])

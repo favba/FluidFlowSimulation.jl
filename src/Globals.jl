@@ -62,9 +62,8 @@ end
     const global REAL_RANGES = splitrange(NRRX*NY*NZ, NT)
     const global COMPLEX_RANGES = splitrange(NX*NY*NZ, NT)
   
-    haskey(d,:dealias) ? (Dealiastype = Symbol(d[:dealias])) : (Dealiastype = :cube)
-    haskey(d,:cutoff) ? (cutoffr = Float64(eval(Meta.parse(d[:cutoff])))) : (cutoffr = 15/16)
-    const global DEALIAS_TYPE = (Dealiastype,cutoffr) 
+    haskey(d,:cutoff) ? (cutoffr = Float64(eval(Meta.parse(d[:cutoff])))) : (cutoffr = 2/3)
+    const global DEALIAS_TYPE = cutoffr
 
     cutoff = (cutoffr*kxp[end])^2
     cutoffx = (cutoffr*kxp[end])^2
@@ -73,11 +72,7 @@ end
 
     const global DEALIAS = BitArray(undef,(NX,NY,NZ))
 
-    if Dealiastype == :sphere
-        @. DEALIAS = (kxp^2 + kyp^2 + kzp^2) > cutoff
-    elseif Dealiastype == :cube
-        @. DEALIAS = (kxp^2 > cutoffx) | (kyp^2 > cutoffy) | (kzp^2 > cutoffz)
-    end
+    @. DEALIAS = (kxp^2 > cutoffx) | (kyp^2 > cutoffy) | (kzp^2 > cutoffz)
 
     const global KX = FluidFields.SRKvec(NRX,LX)#(kxp...,)
     const global KY = FluidFields.SKvec(NY,LY)#(kyp...,)
