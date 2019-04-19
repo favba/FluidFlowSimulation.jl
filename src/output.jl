@@ -29,7 +29,7 @@ function writeoutput(s::AbstractSimulation)
         write("T13.$init",t.rr.xz)
         write("T22.$init",t.rr.yy)
         write("T23.$init",t.rr.yz)
-        is_FakeSmagorinsky(s) || write("pr.$init",s.lesmodel.pr)
+        #is_FakeSmagorinsky(s) || write("pr.$init",s.lesmodel.pr)
     end
     if typeof(s.forcing) <: RfForcing
         writedlm("R.$init",s.forcing.R)
