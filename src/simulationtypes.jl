@@ -57,19 +57,26 @@ struct @par(Simulation) <: @par(AbstractSimulation)
     time::Base.RefValue{Float64}
     dtoutput::Int
     dtstats::Int
+    dtspec::Int
+    hspec::Array{Float64,3}
+    vspec::Array{Float64,3}
   
-    @par function @par(Simulation)(u::VectorField,equation,timestep,passivescalar,densitystratification,lesmodel,forcing,hv,iteration,time,dtout,dtstats) 
+    @par function @par(Simulation)(u::VectorField,equation,timestep,passivescalar,densitystratification,lesmodel,forcing,hv,iteration,time,dtout,dtstats,dtspecs) 
 
         rhs = similar(u)
   
         reduction = zeros(THR ? Threads.nthreads() : 1)
 
-        return @par(new)(u,rhs,reduction,equation,timestep,passivescalar,densitystratification,lesmodel,forcing,hv,iteration,time,dtout,dtstats)
+        hspec = zeros(Float64,size(u))
+        vspec = zeros(Float64,size(u))
+
+        return @par(new)(u,rhs,reduction,equation,timestep,passivescalar,densitystratification,lesmodel,forcing,hv,iteration,time,dtout,dtstats,dtspecs,hspec,vspec)
     end
 
 end
 
 is_output_time(s) = (s.timestep.x.iteration[] != 0) & (mod(s.iteration[],s.dtoutput) == 0)
+is_spec_time(s) = (mod(s.iteration[],s.dtspec) == 0)
 
 ##################################### Equation type #########################################
 
@@ -225,6 +232,7 @@ function parameters(d::Dict)
     start = haskey(d,:start) ? parse(Int,d[:start]) : 0
     starttime = haskey(d,:startTime) ? parse(Float64,d[:startTime]) : 0.0
     dtstat = parse(Int,d[:dtStat])
+    dtspecs = parse(Int,d[:dtSpec])
     dtout = parse(Int,d[:writeTime])
 
     if haskey(d,:equation)
@@ -324,7 +332,7 @@ function parameters(d::Dict)
 
     s = Simulation{typeof(equation),typeof(vtimestep),
         typeof(scalartype),typeof(densitytype),typeof(lestype),typeof(forcingtype),
-        typeof(hyperviscositytype)}(u,equation,vtimestep,scalartype,densitytype,lestype,forcingtype,hyperviscositytype,Ref(start),Ref(starttime),dtout,dtstat)
+        typeof(hyperviscositytype)}(u,equation,vtimestep,scalartype,densitytype,lestype,forcingtype,hyperviscositytype,Ref(start),Ref(starttime),dtout,dtstat,dtspecs)
   #
     return s
 end

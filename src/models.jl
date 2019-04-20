@@ -27,6 +27,7 @@ end
     fourierspacep1!(s)
     realspace!(s)
     has_variable_timestep(s) && set_dt!(s)
+    is_spec_time(s) && write_spec(s)
     fourierspacep2!(s)
 
     return nothing
@@ -146,16 +147,17 @@ end
         div!(s.rhs,s.equation.uu)
     end
 
-    if is_output_time(s)
-        real!(s.rhs)
-        init = s.iteration[]
-        write("nn1.$init",s.rhs.rr.x)
-        write("nn2.$init",s.rhs.rr.y)
-        write("nn3.$init",s.rhs.rr.z)
-        myfourier!(s.rhs)
-    end
+    #if is_output_time(s)
+    #    real!(s.rhs)
+    #    init = s.iteration[]
+    #    write("nn1.$init",s.rhs.rr.x)
+    #    write("nn2.$init",s.rhs.rr.y)
+    #    write("nn3.$init",s.rhs.rr.z)
+    #    myfourier!(s.rhs)
+    #end
  
     myfourier!(s.u)
+    pressure_projection!(s.u,s)
 
     if haspassivescalar(A) 
         myfourier!(s.passivescalar.flux)
@@ -287,7 +289,7 @@ end
                 rhs += ρ[i,j,k]*g
             end
             
-            p1 = ifelse(k==j==i==1,0.0,-(kh⋅rhs)/K2)
+            p1 = ifelse(k==j==i==1,zero(ComplexF64),-(kh⋅rhs)/K2)
             rhsv[i,j,k] = p1*kh + rhs
         end
     end
@@ -400,7 +402,7 @@ end
                 rhsh = rhs[i,j,k]
                 kh = K[i,j,k]
                 K2 = kh⋅kh
-                p1 = ifelse(k==j==i==1,0.0,-(kh⋅rhsh)/K2)
+                p1 = ifelse(k==j==i==1,zero(ComplexF64),-(kh⋅rhsh)/K2)
                 rhs[i,j,k] = p1*kh + rhsh
             end
         end

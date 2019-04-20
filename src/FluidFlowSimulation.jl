@@ -15,6 +15,7 @@ include("utils.jl")
 include("vectorfunctions.jl")
 include("time_step_functions/time_step_functions.jl")
 include("stats.jl")
+include("spec.jl")
 include("output.jl")
 include("models.jl")
 
