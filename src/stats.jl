@@ -47,7 +47,7 @@ stats(s::AbstractSimulation) =
     d3d2 = dy_squared_mean(s.reduction, s.u.c.z)
     d3d3 = dz_squared_mean(s.reduction, s.u.c.z)
 
-    ε = 2ν*(d1d1+d2d2+d3d3+ 2*((d1d2+d2d1)/2 + (d1d3+d3d1)/2 + (d2d3+d3d2)/2))
+    ε = ν*((d1d1+d2d2+d3d3) + (d1d2+d2d1) + (d1d3+d3d1) + (d2d3+d3d2))
 
     return u1, u2, u3, u12, u22, u32, k, d1d1, d1d2, d1d3, d2d1, d2d2, d2d3, d3d1, d3d2, d3d3, ε
 end
