@@ -109,10 +109,12 @@ function calculate_nn_spectrum!(N,u,rhs,cplane)
     @inbounds for j in YRANGE
         conjFactX=1.0
         for i in XRANGE
-            k = fsqrt(KX[i]^2 + KY[j]^2)
+            kxy2 = KX[i]^2 + KY[j]^2
+            k2 = kxy2 + KZ[cplane]^2
+            k = fsqrt(kxy2)
             n = round(Int, k/maxdk2d) + 1
             if n <= nshells
-                magsq = proj(ux[i,j,cplane],rhsx[i,j,cplane]) + proj(uy[i,j,cplane],rhsy[i,j,cplane])
+                magsq = proj(ux[i,j,cplane],rhsx[i,j,cplane] - ν*k2*ux[i,j,cplane]) + proj(uy[i,j,cplane],rhsy[i,j,cplane] - ν*k2*uy[i,j,cplane])
                 ee = conjFactX * magsq;
                 N[n]+=ee;
                 conjFactX=2.0;
