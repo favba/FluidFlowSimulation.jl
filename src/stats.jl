@@ -1,5 +1,5 @@
 function statsheader(s::AbstractSimulation)
-    simulationheader = "iteration,time,u1,u2,u3,u1p2,u2p2,u3p2,k,du1dx1p2,du1dx2p2,du1dx3p2,du2dx1p2,du2dx2p2,du2dx3p2,du3dx1p2,du3dx2p2,du3dx3p2,diss"
+    simulationheader = "iteration,time,u1,u2,u3,u1p2,u2p2,u3p2,kh,kv,k,dissh,dissv,diss,tdiss"
     header = join(Iterators.filter(x->x !== "",
       (simulationheader,statsheader.(getfield.(Ref(s),sim_fields))...,"\n")),
       ",","")
@@ -10,19 +10,108 @@ function writeheader(s::AbstractSimulation)
     open("Stats.txt","w") do f
         write(f,statsheader(s))
     end
+
+    open("Scales.txt","w") do f
+        write(f,"iteration,time,Lk,Lt,lamhh,Lhh,Lvv,Lhv,Lvh,lam11,lam22,L11,L12,L13,L21,L22,L23,L31,L32,L33")
+        if hasdensity(s)
+            write(f,",Lb,Lo\n")
+        else
+            write(f,"\n")
+        end
+    end
+
+    open("Numbers.txt","w") do f
+        write(f,"iteration,time,Reh,Relam")
+        if hasdensity(s)
+            write(f,",Reb,Frh\n")
+        else
+            write(f,"\n")
+        end
+    end
 end
 
 function writestats(s::AbstractSimulation)
     init = s.iteration[]
     time = s.time[]
-    results = stats(s)
+    results, lens, anum = stats(s)
+
     open("Stats.txt","a+") do file 
         join(file,(init, time, results..., "\n"), ",","")
     end
+
+    open("Scales.txt","a+") do file 
+        join(file,(init, time, lens..., "\n"), ",","")
+    end
+
+    open("Numbers.txt","a+") do file 
+        join(file,(init, time, anum..., "\n"), ",","")
+    end
+
 end
 
-stats(s::AbstractSimulation) = 
-    (velocity_stats(s)..., flatten(stats.(getfield.(Ref(s),sim_fields),Ref(s)))...)
+function stats(s::AbstractSimulation)
+    vstats = velocity_stats(s)
+
+    u1p2 = vstats[4]
+    u2p2 = vstats[5]
+    u3p2 = vstats[6]
+    k = vstats[9]
+
+    L11 = integral_lenght_x(s.u.c.x,u1p2)
+    L12 = integral_lenght_y(s.u.c.x,u1p2)
+    L13 = integral_lenght_z(s.u.c.x,u1p2)
+
+    λ11 = taylor_lenght_x(s.xspec,s.u.c.x,u1p2)
+
+    L21 = integral_lenght_x(s.u.c.y,u2p2)
+    L22 = integral_lenght_y(s.u.c.y,u2p2)
+    L23 = integral_lenght_z(s.u.c.y,u2p2)
+
+    λ22 = taylor_lenght_y(s.yspec,s.hspec,s.u.c.y,u2p2)
+
+    L31 = integral_lenght_x(s.u.c.z,u3p2)
+    L32 = integral_lenght_y(s.u.c.z,u3p2)
+    L33 = integral_lenght_z(s.u.c.z,u3p2)
+
+    Lhh = (L11 + L22)/2
+    λhh = (λ11 + λ22)/2
+    Lhv = (L13 + L23)/2
+    Lvv = L33
+    Lvh = (L31 + L32)/2
+
+    otherstats = stats.(getfield.(Ref(s),sim_fields),Ref(s))
+
+    tdiss = vstats[12]
+
+    hashyperviscosity(s) && (tdiss += otherstats[5][3])
+    hasles(s) && (tdiss += otherstats[3][1])
+
+    Lt = sqrt(k*k*k)/tdiss # outer scale
+    Lk = sqrt(sqrt(ν*ν*ν/tdiss)) # Kolmogorov length scale
+
+    lensv = (Lk,Lt,λhh,Lhh,Lvv,Lhv,Lvh,λ11,λ22,L11,L12,L13,L21,L22,L23,L31,L32,L33)
+
+    Reh = (Lhh/Lk)^(4/3)
+
+    Reλ = (λhh/Lk)^(4/3)
+
+    if hasdensity(s)
+        uh = sqrt(2*vstats[7])
+        Nb = calculate_N(s.densitystratification)/(2π)
+        Lb = uh/Nb # Buoyancy lenght scale
+        Lo = sqrt(tdiss/(Nb*Nb*Nb)) # Ozmidov lenght scale
+        Reb = (Lo/Lk)^(4/3)
+        Frh = uh/(Nb*Lhh)
+        lens = (lensv...,Lb,Lo)
+        anums = (Reh, Reλ, Reb, Frh)
+    else
+        lens = lensv
+        anums = (Reh, Reλ)
+    end
+
+    results = (vstats..., tdiss, flatten(otherstats)...)
+    return results, lens, anums
+end
 #  (velocity_stats(s)..., stats(s.passivescalar,s)..., stats(s.densitystratification,s)..., stats(s.lesmodel,s)..., stats(s.forcing,s)...)
 
 @par function velocity_stats(s::@par(AbstractSimulation))
@@ -30,26 +119,28 @@ stats(s::AbstractSimulation) =
     u2 = real(s.u.c.y[1,1,1])
     u3 = real(s.u.c.z[1,1,1])
 
-    u12 = squared_mean(s.reduction, s.u.c.x)
-    u22 = squared_mean(s.reduction, s.u.c.y)
-    u32 = squared_mean(s.reduction, s.u.c.z)
-    k = (u12+u22+u32)/2
+    u12 = squared_mean(s.reductionh, s.u.c.x)
+    u22 = squared_mean(s.reductionh, s.u.c.y)
+    u32 = squared_mean(s.reductionh, s.u.c.z)
+    kh = (u12+u22)/2
+    kv = u32/2
+    k = (kh+kv)
 
-    d1d1 = dx_squared_mean(s.reduction, s.u.c.x)
-    d1d2 = dy_squared_mean(s.reduction, s.u.c.x)
-    d1d3 = dz_squared_mean(s.reduction, s.u.c.x)
+#    d1d1 = dx_squared_mean(s.reduction, s.u.c.x)
+#    d1d2 = dy_squared_mean(s.reduction, s.u.c.x)
+#    d1d3 = dz_squared_mean(s.reduction, s.u.c.x)
+#
+#    d2d1 = dx_squared_mean(s.reduction, s.u.c.y)
+#    d2d2 = dy_squared_mean(s.reduction, s.u.c.y)
+#    d2d3 = dz_squared_mean(s.reduction, s.u.c.y)
+#
+#    d3d1 = dx_squared_mean(s.reduction, s.u.c.z)
+#    d3d2 = dy_squared_mean(s.reduction, s.u.c.z)
+#    d3d3 = dz_squared_mean(s.reduction, s.u.c.z)
 
-    d2d1 = dx_squared_mean(s.reduction, s.u.c.y)
-    d2d2 = dy_squared_mean(s.reduction, s.u.c.y)
-    d2d3 = dz_squared_mean(s.reduction, s.u.c.y)
+    εh,εv,ε = viscosity_stats(s.reductionh,s.reductionv,s.u)
 
-    d3d1 = dx_squared_mean(s.reduction, s.u.c.z)
-    d3d2 = dy_squared_mean(s.reduction, s.u.c.z)
-    d3d3 = dz_squared_mean(s.reduction, s.u.c.z)
-
-    ε = ν*((d1d1+d2d2+d3d3) + (d1d2+d2d1) + (d1d3+d3d1) + (d2d3+d3d2))
-
-    return u1, u2, u3, u12, u22, u32, k, d1d1, d1d2, d1d3, d2d1, d2d2, d2d3, d3d1, d3d2, d3d3, ε
+    return u1, u2, u3, u12, u22, u32, kh, kv, k, εh, εv, ε
 end
 
 @par function scalar_stats(ρ,s1,s::@par(AbstractSimulation))
@@ -212,12 +303,14 @@ end
 
 @inline mag2(u::Vec{T}) where T<:Real = u⋅u
 
-function hyperviscosity_stats(reduction,u::VectorField{T},s) where {T}
+function hyperviscosity_stats(reductionh,reductionv,u::VectorField{T},s) where {T}
     isrealspace(u) && fourier!(u)
-    result = fill!(reduction,zero(T))
+    resulth = fill!(reductionh,zero(T))
+    resultv = fill!(reductionv,zero(T))
     @mthreads for l in ZRANGE
         @inbounds begin
-            ee = zero(T)
+            eeh = zero(T)
+            eev = zero(T)
             ii = Threads.threadid()
             M::Int = get_hyperviscosity_exponent(s)
             kz2 = KZ[l]*KZ[l]
@@ -225,34 +318,152 @@ function hyperviscosity_stats(reduction,u::VectorField{T},s) where {T}
                 kyz2 = muladd(KY[j], KY[j], kz2)
                 @simd for i in XRANGE
                     k2 = muladd(KX[i], KX[i], kyz2)
-                    magsq = mag2(u[i,j,l])
-                    ee += (1 + (i>1)) * (k2^M)*magsq 
+                    uh = u[i,j,l]
+                    eeh += (1 + (i>1)) * (k2^M)*(proj(uh.x,uh.x)+proj(uh.y,uh.y)) 
+                    eev += (1 + (i>1)) * (k2^M)*proj(uh.z,uh.z) 
                 end
             end
-            result[ii] += ee
+            resulth[ii] += eeh
+            resultv[ii] += eev
         end
     end
     mν = nuh(s)
-    return mν*sum(result)
+    eh = mν*sum(resulth)
+    ev = mν*sum(resultv)
+    return eh,ev,eh+ev
 end
 
-function les_stats(reduction,τ::AbstractField{T},u::VectorField{T}) where {T}
+function viscosity_stats(reductionh,reductionv,u::VectorField{T}) where {T}
     isrealspace(u) && fourier!(u)
-    isrealspace(τ) && fourier!(τ)
-    result = fill!(reduction,zero(T))
+    resulth = fill!(reductionh,zero(T))
+    resultv = fill!(reductionv,zero(T))
     @mthreads for l in ZRANGE
         @inbounds begin
-            ee = zero(T)
+            eeh = zero(T)
+            eev = zero(T)
+            ii = Threads.threadid()
+            kz2 = KZ[l]*KZ[l]
+            for j in YRANGE
+                kyz2 = muladd(KY[j], KY[j], kz2)
+                @simd for i in XRANGE
+                    k2 = muladd(KX[i], KX[i], kyz2)
+                    uh = u[i,j,l]
+                    eeh += (1 + (i>1)) * k2*(proj(uh.x,uh.x)+proj(uh.y,uh.y)) 
+                    eev += (1 + (i>1)) * k2*proj(uh.z,uh.z) 
+                end
+            end
+            resulth[ii] += eeh
+            resultv[ii] += eev
+        end
+    end
+    eh = ν*sum(resulth)
+    ev = ν*sum(resultv)
+    return eh,ev,eh+ev
+end
+
+function les_stats(reductionh,reductionv,τ::AbstractField{T},u::VectorField{T}) where {T}
+    isrealspace(u) && fourier!(u)
+    isrealspace(τ) && fourier!(τ)
+    resulth = fill!(reductionh,zero(T))
+    resultv = fill!(reductionv,zero(T))
+    @mthreads for l in ZRANGE
+        @inbounds begin
+            eeh = zero(T)
+            eev = zero(T)
             ii = Threads.threadid()
             @inbounds for j in YRANGE
                 @simd for i in XRANGE
-                    S = symouter(im*K[i,j,l],u[i,j,l])
-                    magsq = proj(τ[i,j,l],S)
-                    ee += (1 + (i>1))*magsq 
+                    kh = K[i,j,l]
+                    out = vecouterproj((im*kh)⋅τ[i,j,l],u[i,j,l])
+                    eeh += (1 + (i>1))*(out.x + out.y) 
+                    eev += (1 + (i>1))*out.z 
                 end
             end
-            result[ii] += ee
+            resulth[ii] += eeh
+            resultv[ii] += eev
         end
     end
-    return sum(result)
+    prh = -sum(resulth)
+    prv = -sum(resultv)
+    return prh,prv,prh+prv
+end
+
+function integral_lenght_x(u,u1p2)
+    r = zero(typeof(proj(u[1],u[1])))
+    @inbounds for k in ZRANGE
+        for j in YRANGE
+            r += proj(u[1,j,k],u[1,j,k])
+        end
+    end
+    return LX*r*pi/u1p2
+end
+
+function integral_lenght_y(u,u1p2)
+    r = zero(typeof(proj(u[1],u[1])))
+    @inbounds for k in ZRANGE
+        @msimd for i in XRANGE
+            r += (1+(i>1))*proj(u[i,1,k],u[i,1,k])
+        end
+    end
+    return LY*r*pi/u1p2
+end
+
+function integral_lenght_z(u,u1p2)
+    r = zero(typeof(proj(u[1],u[1])))
+    @inbounds for j in YRANGE
+        @msimd for i in XRANGE
+            r += (1+(i>1))*proj(u[i,j,1],u[i,j,1])
+        end
+    end
+    return LZ*r*pi/u1p2
+end
+
+function taylor_lenght_x(re,u,u1p2)
+
+    fill!(re.data,0.0)
+
+    @inbounds for k in ZRANGE
+        for j in YRANGE
+            for i in XRANGE
+                re[i] += proj(u[i,j,k],u[i,j,k])/u1p2
+            end
+        end
+    end
+
+    @inbounds for i in XRANGE
+        re[i] *= -KX[i]*KX[i]
+    end
+
+    brfft!(re)
+
+    return sqrt(-2/re.data[1])
+end
+
+function taylor_lenght_y(re,hpart,u,u1p2)
+
+    fill!(re.data,0.0)
+    @inbounds for j in YRANGE
+        hpart[1,j,1] = 0.0
+    end
+
+    @inbounds for k in ZRANGE
+        for j in YRANGE
+            for i in XRANGE
+                hpart[1,j,1] += proj(u[i,j,k],u[i,j,k])/u1p2
+            end
+        end
+    end
+
+    re[1] = 0.0 + 0.0im
+
+    ep = div(NY,2) + 1
+
+    re[ep] = KY[ep]^2*hpart[1,ep,1]
+    @inbounds for i in 2:(ep-1)
+        re[i] = (-KY[NY-i]*KY[NY-i])*(hpart[1,i,1] + hpart[1,NY-i,1])/2
+    end
+
+    brfft!(re)
+
+    return sqrt(-2/re.data[1])
 end
