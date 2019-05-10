@@ -71,7 +71,7 @@ struct @par(Simulation) <: @par(AbstractSimulation)
         reductionh = zeros(THR ? Threads.nthreads() : 1)
         reductionv = zeros(THR ? Threads.nthreads() : 1)
 
-        xspec = PaddedArray(NX)
+        xspec = PaddedArray(NRX)
         yspec = PaddedArray(NY)
 
         hspec = zeros(Float64,size(u))
