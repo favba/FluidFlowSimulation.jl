@@ -45,7 +45,10 @@ need_vorticity(s::AbstractSimulation) = need_vorticity(typeof(s))
 struct @par(Simulation) <: @par(AbstractSimulation)
     u::VectorField{Float64,3,2,false}
     rhs::VectorField{Float64,3,2,false}
-    reduction::Vector{Float64}
+    reductionh::Vector{Float64}
+    reductionv::Vector{Float64}
+    xspec::PaddedArray{Float64,1,0,true}
+    yspec::PaddedArray{Float64,1,0,true}
     equation::EquationType
     timestep::VelocityTimeStepType
     passivescalar::PassiveScalarType
@@ -65,12 +68,16 @@ struct @par(Simulation) <: @par(AbstractSimulation)
 
         rhs = similar(u)
   
-        reduction = zeros(THR ? Threads.nthreads() : 1)
+        reductionh = zeros(THR ? Threads.nthreads() : 1)
+        reductionv = zeros(THR ? Threads.nthreads() : 1)
+
+        xspec = PaddedArray(NX)
+        yspec = PaddedArray(NY)
 
         hspec = zeros(Float64,size(u))
         vspec = zeros(Float64,size(u))
 
-        return @par(new)(u,rhs,reduction,equation,timestep,passivescalar,densitystratification,lesmodel,forcing,hv,iteration,time,dtout,dtstats,dtspecs,hspec,vspec)
+        return @par(new)(u,rhs,reductionh,reductionv,xspec,yspec,equation,timestep,passivescalar,densitystratification,lesmodel,forcing,hv,iteration,time,dtout,dtstats,dtspecs,hspec,vspec)
     end
 
 end

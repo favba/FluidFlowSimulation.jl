@@ -29,6 +29,11 @@ abstract type AbstractDensityStratification{L,TT,α,dρdz,g,Gdirec} end
         Gdirec
     @inline graddir(a::AbstractDensityStratification{L,TT,α,dρdz,g,Gdirec}) where {L,TT,α,dρdz,g,Gdirec} = graddir(typeof(a))
 
+    calculate_N(a::Type{T}) where {L,TT,α,dρdz,g,Gdirec,T<:AbstractDensityStratification{L,TT,α,dρdz,g,Gdirec}} = 
+        sqrt(g.z*dρdz)
+    @inline calculate_N(a::AbstractDensityStratification{L,TT,α,dρdz,g,Gdirec}) where {L,TT,α,dρdz,g,Gdirec} = calculate_N(typeof(a))
+
+
 
     initialize!(a::AbstractDensityStratification,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.rhs)),diffusivity(a),s)
 
@@ -145,11 +150,11 @@ function buoyancy_flux(a::AbstractDensityStratification,s::AbstractSimulation)
     gdir = graddir(a)
     g = gravity(s)
     if gdir === :z
-       return g.z*proj_mean(s.reduction,s.u.c.z,a.ρ)
+       return g.z*proj_mean(a.reduction,s.u.c.z,a.ρ)
     elseif gdir === :y
-       return g.y*proj_mean(s.reduction,s.u.c.y,a.ρ)
+       return g.y*proj_mean(a.reduction,s.u.c.y,a.ρ)
     elseif gdir === :x
-       return g.x*proj_mean(s.reduction,s.u.c.x,a.ρ)
+       return g.x*proj_mean(a.reduction,s.u.c.x,a.ρ)
     end
 end
 

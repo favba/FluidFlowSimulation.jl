@@ -84,7 +84,7 @@ include("Adams_Bashforth.jl")
 include("ETD.jl")  
 
 @par function set_dt!(s::@par(AbstractSimulation))
-    umax = maximum(s.reduction)
+    umax = maximum(s.reductionh)
     dx = 2π*LY/NY
     cfl = get_cfl(s)
     νt = ν

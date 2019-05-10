@@ -15,7 +15,7 @@ struct NoLESModel <: AbstractLESModel end
 
 # Smagorinsky Model Start ======================================================
 
-stats(a::AbstractLESModel,s::AbstractSimulation) = (les_stats(s.reduction,a.tau,s.u))
+stats(a::AbstractLESModel,s::AbstractSimulation) = (les_stats(s.reductionh,s.reductionv,a.tau,s.u))
 
 abstract type EddyViscosityModel <: AbstractLESModel end
 
@@ -38,7 +38,7 @@ is_Smagorinsky(a::Union{<:Smagorinsky,Type{<:Smagorinsky}}) = true
 @inline is_Smagorinsky(s::T) where {T<:AbstractSimulation} = is_Smagorinsky(T)
 is_Smagorinsky(a) = false
 
-statsheader(a::Smagorinsky) = "pr"
+statsheader(a::Smagorinsky) = "prh,prv,pr"
 
 msg(a::Smagorinsky) = "\nLES model: Smagorinsky\nConstant: $(a.c)\nFilter Width: $(sqrt(a.Δ²))\n"
 
@@ -76,7 +76,7 @@ is_dynamic_les(a::Union{<:DynamicSmagorinsky,<:Type{<:DynamicSmagorinsky}}) = tr
 @inline is_dynamic_les(s::T) where {T<:AbstractSimulation} = is_dynamic_les(T)
 is_dynamic_les(a) = false
 
-statsheader(a::DynamicSmagorinsky) = "pr"
+statsheader(a::DynamicSmagorinsky) = "prh,prv,pr"
 
 msg(a::DynamicSmagorinsky) = "\nLES model: Dynamic Smagorinsky\nFilter Width: $(sqrt(a.Δ²))\nTest Filter Width: $(sqrt(a.Δ̂²))\nMinimum coefficient permitted: $(a.cmin)\n"
 
@@ -101,7 +101,7 @@ is_Vreman(a::Union{<:VremanLESModel,Type{<:VremanLESModel}}) = true
 @inline is_Vreman(s::T) where {T<:AbstractSimulation} = is_Vreman(T)
 is_Vreman(a) = false
 
-statsheader(a::VremanLESModel) = "pr"
+statsheader(a::VremanLESModel) = "prh,prv,pr"
 
 msg(a::VremanLESModel) = "\nLES model: Vreman\nConstant: $(a.c)\nFilter Width: $(sqrt(a.Δ²))\n"
 
@@ -128,7 +128,7 @@ is_production_model(a::Type{T}) where {T<:ProductionViscosityLESModel} = true
 @inline is_production_model(s::T) where {T<:AbstractSimulation} = is_production_model(T)
 is_production_model(a) = false
 
-statsheader(a::ProductionViscosityLESModel) = "pr"
+statsheader(a::ProductionViscosityLESModel) = "prh,prv,pr"
 
 msg(a::ProductionViscosityLESModel) = "\nLES model: Production Viscosity\nConstant: $(a.c)\nFilter Width: $(sqrt(a.Δ²))\n"
 
@@ -159,7 +159,7 @@ is_SandP(a::Union{<:SandP,Type{<:SandP}}) = true
 @inline is_dynamic_les(a::Union{<:SandP{t,S},<:Type{SandP{t,S}}}) where {t,S} = is_dynamic_les(S)
 @inline is_production_model(a::Union{<:SandP{t,S},<:Type{SandP{t,S}}}) where {t,S} = is_production_model(S)
 
-statsheader(a::SandP) = "pr"
+statsheader(a::SandP) = "prh,prv,pr"
 
 msg(a::SandP) = "\nLES model: SandP\nP tensor constant: $(a.cb)\nEddy Viscosity model: {$(msg(a.Smodel))}\n"
 

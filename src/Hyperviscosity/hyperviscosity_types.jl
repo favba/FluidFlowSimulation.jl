@@ -22,9 +22,9 @@ end
     @inline nuh(::Type{<:HyperViscosity{n,M}}) where {n,M} = n
     @inline get_hyperviscosity_exponent(::Type{<:HyperViscosity{n,M}}) where {n,M} = M
 
-    statsheader(a::HyperViscosity) = "hdiss"
+    statsheader(a::HyperViscosity) = "hdissh,hdissv,hdiss"
 
-    stats(a::HyperViscosity,s::AbstractSimulation) = (hyperviscosity_stats(s.reduction,s.u,s),)
+    stats(a::HyperViscosity,s::AbstractSimulation) = hyperviscosity_stats(s.reductionh,s.reductionv,s.u,s)
 
     msg(a::HyperViscosity{nh,M}) where {nh,M} = "\nHyper viscosity: νh = $(nh), m = $(M)\n\n"
 
@@ -39,22 +39,24 @@ end
 
 SpectralBarrier(initk,endpk) = SpectralBarrier(x->log(esp(x,initk,endpk,Val{1/4}())),initk,endpk)
 
-    statsheader(a::SpectralBarrier) = "hdiss"
+    statsheader(a::SpectralBarrier) = "hdissh,hdissv,hdiss"
 
-    stats(a::SpectralBarrier,s::AbstractSimulation) = (spectral_barrier_stats(s.reduction,s.u,a),)
+    stats(a::SpectralBarrier,s::AbstractSimulation) = spectral_barrier_stats(s.reductionh,s.reductionv,s.u,a)
 
     msg(a::SpectralBarrier{initp,endp}) where {initp,endp} = "\nSpectral barrier: init = $(initp), cutoff = $(endp)\n\n"
 
 @inline esp(k,i,p,::Val{n}) where n = abs(k) <= i ? 1.0 : abs(k) < p ? exp(-((abs(k) - i)^2)/((p)^n - abs(k)^n)) : 0.0
 #@inline esp(k,i,p) = abs(k) <= i ? 1.0 : abs(k) < p ? exp(-((abs(k) - i)^2)/((p)^2 - k^2)) : 0.0
 
-function spectral_barrier_stats(reduction,u::VectorField{T},hv::SpectralBarrier{ini,cut,F}) where {T,F,ini,cut}
+function spectral_barrier_stats(reductionh,reductionv,u::VectorField{T},hv::SpectralBarrier{ini,cut,F}) where {T,F,ini,cut}
     isrealspace(u) && fourier!(u)
-    result = fill!(reduction,zero(T))
+    resulth = fill!(reductionh,zero(T))
+    resultv = fill!(reductionv,zero(T))
     @mthreads for l in ZRANGE
         @inbounds begin
             f = hv.func
-            ee = zero(T)
+            eeh = zero(T)
+            eev = zero(T)
             ii = Threads.threadid()
             kz2 = KZ[l]*KZ[l]
             for j in YRANGE
@@ -62,14 +64,18 @@ function spectral_barrier_stats(reduction,u::VectorField{T},hv::SpectralBarrier{
                 for i in XRANGE
                     k2 = muladd(KX[i], KX[i], kyz2)
                     k = sqrt(k2)
-                    magsq = mag2(u[i,j,l])
+                    uh = u[i,j,l]
                     fk = f(k)
                     fk = ifelse(fk == -Inf, 0.0,fk)
-                    ee += (1 + (i>1)) * fk*magsq 
+                    eeh += (1 + (i>1)) * fk*(proj(uh.x,uh.x) + proj(uh.y,uh.y)) 
+                    eev += (1 + (i>1)) * fk*proj(uh.z,uh.z) 
                 end
             end
-            result[ii] += ee
+            resulth[ii] += eeh
+            resultv[ii] += eev
         end
     end
-    return -sum(result)
+    dissh = -sum(resulth)
+    dissv = -sum(resultv)
+    return dissh,dissv,dissh+dissv
 end

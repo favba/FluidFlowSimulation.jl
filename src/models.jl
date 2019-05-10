@@ -127,7 +127,7 @@ end
     realspacecalculation!(s)
 
     if has_variable_timestep(s)
-        find_max(s.reduction,s.u.r)
+        find_max(s.reductionh,s.u.r)
         if hasdensity(s)
             find_max(s.densitystratification.reduction,s.densitystratification.ρ.r)
         end
