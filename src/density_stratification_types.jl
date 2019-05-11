@@ -150,11 +150,11 @@ function buoyancy_flux(a::AbstractDensityStratification,s::AbstractSimulation)
     gdir = graddir(a)
     g = gravity(s)
     if gdir === :z
-       return g.z*proj_mean(a.reduction,s.u.c.z,a.ρ)
+       return -g.z*proj_mean(a.reduction,s.u.c.z,a.ρ)
     elseif gdir === :y
-       return g.y*proj_mean(a.reduction,s.u.c.y,a.ρ)
+       return -g.y*proj_mean(a.reduction,s.u.c.y,a.ρ)
     elseif gdir === :x
-       return g.x*proj_mean(a.reduction,s.u.c.x,a.ρ)
+       return -g.x*proj_mean(a.reduction,s.u.c.x,a.ρ)
     end
 end
 
