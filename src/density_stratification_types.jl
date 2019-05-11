@@ -37,7 +37,7 @@ abstract type AbstractDensityStratification{L,TT,α,dρdz,g,Gdirec} end
 
     initialize!(a::AbstractDensityStratification,s::AbstractSimulation) = initialize!(a.timestep,parent(real(a.rhs)),diffusivity(a),s)
 
-    statsheader(a::AbstractDensityStratification) = "rho,rhop2,drhodxp2,drhodyp2,drhodzp2,rhodiss,u.g*rho"
+    statsheader(a::AbstractDensityStratification) = "rho,rhop2,drhodxp2,drhodyp2,drhodzp2,rhodiss,bflux"
 
     stats(a::AbstractDensityStratification,s::A) where {A<:AbstractSimulation} = (scalar_stats(a.ρ,a,s)..., buoyancy_flux(a,s))
 
