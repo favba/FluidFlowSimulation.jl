@@ -12,11 +12,11 @@ function writeheader(s::AbstractSimulation)
     end
 
     open("Scales.txt","w") do f
-        write(f,"iteration,time,Lk,Lt,lamhh,Lhh,Lvv,Lhv,Lvh,lam11,lam22,L11,L12,L13,L21,L22,L23,L31,L32,L33")
+        write(f,"iteration,time,Lk,Lt,lam,Lhh,Lvv,Lhv,Lvh,lam12,lam21,L11,L12,L13,L21,L22,L23,L31,L32,L33")
         if hasdensity(s)
-            write(f,",Lb,Lo\n")
+            write(f,",Lb,Lo,Tk,Tt,Tb\n")
         else
-            write(f,"\n")
+            write(f,",Tk,Tt\n")
         end
     end
 
@@ -61,20 +61,20 @@ function stats(s::AbstractSimulation)
     L12 = integral_lenght_y(s.u.c.x,u1p2)
     L13 = integral_lenght_z(s.u.c.x,u1p2)
 
-    λ11 = taylor_lenght_x(s.xspec,s.u.c.x,u1p2)
+    λ12 = taylor_lenght_y(s.yspec,s.hspec,s.u.c.x,u1p2)
 
     L21 = integral_lenght_x(s.u.c.y,u2p2)
     L22 = integral_lenght_y(s.u.c.y,u2p2)
     L23 = integral_lenght_z(s.u.c.y,u2p2)
 
-    λ22 = taylor_lenght_y(s.yspec,s.hspec,s.u.c.y,u2p2)
+    λ21 = taylor_lenght_x(s.xspec,s.u.c.y,u2p2)
 
     L31 = integral_lenght_x(s.u.c.z,u3p2)
     L32 = integral_lenght_y(s.u.c.z,u3p2)
     L33 = integral_lenght_z(s.u.c.z,u3p2)
 
     Lhh = (L11 + L22)/2
-    λhh = (λ11 + λ22)/2
+    λ = (λ12 + λ21)/2
     Lhv = (L13 + L23)/2
     Lvv = L33
     Lvh = (L31 + L32)/2
@@ -87,25 +87,28 @@ function stats(s::AbstractSimulation)
     hasles(s) && (tdiss += otherstats[3][1])
 
     Lt = sqrt(k*k*k)/tdiss # outer scale
+    Tt = k/tdiss # outer time scale
     Lk = sqrt(sqrt(ν*ν*ν/tdiss)) # Kolmogorov length scale
+    Tk = sqrt(ν/tdiss) # Kolmogorov timescale
 
-    lensv = (Lk,Lt,λhh,Lhh,Lvv,Lhv,Lvh,λ11,λ22,L11,L12,L13,L21,L22,L23,L31,L32,L33)
+    lensv = (Lk,Lt,λ,Lhh,Lvv,Lhv,Lvh,λ12,λ21,L11,L12,L13,L21,L22,L23,L31,L32,L33)
 
     Reh = (Lhh/Lk)^(4/3)
 
-    Reλ = (λhh/Lk)^(4/3)
+    Reλ = (λ/Lk)^(4/3)
 
     if hasdensity(s)
         uh = sqrt(2*vstats[7])
         Nb = calculate_N(s.densitystratification)/(2π)
         Lb = uh/Nb # Buoyancy lenght scale
         Lo = sqrt(tdiss/(Nb*Nb*Nb)) # Ozmidov lenght scale
+        Tb = 1/Nb # Buoyancy time scale
         Reb = (Lo/Lk)^(4/3)
         Frh = uh/(Nb*Lhh)
-        lens = (lensv...,Lb,Lo)
+        lens = (lensv...,Lb,Lo,Tk,Tt,Tb)
         anums = (Reh, Reλ, Reb, Frh)
     else
-        lens = lensv
+        lens = (lensv...,Tk,Tt)
         anums = (Reh, Reλ)
     end
 
