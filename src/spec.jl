@@ -4,17 +4,20 @@
     hout = s.hspec
     vout = s.vspec
 
-    spectrum_non_linear(hout,vout,s.u,s.rhs)
-    write("nl_h.spec.$i",hout)
-    write("nl_v.spec.$i",vout)
+    out1D = s.spec1D
+    out2D = s.spec2D
 
-    spectrum_viscosity(hout,vout,s.u,s)
-    write("vis_h.spec.$i",hout)
-    write("vis_v.spec.$i",vout)
+    spectrum_u(hout,vout,s.u)
+    writespectrum("u",i,hout,vout,out1D,out2D)
+
+    spectrum_viscosity(hout,vout,hout,vout,s)
+    writespectrum("vis",i,hout,vout,out1D,out2D)
+
+    spectrum_non_linear(hout,vout,s.u,s.rhs)
+    writespectrum("nl",i,hout,vout,out1D,out2D)
 
     spectrum_pressure(hout,vout,s)
-    write("press_h.spec.$i",hout)
-    write("press_v.spec.$i",vout)
+    writespectrum("press",i,hout,vout,out1D,out2D)
 
     if hasdensity(A)
         spectrum_buoyancy(vout,s.u,s.densitystratification.ρ,gravity(s))
@@ -23,8 +26,7 @@
 
     if hasles(A)
         spectrum_les(hout,vout,s.u,s.lesmodel.tau)
-        write("les_h.spec.$i",hout)
-        write("les_v.spec.$i",vout)
+        writespectrum("les",i,hout,vout,out1D,out2D)
     end
 
     if hashyperviscosity(A)
@@ -33,12 +35,37 @@
         else
             spectrum_hyperviscosity(hout,vout,s.u,s)
         end
-        write("hvis_h.spec.$i",hout)
-        write("hvis_v.spec.$i",vout)
+        writespectrum("hvis",i,hout,vout,out1D,out2D)
     end
 
 end
 
+function writespectrum(n::String,i::Integer,hout,vout,spec1D,spec2D)
+    write("$(n)_h.spec3D.$i",hout)
+    write("$(n)_v.spec3D.$i",vout)
+
+    calculate_spec12D(spec1D,spec2D,hout)
+
+    writedlm("$(n)_h.spec1D.$i",zip(K1D,spec1D))
+    writedlm2D("$(n)_h.spec2D.$i",spec2D)
+
+    calculate_spec12D(spec1D,spec2D,vout)
+
+    writedlm("$(n)_v.spec1D.$i",zip(K1D,spec1D))
+    writedlm2D("$(n)_v.spec2D.$i",spec2D)
+
+    return nothing
+end
+
+function writedlm2D(n,out)
+    open(n,"w+") do f
+        for k in RZRANGE
+            for j in eachindex(KH)
+                write(f,join((KZ[k],KH[j],out[j,k]),'\t'),'\n')
+            end
+        end
+    end
+end
 
 vecouterproj(a,b) = Vec(proj(a.x,b.x),
                         proj(a.y,b.y),
@@ -120,7 +147,21 @@ function spectrum_hyperviscosity(hout,vout,u::VectorField{T},s) where {T}
     end
 end
 
-function spectrum_viscosity(hout,vout,u::VectorField{T},s) where {T}
+function spectrum_u(hout,vout,u::VectorField{T}) where {T}
+    @mthreads for l in ZRANGE
+        @inbounds begin
+            for j in YRANGE
+                @simd for i in XRANGE
+                    out = vecouterproj(u[i,j,l], u[i,j,l])
+                    hout[i,j,l] = out.x + out.y 
+                    vout[i,j,l] = out.z
+                end
+            end
+        end
+    end
+end
+
+function spectrum_viscosity(hout,vout,hin,vin,s) where {T}
     @mthreads for l in ZRANGE
         mν = -ν
         @inbounds begin
@@ -129,9 +170,8 @@ function spectrum_viscosity(hout,vout,u::VectorField{T},s) where {T}
                 kyz2 = muladd(KY[j], KY[j], kz2)
                 @simd for i in XRANGE
                     k2 = muladd(KX[i], KX[i], kyz2)
-                    out = mν*k2*vecouterproj(u[i,j,l], u[i,j,l])
-                    hout[i,j,l] = out.x + out.y 
-                    vout[i,j,l] = out.z
+                    hout[i,j,l] = mν*k2*hin[i,j,l]
+                    vout[i,j,l] = mν*k2*vin[i,j,l]
                 end
             end
         end
@@ -184,6 +224,34 @@ end
 
             hout[i,j,k] = outxy
             vout[i,j,k] = outz
+        end
+    end
+end
+
+function calculate_spec12D(s1,s2,out)
+    fill!(s1,0.0)
+    fill!(s2,0.0)
+    @inbounds for l in ZRANGE
+        KZ2 = KZ[l]^2
+        @inbounds for j in YRANGE
+            KY2 = KY[j]^2
+            KYZ2 = KY[j]^2 + KZ2
+            n1 = round(Int, fsqrt(KYZ2)/MAXDK1D) + 1
+            n2 = round(Int, fsqrt(KY2)/MAXDKH) + 1
+            ee = out[1,j,l]
+            s1[n1] += ee
+            s2[n2,l] += ee
+            @msimd for i in 2:NX
+                k = fsqrt(muladd(KX[i],KX[i], KYZ2))
+                kh = fsqrt(muladd(KX[i],KX[i], KY2))
+
+                n1 = round(Int, k/MAXDK1D) + 1
+                n2 = round(Int, kh/MAXDKH) + 1
+
+                ee = 2*out[i,j,l]
+                s1[n1] += ee
+                s2[n2,l] += ee
+            end
         end
     end
 end

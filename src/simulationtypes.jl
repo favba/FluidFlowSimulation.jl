@@ -63,6 +63,10 @@ struct @par(Simulation) <: @par(AbstractSimulation)
     dtspec::Int
     hspec::Array{Float64,3}
     vspec::Array{Float64,3}
+    spec1D::Array{Float64,1}
+    spec2D::Array{Float64,2}
+    nlstats::Base.RefValue{Tuple{Float64,Float64}}
+    pressstats::Base.RefValue{Tuple{Float64,Float64}}
   
     @par function @par(Simulation)(u::VectorField,equation,timestep,passivescalar,densitystratification,lesmodel,forcing,hv,iteration,time,dtout,dtstats,dtspecs) 
 
@@ -76,13 +80,18 @@ struct @par(Simulation) <: @par(AbstractSimulation)
 
         hspec = zeros(Float64,size(u))
         vspec = zeros(Float64,size(u))
+        spec1D = zeros(Float64,length(K1D))
+        spec2D = zeros(Float64,(length(KH),NZ))
+        nlstats = Ref((1.0,1.0))
+        pressstats = Ref((1.0,1.0))
 
-        return @par(new)(u,rhs,reductionh,reductionv,xspec,yspec,equation,timestep,passivescalar,densitystratification,lesmodel,forcing,hv,iteration,time,dtout,dtstats,dtspecs,hspec,vspec)
+        return @par(new)(u,rhs,reductionh,reductionv,xspec,yspec,equation,timestep,passivescalar,densitystratification,lesmodel,forcing,hv,iteration,time,dtout,dtstats,dtspecs,hspec,vspec,spec1D,spec2D,nlstats,pressstats)
     end
 
 end
 
 is_output_time(s) = (s.timestep.x.iteration[] != 0) & (mod(s.iteration[],s.dtoutput) == 0)
+is_stats_time(s) = (mod(s.iteration[],s.dtstats) == 0)
 is_spec_time(s) = (mod(s.iteration[],s.dtspec) == 0)
 
 ##################################### Equation type #########################################

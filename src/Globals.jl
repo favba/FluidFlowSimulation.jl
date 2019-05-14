@@ -4,9 +4,73 @@ module Globals
 using GlobalFileHelper, FluidTensors, FluidFields, StaticArrays
 
 export LX,LY,LZ,NX,NY,NZ,NRRX,NRX,ν,DEALIAS_TYPE,KX,KY,KZ,THR,NT,TRANGE,REAL_RANGES,DEALIAS,K,RXRANGE,XRANGE,YRANGE,ZRANGE,RANGEC, COMPLEX_RANGES
-export RYRANGE, RZRANGE, XRANGE2X
+export RYRANGE, RZRANGE, XRANGE2X, KH, K1D, MAXDKH, MAXDK1D
 
 include("CatVec.jl")
+
+function nshells(kx,ky,kz)
+    maxdk = max(kx[2],ky[2],kz[2])
+    n = round(Int,sqrt(kx[end]^2 + maximum(x->x*x,ky) + maximum(x->x*x,kz))/maxdk) + 1
+    return n, maxdk
+end
+
+function nshells2D(kx,ky)
+    maxdk = max(kx[2],ky[2])
+    n = round(Int,sqrt(kx[end]^2 + maximum(x->x*x,ky))/maxdk) + 1
+    return n, maxdk
+end
+
+function compute_shells(kx::AbstractVector{T},ky::AbstractVector,kz::AbstractVector) where {T}
+    Nx = length(kx)
+    Ny = length(ky)
+    Nz = length(kz)
+    nShells, maxdk = nshells(kx,ky,kz)
+    kh = zeros(T,nShells)
+    numPtsInShell = zeros(Int,nShells)
+
+    @inbounds for k in 1:Nz
+        kz2 = kz[k]^2
+        for j=1:Ny
+            kzy2 = kz2 + ky[j]^2
+            for i=1:Nx
+                K = sqrt(muladd(kx[i],kx[i],kzy2))
+                ii = round(Int,K/maxdk)+1
+                kh[ii] += K
+                numPtsInShell[ii] += 1
+            end
+        end
+    end
+  
+    @inbounds @simd for i in 1:length(kh)
+        kh[i] = kh[i]/numPtsInShell[i]
+    end
+
+    return kh
+end
+
+function compute_shells2D(kx::AbstractVector{T},ky) where {T}
+    Nx = length(kx)
+    Ny = length(ky)
+    nShells2D, maxdk2D = nshells2D(kx,ky)
+    kh = zeros(T,nShells2D)
+    numPtsInShell2D = zeros(Int,nShells2D)
+
+    @inbounds for j=1:Ny
+        ky2 = ky[j]^2
+        for i=1:Nx
+            K = sqrt(muladd(kx[i],kx[i], ky2))
+            ii = round(Int,K/maxdk2D)+1
+            kh[ii] += K
+            numPtsInShell2D[ii] += 1
+        end
+    end
+  
+    @inbounds @simd for i in 1:length(kh)
+        kh[i] = kh[i]/numPtsInShell2D[i]
+    end
+
+    return kh
+end
 
 function splitrange(lr,nt)
     a = UnitRange{Int}[]
@@ -80,6 +144,15 @@ end
     const global KX = FluidFields.SRKvec(NRX,LX)#(kxp...,)
     const global KY = FluidFields.SKvec(NY,LY)#(kyp...,)
     const global KZ = FluidFields.SKvec(NZ,LZ)#(kzp...,)
+
+    const global KH = compute_shells2D(KX,KY)
+    _,aux = nshells2D(KX,KY)
+    const global MAXDKH = aux
+
+    const global K1D = compute_shells(KX,KY,KZ)
+    _,aux = nshells(KX,KY,KZ)
+    const global MAXDK1D = aux
+
 
     s = (NX,NY,NZ)
     const global K = VecArray(HomogeneousArray{1}(KX,s),HomogeneousArray{2}(KY,s),HomogeneousArray{3}(KZ,s))
