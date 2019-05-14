@@ -28,9 +28,9 @@ struct RfForcing{T<:AbstractFloat} <: AbstractForcing
     vp::Base.RefValue{T}
 end
 
-statsheader(a::RfForcing) = "hp,vp"
+statsheader(a::RfForcing) = "hp,vp,tp"
 
-stats(a::RfForcing,s::AbstractSimulation) = (a.hp[],a.vp[])
+stats(a::RfForcing,s::AbstractSimulation) = (a.hp[],a.vp[],a.hp[]+a.vp[])
 
 msg(a::RfForcing) = "\nForcing:  Rf forcing\nTf: $(getTf(a))\nalphac: $(getalpha(a))\nKf: $(getKf(a))\n"
 
@@ -137,9 +137,9 @@ struct NRfForcing{T<:AbstractFloat} <: AbstractForcing
     vp::Base.RefValue{T}
 end
 
-statsheader(a::NRfForcing) = "hp,vp"
+statsheader(a::NRfForcing) = "hp,vp,tp"
 
-stats(a::NRfForcing,s::AbstractSimulation) = (a.hp[],a.vp[])
+stats(a::NRfForcing,s::AbstractSimulation) = (a.hp[],a.vp[],a.hp[]+a.vp[])
 
 msg(a::NRfForcing) = "\nForcing:  NRf forcing\nTf: $(a.Tf)\nalphac: $(a.α)\nKf: $(a.Kf)\n"
 

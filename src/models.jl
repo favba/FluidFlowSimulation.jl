@@ -26,8 +26,15 @@ end
     #actual calculation
     fourierspacep1!(s)
     realspace!(s)
+
     has_variable_timestep(s) && set_dt!(s)
+
     is_spec_time(s) && write_spec(s)
+    if is_stats_time(s)
+        s.nlstats[] = non_linear_stats(s.reductionh,s.reductionv,s.u,s.rhs)
+        s.pressstats[] = pressure_stats(s.reductionh,s.reductionv,s)
+    end
+
     fourierspacep2!(s)
 
     return nothing

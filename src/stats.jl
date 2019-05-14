@@ -1,5 +1,5 @@
 function statsheader(s::AbstractSimulation)
-    simulationheader = "iteration,time,u1,u2,u3,u1p2,u2p2,u3p2,kh,kv,k,dissh,dissv,diss,tdiss"
+    simulationheader = "iteration,time,u1,u2,u3,u1p2,u2p2,u3p2,kh,kv,k,dissh,dissv,diss,nlh,nlv,pressh,pressv,tnlh,tnlv,tdiss"
     header = join(Iterators.filter(x->x !== "",
       (simulationheader,statsheader.(getfield.(Ref(s),sim_fields))...,"\n")),
       ",","")
@@ -143,7 +143,13 @@ end
 
     εh,εv,ε = viscosity_stats(s.reductionh,s.reductionv,s.u)
 
-    return u1, u2, u3, u12, u22, u32, kh, kv, k, εh, εv, ε
+    #nlh, nlv = non_linear_stats(s.reductionh,s.reductionv,s.u,s.rhs)
+    nlh, nlv = s.nlstats[]
+
+    #pressh, pressv = pressure_stats(s.reductionh,s.reductionv,s)
+    pressh, pressv = s.pressstats[]
+
+    return u1, u2, u3, u12, u22, u32, kh, kv, k, εh, εv, ε, nlh, nlv, pressh, pressv, -(nlh+pressh),(nlv+pressv)
 end
 
 @par function scalar_stats(ρ,s1,s::@par(AbstractSimulation))
@@ -389,6 +395,91 @@ function les_stats(reductionh,reductionv,τ::AbstractField{T},u::VectorField{T})
     prh = -sum(resulth)
     prv = -sum(resultv)
     return prh,prv,prh+prv
+end
+
+
+@par function pressure_stats(resulth,resultv,s::@par(Simulation))
+    resulth = fill!(resulth,0.0)
+    resultv = fill!(resultv,0.0)
+
+    @mthreads for k in ZRANGE
+        pressure_stats(k,resulth,resultv,s)
+    end
+
+    return sum(resulth), sum(resultv)
+end
+
+@par function pressure_stats(k::Int,hr,vr,s::A) where {A<:@par(Simulation)}
+    eeh = 0.0
+    eev = 0.0
+    ii = Threads.threadid()
+
+    u = s.u.c
+    rhsv = s.rhs.c
+
+    if hasles(A)
+        τ = s.lesmodel.tau.c
+    end
+
+    if hasdensity(A)
+        ρ = s.densitystratification.ρ.field
+        g = gravity(s.densitystratification)
+    end
+    
+    @inbounds for j in YRANGE
+        @msimd for i in XRANGE
+
+            kh = K[i,j,k]
+            K2 = kh⋅kh
+            v = u[i,j,k]
+            rhs = rhsv[i,j,k]
+
+            if hasles(A)
+                if !(!is_SandP(A) && is_FakeSmagorinsky(A))
+                    rhs += (im*kh)⋅τ[i,j,k]
+                end
+            end
+
+            if hasdensity(A)
+                rhs += ρ[i,j,k]*g
+            end
+            
+            p1 = ifelse(k==j==i==1,zero(ComplexF64),-(kh⋅rhs)/K2)
+            pressure = p1*kh
+            out = vecouterproj(v,pressure)
+
+            outxy = out.x + out.y
+            outz = out.z
+
+            eeh += (1 + (i>1))*outxy 
+            eev += (1 + (i>1))*outz 
+        end
+    end
+
+    hr[ii] += eeh
+    vr[ii] += eev
+
+    return nothing
+end
+
+function non_linear_stats(hout,vout,u,nl)
+    fill!(hout,0.0)
+    fill!(vout,0.0)
+    @mthreads for k in ZRANGE
+        eeh = 0.0
+        eev = 0.0
+        ii = Threads.threadid()
+        @inbounds for j in YRANGE
+            @simd for i in XRANGE
+                out = vecouterproj(nl[i,j,k],u[i,j,k])
+                eeh += (1 + (i>1))*(out.x + out.y)
+                eev += (1 + (i>1))*out.z
+            end
+        end
+        hout[ii]+=eeh
+        vout[ii]+=eev
+    end
+    return sum(hout), sum(vout)
 end
 
 function integral_lenght_x(u,u1p2)
