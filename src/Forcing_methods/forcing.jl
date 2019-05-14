@@ -9,6 +9,19 @@ initialize!(f::NoForcing,s) = nothing
     dt = get_dt(s)
     Tf = getTf(F)
     ts = 10*dt
+
+    it = s.iteration[]
+
+    if it == 0
+        ts /= 0.1
+    elseif it == 1
+        ts /= 0.2
+    elseif it == 2
+        ts /= 0.4
+    elseif it == 3
+        ts /= 0.8
+    end
+
     omega = (2*π/(Tf*ts))
     alpha = getalpha(F)
     eps = Base.eps()

@@ -87,6 +87,18 @@ include("ETD.jl")
     umax = maximum(s.reductionh)
     dx = 2π*LY/NY
     cfl = get_cfl(s)
+    it = s.iteration[]
+
+    if it == 0
+        cfl *= 0.1
+    elseif it == 1
+        cfl *= 0.2
+    elseif it == 2
+        cfl *= 0.4
+    elseif it == 3
+        cfl *= 0.8
+    end
+
     νt = ν
     newdt =cfl * dx/umax
     # is_implicit(s) || (newdt = min(newdt, (2νt/umax^2)/2))
