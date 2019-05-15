@@ -14,7 +14,7 @@ function writeheader(s::AbstractSimulation)
     open("Scales.txt","w") do f
         write(f,"iteration,time,Lk,Lt,lamg,laml,lamt,Lhh,Lvv,Lhv,Lvh,lam12,lam21,L11,L12,L13,L21,L22,L23,L31,L32,L33")
         if hasdensity(s)
-            write(f,",Lb,Lbm,Lo,Lom,Tk,Tt,Tb,Tbm\n")
+            write(f,",Lb,Lo,Lom,Tk,Tt,Tb,Tbm\n")
         else
             write(f,",Tk,Tt\n")
         end
