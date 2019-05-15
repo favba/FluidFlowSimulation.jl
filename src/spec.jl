@@ -22,6 +22,11 @@
     if hasdensity(A)
         spectrum_buoyancy(vout,s.u,s.densitystratification.ρ,gravity(s))
         write("buoyancy_v.spec.$i",vout)
+
+        calculate_spec12D(out1D,out2D,vout)
+
+        writedlm("buoyancy_v.spec1D.$i",zip(K1D,out1D))
+        writedlm2D("buoyancy_v.spec2D.$i",out2D)
     end
 
     if hasles(A)
