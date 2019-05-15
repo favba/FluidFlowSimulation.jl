@@ -12,18 +12,18 @@ function writeheader(s::AbstractSimulation)
     end
 
     open("Scales.txt","w") do f
-        write(f,"iteration,time,Lk,Lt,lam,Lhh,Lvv,Lhv,Lvh,lam12,lam21,L11,L12,L13,L21,L22,L23,L31,L32,L33")
+        write(f,"iteration,time,Lk,Lt,lamg,laml,lamt,Lhh,Lvv,Lhv,Lvh,lam12,lam21,L11,L12,L13,L21,L22,L23,L31,L32,L33")
         if hasdensity(s)
-            write(f,",Lb,Lo,Tk,Tt,Tb\n")
+            write(f,",Lb,Lbm,Lo,Lom,Tk,Tt,Tb,Tbm\n")
         else
             write(f,",Tk,Tt\n")
         end
     end
 
     open("Numbers.txt","w") do f
-        write(f,"iteration,time,Reh,Relam")
+        write(f,"iteration,time,Reh,Reh1,Relamg,Relaml,Relamt,Relamg1,Relaml1,Relamt1")
         if hasdensity(s)
-            write(f,",Reb,Frh\n")
+            write(f,",Reb,Rebm,Frh,Frh1\n")
         else
             write(f,"\n")
         end
@@ -55,26 +55,42 @@ function stats(s::AbstractSimulation)
     u1p2 = vstats[4]
     u2p2 = vstats[5]
     u3p2 = vstats[6]
+    uh = sqrt((u1p2+u2p2)/2)
+    urms = sqrt((u1p2 + u2p2 + u3p2)/3)
     k = vstats[9]
 
     L11 = integral_lenght_x(s.u.c.x,u1p2)
     L12 = integral_lenght_y(s.u.c.x,u1p2)
     L13 = integral_lenght_z(s.u.c.x,u1p2)
 
-    λ12 = taylor_lenght_y(s.yspec,s.hspec,s.u.c.x,u1p2)
+    #λ12 = taylor_lenght_y(s.yspec,s.hspec,s.u.c.x,u1p2)
+    du1dyp2 = dy_squared_mean(s.reductionh,s.u.c.x)
+    λ12 = sqrt(2*u1p2/du1dyp2)
+    #λ11 = taylor_lenght_x(s.xspec,s.u.c.x,u1p2)
+    du1dxp2 = dx_squared_mean(s.reductionh,s.u.c.x)
+    λ11 = sqrt(2*u1p2/du1dxp2)
 
     L21 = integral_lenght_x(s.u.c.y,u2p2)
     L22 = integral_lenght_y(s.u.c.y,u2p2)
     L23 = integral_lenght_z(s.u.c.y,u2p2)
 
-    λ21 = taylor_lenght_x(s.xspec,s.u.c.y,u2p2)
+    #λ21 = taylor_lenght_x(s.xspec,s.u.c.y,u2p2)
+    du2dyp2 = dy_squared_mean(s.reductionh,s.u.c.y)
+    λ22 = sqrt(2*u2p2/du2dyp2)
+    #λ22 = taylor_lenght_y(s.yspec,s.hspec,s.u.c.y,u2p2)
+    du2dxp2 = dx_squared_mean(s.reductionh,s.u.c.y)
+    λ21 = sqrt(2*u2p2/du2dxp2)
+
 
     L31 = integral_lenght_x(s.u.c.z,u3p2)
     L32 = integral_lenght_y(s.u.c.z,u3p2)
     L33 = integral_lenght_z(s.u.c.z,u3p2)
 
     Lhh = (L11 + L22)/2
-    λ = (λ12 + λ21)/2
+    #λl = (λ11 + λ22)/2
+    λl = sqrt(2*(u1p2+u2p2)/(du1dxp2+du2dyp2))
+    #λt = (λ12 + λ21)/2
+    λt = sqrt(2*(u1p2+u2p2)/(du1dyp2+du2dxp2))
     Lhv = (L13 + L23)/2
     Lvv = L33
     Lvh = (L31 + L32)/2
@@ -90,26 +106,39 @@ function stats(s::AbstractSimulation)
     Tt = k/tdiss # outer time scale
     Lk = sqrt(sqrt(ν*ν*ν/tdiss)) # Kolmogorov length scale
     Tk = sqrt(ν/tdiss) # Kolmogorov timescale
+    λg = sqrt(15*ν/tdiss)*urms
 
-    lensv = (Lk,Lt,λ,Lhh,Lvv,Lhv,Lvh,λ12,λ21,L11,L12,L13,L21,L22,L23,L31,L32,L33)
+    lensv = (Lk,Lt,λg, λl,λt,Lhh,Lvv,Lhv,Lvh,λ12,λ21,L11,L12,L13,L21,L22,L23,L31,L32,L33)
 
-    Reh = (Lhh/Lk)^(4/3)
+    Reh = uh*Lhh/ν
+    Reh1 = (Lhh/Lk)^(4/3)
 
-    Reλ = (λ/Lk)^(4/3)
+    Reλg = urms*λg/ν
+    Reλg1 = (λg/Lk)^(4/3)
+
+    Reλl = urms*λl/ν
+    Reλl1 = (λl/Lk)^(4/3)
+
+    Reλt = urms*λt/ν
+    Reλt1 = (λt/Lk)^(4/3)
+
 
     if hasdensity(s)
-        uh = sqrt(2*vstats[7])
-        Nb = calculate_N(s.densitystratification)/(2π)
-        Lb = uh/Nb # Buoyancy lenght scale
+        Nb = calculate_N(s.densitystratification)
+        Lb = 2π*urms/Nb # Buoyancy lenght scale
         Lo = sqrt(tdiss/(Nb*Nb*Nb)) # Ozmidov lenght scale
-        Tb = 1/Nb # Buoyancy time scale
+        Lom = sqrt(tdiss/(Nb*Nb*Nb/(8*pi*pi*pi))) # Ozmidov lenght scale
+        Tb = 2π/Nb # Buoyancy time scale
+        Tbm = 1/Nb # Buoyancy time scale
         Reb = (Lo/Lk)^(4/3)
-        Frh = uh/(Nb*Lhh)
-        lens = (lensv...,Lb,Lo,Tk,Tt,Tb)
-        anums = (Reh, Reλ, Reb, Frh)
+        Rebm = (Lom/Lk)^(4/3)
+        Frh = 2π*uh/(Nb*Lhh)
+        Frh1 = Lhv/Lhh
+        lens = (lensv...,Lb,Lo,Lom,Tk,Tt,Tb,Tbm)
+        anums = (Reh,Reh1, Reλg, Reλl, Reλt, Reλg1, Reλl1, Reλt1, Reb, Rebm, Frh,Frh1)
     else
         lens = (lensv...,Tk,Tt)
-        anums = (Reh, Reλ)
+        anums = (Reh, Reh1, Reλl, Reλt, Reλl1, Reλt1)
     end
 
     results = (vstats..., tdiss, flatten(otherstats)...)
