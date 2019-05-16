@@ -148,13 +148,13 @@ end
 function calculate_Zf(d,kf,kh)
     Zf = zeros(size(kh))
     zft = haskey(d,:Zf) ? Symbol(d[:Zf]) : :cutoff
-    if zft == :tanh
+    if zft == :cutoff
         for (i,k) in enumerate(kh)
-            Zf[i] = tanh((kf-k) / (0.25*kf)) * (((kf-k) <= 0.0) ? 0.0 : 1.0)
+            Zf[i] = k <= kf
         end
     else
         for (i,k) in enumerate(kh)
-            Zf[i] = k <= kf
+            Zf[i] = tanh((kf-k) / (0.25*kf)) * (((kf-k) <= 0.0) ? 0.0 : 1.0)
         end
     end
     return Zf
