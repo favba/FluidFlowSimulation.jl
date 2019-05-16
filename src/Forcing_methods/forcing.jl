@@ -8,7 +8,8 @@ initialize!(f::NoForcing,s) = nothing
     cPlaneNumber = 1
     dt = get_dt(s)
     Tf = getTf(F)
-    ts = 10*dt
+    #ts = 10*dt
+    ts = dt/get_cfl(s)
 
     it = s.iteration[]
 
