@@ -64,6 +64,7 @@ struct @par(Simulation) <: @par(AbstractSimulation)
     hspec::Array{Float64,3}
     vspec::Array{Float64,3}
     spec1D::Array{Float64,1}
+    tspec1D::Array{Float64,1}
     spec2D::Array{Float64,2}
     nlstats::Base.RefValue{Tuple{Float64,Float64}}
     pressstats::Base.RefValue{Tuple{Float64,Float64}}
@@ -81,11 +82,12 @@ struct @par(Simulation) <: @par(AbstractSimulation)
         hspec = zeros(Float64,size(u))
         vspec = zeros(Float64,size(u))
         spec1D = zeros(Float64,length(K1D))
+        tspec1D = zeros(Float64,length(K1D))
         spec2D = zeros(Float64,(length(KH),NZ))
         nlstats = Ref((1.0,1.0))
         pressstats = Ref((1.0,1.0))
 
-        return @par(new)(u,rhs,reductionh,reductionv,xspec,yspec,equation,timestep,passivescalar,densitystratification,lesmodel,forcing,hv,iteration,time,dtout,dtstats,dtspecs,hspec,vspec,spec1D,spec2D,nlstats,pressstats)
+        return @par(new)(u,rhs,reductionh,reductionv,xspec,yspec,equation,timestep,passivescalar,densitystratification,lesmodel,forcing,hv,iteration,time,dtout,dtstats,dtspecs,hspec,vspec,spec1D,tspec1D,spec2D,nlstats,pressstats)
     end
 
 end

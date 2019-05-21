@@ -6,18 +6,19 @@
 
     out1D = s.spec1D
     out2D = s.spec2D
+    tspec1D = s.tspec1D
 
     spectrum_u(hout,vout,s.u)
-    writespectrum("u",i,hout,vout,out1D,out2D)
+    writespectrum("u",i,hout,vout,out1D,out2D,tspec1D)
 
     spectrum_viscosity(hout,vout,hout,vout,s)
-    writespectrum("vis",i,hout,vout,out1D,out2D)
+    writespectrum("vis",i,hout,vout,out1D,out2D,tspec1D)
 
     spectrum_non_linear(hout,vout,s.u,s.rhs)
-    writespectrum("nl",i,hout,vout,out1D,out2D)
+    writespectrum("nl",i,hout,vout,out1D,out2D,tspec1D)
 
     spectrum_pressure(hout,vout,s)
-    writespectrum("press",i,hout,vout,out1D,out2D)
+    writespectrum("press",i,hout,vout,out1D,out2D,tspec1D)
 
     if hasdensity(A)
         spectrum_buoyancy(vout,s.u,s.densitystratification.ρ,gravity(s))
@@ -31,7 +32,7 @@
 
     if hasles(A)
         spectrum_les(hout,vout,s.u,s.lesmodel.tau)
-        writespectrum("les",i,hout,vout,out1D,out2D)
+        writespectrum("les",i,hout,vout,out1D,out2D,tspec1D)
     end
 
     if hashyperviscosity(A)
@@ -40,24 +41,30 @@
         else
             spectrum_hyperviscosity(hout,vout,s.u,s)
         end
-        writespectrum("hvis",i,hout,vout,out1D,out2D)
+        writespectrum("hvis",i,hout,vout,out1D,out2D,tspec1D)
     end
 
 end
 
-function writespectrum(n::String,i::Integer,hout,vout,spec1D,spec2D)
+function writespectrum(n::String,i::Integer,hout,vout,spec1D,spec2D,tspec1D)
     write("$(n)_h.spec3D.$i",hout)
     write("$(n)_v.spec3D.$i",vout)
 
     calculate_spec12D(spec1D,spec2D,hout)
+
+    copy!(tspec1D,spec1D)
 
     writedlm("$(n)_h.spec1D.$i",zip(K1D,spec1D))
     writedlm2D("$(n)_h.spec2D.$i",spec2D)
 
     calculate_spec12D(spec1D,spec2D,vout)
 
+    tspec1D .+= spec1D
+
     writedlm("$(n)_v.spec1D.$i",zip(K1D,spec1D))
     writedlm2D("$(n)_v.spec2D.$i",spec2D)
+
+    writedlm("$(n).spec1D.$i",zip(K1D,tspec1D))
 
     return nothing
 end
