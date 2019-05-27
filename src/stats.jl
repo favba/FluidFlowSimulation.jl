@@ -423,7 +423,7 @@ function les_stats(reductionh,reductionv,τ::AbstractField{T},u::VectorField{T})
     end
     prh = -sum(resulth)
     prv = -sum(resultv)
-    return prh,prv,prh+prv
+    return prh,prv,(2prv)/prh,prh+prv
 end
 
 
