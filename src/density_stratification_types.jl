@@ -56,13 +56,13 @@ abstract type AbstractDensityStratification{L,HV,TT,α,dρdz,g,Gdirec} end
         end
 
         if HV !== NoHyperViscosity
-            hvstats = (scalar_hvis_stats(a.reduction,a.ρ,a.HyperViscosity),)
+            hvstats = (scalar_hvis_stats(a.reduction,a.ρ,a.hyperviscosity),)
             trhodiss += hvstats[1]
         else
             hvstats = ()
         end
 
-        return (sstats...,bf,trhodiss,lesstats...,hvstats...)
+        return (sstats...,trhodiss,bf,lesstats...,hvstats...)
     end
 
 struct NoDensityStratification <: AbstractDensityStratification{NoLESScalar,NoHyperViscosity,nothing,nothing,nothing,nothing,nothing} end

@@ -590,3 +590,77 @@ function taylor_lenght_y(re,hpart,u,u1p2)
 
     return sqrt(-2/re.data[1])
 end
+
+function scalar_les_stats(reduction,f::AbstractField{T},ρ::ScalarField{T}) where {T}
+    isrealspace(ρ) && fourier!(ρ)
+    isrealspace(f) && fourier!(f)
+    result = fill!(reduction,zero(T))
+    @mthreads for l in ZRANGE
+        @inbounds begin
+            ee = zero(T)
+            ii = Threads.threadid()
+            @inbounds for j in YRANGE
+                @simd for i in XRANGE
+                    kh = K[i,j,l]
+                    out = proj((im*kh)⋅f[i,j,l],ρ[i,j,l])
+                    ee += (1 + (i>1))*out
+                end
+            end
+            result[ii] += ee
+        end
+    end
+    pr = -sum(result)
+    return pr
+end
+
+function scalar_hvis_stats(reduction,u::ScalarField{T},s::HyperViscosity) where {T}
+    isrealspace(u) && fourier!(u)
+    result = fill!(reduction,zero(T))
+    @mthreads for l in ZRANGE
+        @inbounds begin
+            ee = zero(T)
+            ii = Threads.threadid()
+            M::Int = get_hyperviscosity_exponent(s)
+            kz2 = KZ[l]*KZ[l]
+            for j in YRANGE
+                kyz2 = muladd(KY[j], KY[j], kz2)
+                @simd for i in XRANGE
+                    k2 = muladd(KX[i], KX[i], kyz2)
+                    uh = u[i,j,l]
+                    ee += (1 + (i>1)) * (k2^M)*proj(uh,uh) 
+                end
+            end
+            result[ii] += ee
+        end
+    end
+    mν = nuh(s)
+    eh = mν*sum(result)
+    return eh
+end
+
+function scalar_hvis_stats(reduction,u::ScalarField{T},hv::SpectralBarrier{ini,cut,F}) where {T,F,ini,cut}
+    isrealspace(u) && fourier!(u)
+    result = fill!(reduction,zero(T))
+    @mthreads for l in ZRANGE
+        @inbounds begin
+            f = hv.func
+            ee = zero(T)
+            ii = Threads.threadid()
+            kz2 = KZ[l]*KZ[l]
+            for j in YRANGE
+                kyz2 = muladd(KY[j], KY[j], kz2)
+                for i in XRANGE
+                    k2 = muladd(KX[i], KX[i], kyz2)
+                    k = sqrt(k2)
+                    uh = u[i,j,l]
+                    fk = f(k)
+                    fk = ifelse(fk == -Inf, 0.0,fk)
+                    ee += (1 + (i>1)) * fk*proj(uh,uh) 
+                end
+            end
+            result[ii] += ee
+        end
+    end
+    diss = -sum(result)
+    return diss
+end
