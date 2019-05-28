@@ -205,6 +205,7 @@ end
 end
 
 is_dynP_les(a::Union{<:DynSandP,<:Type{<:DynSandP}}) = true
+is_dynP_les(a) = false
 @inline @par is_dynP_les(s::Type{T}) where {T<:@par(AbstractSimulation)} = is_dynP_les(LESModelType)
 @inline is_dynP_les(s::T) where {T<:AbstractSimulation} = is_dynP_les(T)
 
