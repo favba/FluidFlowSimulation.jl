@@ -100,7 +100,7 @@ function stats(s::AbstractSimulation)
     tdiss = vstats[12]
 
     hashyperviscosity(s) && (tdiss += otherstats[5][3])
-    hasles(s) && (tdiss += otherstats[3][3])
+    hasles(s) && (tdiss += otherstats[3][4])
 
     Lt = sqrt(k*k*k)/tdiss # outer scale
     Tt = k/tdiss # outer time scale
