@@ -216,6 +216,12 @@ Scalar LES model: $(L)
 
 """
 # ==========================================================================================================
+# Hyper viscosity Type
+
+include("Hyperviscosity/hyperviscosity_types.jl")
+
+# ==========================================================================================================
+# Density Stratification Types
 
 include("density_stratification_types.jl")
 
@@ -223,10 +229,6 @@ include("density_stratification_types.jl")
 # Forcing Scheme
 
 include("Forcing_methods/forcing_types.jl")
-
-# Hyper viscosity Type
-
-include("Hyperviscosity/hyperviscosity_types.jl")
 
 # Initializan function =========================================================================================================================================================================================================
 
