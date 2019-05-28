@@ -48,6 +48,11 @@ end
         α = c*c*Δ²
     end
 
+    if is_dynP_les(A)
+        Pa = s.lesmodel.P.rr
+        ŵ = s.lesmodel.ŵ.rr
+    end
+
     if is_SandP(A)
         β = s.lesmodel.cb*Δ²
     end
@@ -58,8 +63,9 @@ end
 
         if is_dynamic_les(A)
             L = symouter(û[i],û[i]) - La[i]
-            M = Δ̂²*norm(Ma[i])*Ma[i] - Sa[i]
-            c = 0.5*((traceless(L) : M)/(M:M))
+            Sh = Ma[i]
+            M = Δ̂²*norm(Sh)*Sh - Sa[i]
+            c = 0.5*((L:M)/(M:M))
             c = max(cmin ,c) # to prevent underflow set minimum value for c
             νt = 2*c*Δ²*norm(S)
             t = νt*S
@@ -82,6 +88,15 @@ end
             else
                 t += β*P
             end
+        end
+
+        if is_dynP_les(A)
+            wh = ŵ[i]
+            Ph = Lie(Sh,AntiSymTen(0.5*wh))
+            Mp = Δ̂²*Ph - Pa[i]
+            cp = (L:Mp)/(Mp:Mp) # Should I clip negative values?
+
+            t += cp*Δ²*Ph
         end
 
         if !(is_FakeSmagorinsky(A) && !is_SandP(A))

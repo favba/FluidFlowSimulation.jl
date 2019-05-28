@@ -52,6 +52,9 @@ end
     u = s.u.c
     if hasles(A)
         τ = s.lesmodel.tau.c
+        if is_dynP_les(A)
+            ŵ = s.lesmodel.ŵ.c
+        end
         if is_dynamic_les(A)
             û = s.lesmodel.û.c
             Δ̂² = s.lesmodel.Δ̂²
@@ -75,7 +78,8 @@ end
             ∇ = im*K[i,j,k]  
 
             if need_vorticity(A)
-                rhs[i,j,k] = ∇ × v
+                w = ∇ × v
+                rhs[i,j,k] = w
             end
 
             if hasles(A)
@@ -85,6 +89,9 @@ end
                     G = Gaussfilter(Δ̂²,i,j,k)
                     M[i,j,k] = G*S
                     û[i,j,k] = G*v
+                    if is_dynP_les(A)
+                        ŵ[i,j,k] = G*w
+                    end
                 end
             end
 
