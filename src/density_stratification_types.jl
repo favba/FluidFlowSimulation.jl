@@ -49,7 +49,8 @@ abstract type AbstractDensityStratification{L,HV,TT,α,dρdz,g,Gdirec} end
         bf = buoyancy_flux(a,s)
 
         if L !== NoLESScalar
-            lesstats = (scalar_les_stats(a.reduction,a.ρ,a.lesmodel.flux),)
+            #lesstats = (scalar_les_stats(a.reduction,a.ρ,a.lesmodel.flux),)
+            lesstats = (0.,)
             trhodiss += lesstats[1]
         else
             lesstats = ()
