@@ -95,7 +95,7 @@ end
             Ph = Lie(Sh,AntiSymTen(0.5*wh))
             Mp = Δ̂²*Ph - Pa[i]
             cp = (L:Mp)/(Mp:Mp) # Should I clip negative values?
-            cp = ifelse(isnan(cp),0.0,cp)
+            cp = max(0.0,cp)
 
             t += cp*Δ²*Ph
         end
