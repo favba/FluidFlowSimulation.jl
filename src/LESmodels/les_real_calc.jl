@@ -51,6 +51,7 @@ end
     if is_dynP_les(A)
         Pa = s.lesmodel.P.rr
         ŵ = s.lesmodel.ŵ.rr
+        cpa = s.lesmodel.cp.rr
     end
 
     if is_SandP(A)
@@ -95,9 +96,10 @@ end
             Ph = Lie(Sh,AntiSymTen(0.5*wh))
             Mp = Δ̂²*Ph - Pa[i]
             cp = (L:Mp)/(Mp:Mp) # Should I clip negative values?
-            cp = max(0.0,cp)
+            #cp = max(0.0,cp)
+            cpa[i] = cp
 
-            t += cp*Δ²*Ph
+            t += cp*Δ²*Lie(S,AntiSymTen(0.5*w))
         end
 
         if !(is_FakeSmagorinsky(A) && !is_SandP(A))

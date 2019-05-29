@@ -21,6 +21,7 @@ end
     haspassivescalarles(A) && mysetfourier!(s.passivescalar.flux)
     hasles(A) && mysetfourier!(s.lesmodel.tau)
     is_dynamic_les(A) && (mysetfourier!(s.lesmodel.û); mysetfourier!(s.lesmodel.M))
+    is_dynP_les(A) && (mysetfourier!(s.lesmodel.ŵ))
 
 
     #actual calculation

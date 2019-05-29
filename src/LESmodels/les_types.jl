@@ -187,17 +187,19 @@ msg(a::FakeSmagorinsky) = "\nLES model: FakeSmagorinsky (nut = 0)\nFilter Width:
 struct DynSandP{T<:Real,Smodel<:DynamicEddyViscosityModel} <: AbstractLESModel
     P::SymTrTenField{T,3,2,false}
     ŵ::VectorField{T,3,2,false}
+    cp::ScalarField{T,3,2,false}
     Smodel::Smodel
 end
 
 function DynSandP(s::S) where S<:DynamicEddyViscosityModel
     P = SymTrTenField((NRX,NY,NZ),(LX,LY,LZ))
     w = VectorField((NRX,NY,NZ),(LX,LY,LZ))
-    return DynSandP{Float64,S}(P,w,s)
+    cp = ScalarField((NRX,NY,NZ),(LX,LY,LZ))
+    return DynSandP{Float64,S}(P,w,cp,s)
 end
 
 @inline function Base.getproperty(a::DynSandP,s::Symbol)
-    if s === :Smodel || s === :P || s === :ŵ
+    if s === :Smodel || s === :P || s === :ŵ || s === :cp
         return getfield(a,s)
     else
         return getfield(getfield(a,:Smodel),s)

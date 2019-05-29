@@ -2,6 +2,9 @@
 @par function realspace_dynamic_les_calculation!(s::A) where {A<:@par(AbstractSimulation)}
     real!(s.lesmodel.û)
     real!(s.lesmodel.M)
+    if is_dynP_les(A)
+        real!(s.lesmodel.ŵ)
+    end
     @mthreads for j in TRANGE
         realspace_dynamic_les_calculation!(s,j)
     end
@@ -16,7 +19,7 @@ end
     Δ² = s.lesmodel.Δ²
     if is_dynP_les(A)
         w = s.rhs.rr
-        P = s.lesmodel.P
+        P = s.lesmodel.P.rr
     end
 
     @inbounds @msimd for i in REAL_RANGES[j]
