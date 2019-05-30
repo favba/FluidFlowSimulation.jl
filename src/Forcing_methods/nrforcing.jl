@@ -7,14 +7,16 @@ function (F::NRfForcing)(s::AbstractSimulation)
 
     it = s.iteration[]
 
-    if it == 0
-        ts /= 0.1
-    elseif it == 1
-        ts /= 0.2
-    elseif it == 2
-        ts /= 0.4
-    elseif it == 3
-        ts /= 0.8
+    if has_variable_timestep(s)
+        if it == 0
+            ts /= 0.1
+        elseif it == 1
+            ts /= 0.2
+        elseif it == 2
+            ts /= 0.4
+        elseif it == 3
+            ts /= 0.8
+        end
     end
 
     omega = (2*π/(Tf*ts))
