@@ -111,9 +111,19 @@ include("ETD.jl")
         #cfl * (dx^2)/(k)/2)#, 
         #cfl * (((ρmax*g)^(-2/3))*(2k)^(1/3))/2,
         #cfl * (2k/umax^2)/2)
-        set_dt!(s.densitystratification.timestep,newdt)
     end
+
+    if it > 3 # do not allow dt to change abruptly
+        dt = get_dt(s)
+        if newdt < dt
+            newdt = max(dt/1.5,newdt)
+        else
+            newdt = min(1.5*dt,newdt)
+        end
+    end
+
     set_dt!(s.timestep,newdt)
+    hasdensity(s) && set_dt!(s.densitystratification.timestep,newdt)
     haspassivescalar(s) && set_dt!(s.passivescalar.timestep,newdt)
     return nothing
 end
