@@ -116,9 +116,9 @@ include("ETD.jl")
     if it > 3 # do not allow dt to change abruptly
         dt = get_dt(s)
         if newdt < dt
-            newdt = max(dt/1.5,newdt)
+            newdt = max(dt/1.25,newdt)
         else
-            newdt = min(1.5*dt,newdt)
+            newdt = min(1.25*dt,newdt)
         end
     end
 
