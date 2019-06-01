@@ -49,6 +49,16 @@ mycopy!(o::SymTrTenField,i::SymTrTenField) = (mycopy!(o.rr.xx,i.rr.xx);
     end
 end 
 
+@par function fullmyscale!(field::AbstractArray{<:Real,N}) where N
+    @mthreads for l in TRANGE
+        x = 1/(NRX*NY*NZ)
+        @msimd for i in REAL_RANGES[l]
+            @inbounds field[i] = x*field[i]
+        end
+    end
+end 
+
+
 myscale!(o::ScalarField) = myscale!(o.field.data)
 
 myscale!(o::VectorField) = (myscale!(o.rr.x);
@@ -68,10 +78,35 @@ myscale!(o::SymTenField) = (myscale!(o.rr.xx);
                             myscale!(o.rr.yz);
                             myscale!(o.rr.zz))
 
+fullmyscale!(o::ScalarField) = fullmyscale!(o.field.data)
+
+fullmyscale!(o::VectorField) = (fullmyscale!(o.rr.x);
+                            fullmyscale!(o.rr.y);
+                            fullmyscale!(o.rr.z))
+                            
+fullmyscale!(o::SymTrTenField) = (fullmyscale!(o.rr.xx);
+                              fullmyscale!(o.rr.xy);
+                              fullmyscale!(o.rr.xz);
+                              fullmyscale!(o.rr.yy);
+                              fullmyscale!(o.rr.yz))
+                            
+fullmyscale!(o::SymTenField) = (fullmyscale!(o.rr.xx);
+                            fullmyscale!(o.rr.xy);
+                            fullmyscale!(o.rr.xz);
+                            fullmyscale!(o.rr.yy);
+                            fullmyscale!(o.rr.yz);
+                            fullmyscale!(o.rr.zz))
+
 function myfourier!(field::A) where {T,N,N2,L,A<:Union{<:ScalarField{T,N,N2,L},<:VectorField{T,N,N2,L},<:SymTrTenField{T,N,N2,L},<:SymTenField{T,N,N2,L}}}
     rfft!(field)
     dealias!(field)
     myscale!(field)
+    return nothing
+end
+
+function fullfourier!(field::A) where {T,N,N2,L,A<:Union{<:ScalarField{T,N,N2,L},<:VectorField{T,N,N2,L},<:SymTrTenField{T,N,N2,L},<:SymTenField{T,N,N2,L}}}
+    rfft!(field)
+    fullmyscale!(field)
     return nothing
 end
 

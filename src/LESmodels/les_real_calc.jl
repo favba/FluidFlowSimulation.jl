@@ -42,7 +42,7 @@ end
         Ma = s.lesmodel.M.rr
         Sa = s.lesmodel.S.rr
         Δ̂² = s.lesmodel.Δ̂²
-        cmin = s.lesmodel.cmin
+        #cmin = s.lesmodel.cmin
     elseif is_Smagorinsky(A) || is_Vreman(A) || is_production_model(A)
         c = s.lesmodel.c
         α = c*c*Δ²
@@ -65,11 +65,18 @@ end
         if is_dynamic_les(A)
             L = symouter(û[i],û[i]) - La[i]
             Sh = Ma[i]
-            M = Δ̂²*norm(Sh)*Sh - Sa[i]
-            c = 0.5*((L:M)/(M:M))
-            c = max(cmin ,c) # to prevent underflow set minimum value for c
-            νt = 2*c*Δ²*norm(S)
-            t = νt*S
+            if is_dynSmag_les(A)
+                M = Δ̂²*norm(Sh)*Sh - Sa[i]
+                c = max(0.0,0.5*((L:M)/(M:M)))
+            elseif is_piomelliSmag_les(A)
+                M = 2*Δ̂²*norm(Sh)*Sh
+                Mn = M/(M:M)
+                c = (Sa[i] + L):Mn
+                c = max(0.0,min(0.2,((Sa[i] + L):Mn)))
+            end
+            #c = max(0.0 ,c) # to prevent underflow set minimum value for c
+            νt = c*Δ²*norm(S)
+            t = 2*νt*S
             ca[i] = c
         elseif is_Smagorinsky(A)
             νt = α*norm(S)

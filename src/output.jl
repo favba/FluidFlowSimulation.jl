@@ -29,6 +29,12 @@ function writeoutput(s::AbstractSimulation)
         write("T13.$init",t.rr.xz)
         write("T22.$init",t.rr.yy)
         write("T23.$init",t.rr.yz)
+        if is_dynamic_les(s)
+            write("cs.$init",s.lesmodel.c.rr)
+            if is_dynP_les(s)
+                write("cp.$init",s.lesmodel.cp.rr)
+            end
+        end
         #is_FakeSmagorinsky(s) || write("pr.$init",s.lesmodel.pr)
     end
     if typeof(s.forcing) <: RfForcing

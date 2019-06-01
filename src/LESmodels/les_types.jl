@@ -76,6 +76,11 @@ is_dynamic_les(a::Union{<:DynamicSmagorinsky,<:Type{<:DynamicSmagorinsky}}) = tr
 @inline is_dynamic_les(s::T) where {T<:AbstractSimulation} = is_dynamic_les(T)
 is_dynamic_les(a) = false
 
+is_dynSmag_les(a::Union{<:DynamicSmagorinsky,<:Type{<:DynamicSmagorinsky}}) = true
+@inline @par is_dynSmag_les(s::Type{T}) where {T<:@par(AbstractSimulation)} = is_dynSmag_les(LESModelType)
+@inline is_dynSmag_les(s::T) where {T<:AbstractSimulation} = is_dynSmag_les(T)
+is_dynSmag_les(a) = false
+
 msg(a::DynamicSmagorinsky) = "\nLES model: Dynamic Smagorinsky\nFilter Width: $(sqrt(a.Δ²))\nTest Filter Width: $(sqrt(a.Δ̂²))\nMinimum coefficient permitted: $(a.cmin)\n"
 
 # Vreman Model Start ======================================================
@@ -151,6 +156,8 @@ is_SandP(a::Union{<:SandP,Type{<:SandP}}) = true
 @inline is_FakeSmagorinsky(a::Union{<:SandP{t,S},<:Type{SandP{t,S}}}) where {t,S} = is_FakeSmagorinsky(S)
 @inline is_Vreman(a::Union{<:SandP{t,S},<:Type{SandP{t,S}}}) where {t,S} = is_Vreman(S)
 @inline is_dynamic_les(a::Union{<:SandP{t,S},<:Type{SandP{t,S}}}) where {t,S} = is_dynamic_les(S)
+@inline is_dynSmag_les(a::Union{<:SandP{t,S},<:Type{SandP{t,S}}}) where {t,S} = is_dynSmag_les(S)
+@inline is_piomelliSmag_les(a::Union{<:SandP{t,S},<:Type{SandP{t,S}}}) where {t,S} = is_piomelliSmag_les(S)
 @inline is_production_model(a::Union{<:SandP{t,S},<:Type{SandP{t,S}}}) where {t,S} = is_production_model(S)
 
 msg(a::SandP) = "\nLES model: SandP\nP tensor constant: $(a.cb)\nEddy Viscosity model: {$(msg(a.Smodel))}\n"
@@ -211,13 +218,59 @@ is_dynP_les(a) = false
 @inline @par is_dynP_les(s::Type{T}) where {T<:@par(AbstractSimulation)} = is_dynP_les(LESModelType)
 @inline is_dynP_les(s::T) where {T<:AbstractSimulation} = is_dynP_les(T)
 
+is_dynamic_les(a::Union{<:DynSandP,<:Type{<:DynSandP}}) = true
+
 @inline is_Smagorinsky(a::Union{<:DynSandP{t,S},<:Type{DynSandP{t,S}}}) where {t,S} = is_Smagorinsky(S)
 @inline is_FakeSmagorinsky(a::Union{<:DynSandP{t,S},<:Type{DynSandP{t,S}}}) where {t,S} = is_FakeSmagorinsky(S)
 @inline is_Vreman(a::Union{<:DynSandP{t,S},<:Type{DynSandP{t,S}}}) where {t,S} = is_Vreman(S)
-@inline is_dynamic_les(a::Union{<:DynSandP{t,S},<:Type{DynSandP{t,S}}}) where {t,S} = is_dynamic_les(S)
+@inline is_dynSmag_les(a::Union{<:DynSandP{t,S},<:Type{DynSandP{t,S}}}) where {t,S} = is_dynSmag_les(S)
+@inline is_piomelliSmag_les(a::Union{<:DynSandP{t,S},<:Type{DynSandP{t,S}}}) where {t,S} = is_piomelliSmag_les(S)
 @inline is_production_model(a::Union{<:DynSandP{t,S},<:Type{DynSandP{t,S}}}) where {t,S} = is_production_model(S)
 
 msg(a::DynSandP) = "\nLES model: Dynamic SandP\nEddy Viscosity model: {$(msg(a.Smodel))}\n"
+
+# Smagorinsky Model End ======================================================
+
+struct PiomelliSmagorinsky{T<:Real} <: DynamicEddyViscosityModel
+    Δ²::T
+    Δ̂²::T
+    c::ScalarField{T,3,2,false}
+    cm1::ScalarField{T,3,2,false}
+    dtm1::Base.RefValue{T}
+    L::SymTenField{T,3,2,false}
+    M::SymTrTenField{T,3,2,false}
+    tau::SymTrTenField{T,3,2,false}
+    S::SymTrTenField{T,3,2,false}
+    û::VectorField{T,3,2,false}
+    reduction::Vector{T}
+end
+
+function PiomelliSmagorinsky(Δ::T, d2::T, dim::NTuple{3,Integer}) where {T<:Real}
+    c = ScalarField{T}(dim,(LX,LY,LZ))
+    cm1 = ScalarField{T}(dim,(LX,LY,LZ))
+    fill!(c.rr,0.0)
+    fill!(cm1.rr,0.0)
+    dtm1 = Ref(zero(T))
+    L = SymTenField(dim,(LX,LY,LZ))
+    tau = SymTrTenField(dim,(LX,LY,LZ))
+    M = similar(tau)
+    S = similar(tau)
+    u = VectorField{T}(dim,(LX,LY,LZ))
+    #fill!(data,0)
+    reduction = zeros(THR ? Threads.nthreads() : 1)
+    return PiomelliSmagorinsky{T}(Δ^2, d2^2, c, cm1, dtm1, L, M, tau, S, u, reduction)
+end
+
+PiomelliSmagorinsky(Δ::T, dim::NTuple{3,Integer},b::Bool=false) where {T<:Real} = PiomelliSmagorinsky(Δ, 2Δ, dim,b)
+
+is_dynamic_les(a::Union{<:PiomelliSmagorinsky,<:Type{<:PiomelliSmagorinsky}}) = true
+
+is_piomelliSmag_les(a::Union{<:PiomelliSmagorinsky,<:Type{<:PiomelliSmagorinsky}}) = true
+@inline @par is_piomelliSmag_les(s::Type{T}) where {T<:@par(AbstractSimulation)} = is_piomelliSmag_les(LESModelType)
+@inline is_piomelliSmag_les(s::T) where {T<:AbstractSimulation} = is_piomelliSmag_les(T)
+@inline is_piomelliSmag_les(a) = false
+
+msg(a::PiomelliSmagorinsky) = "\nLES model: Piomelli Smagorinsky\nFilter Width: $(sqrt(a.Δ²))\nTest Filter Width: $(sqrt(a.Δ̂²))\n"
 
 # Scalar models =====================================================================
 
@@ -258,6 +311,10 @@ function les_types(d,nx,ny,nz,lx,ly,lz)
             tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ
             backscatter = haskey(d,:cmin) ? parse(Float64,d[:cmin]) : 0.0
             lestype = DynamicSmagorinsky(Δ,tΔ,(nx,ny,nz), backscatter)
+        elseif d[:lesModel] == "PiomelliSmagorinsky"
+            Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
+            tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ
+            lestype = PiomelliSmagorinsky(Δ,tΔ,(nx,ny,nz))
         elseif d[:lesModel] == "fakeSmagorinsky"
             Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
             lestype = FakeSmagorinsky(Δ,(nx,ny,nz))
@@ -270,16 +327,20 @@ function les_types(d,nx,ny,nz,lx,ly,lz)
             elseif d[:sLesModel] == "Vreman"
                 c = haskey(d,:vremanConstant) ? Float64(eval(Meta.parse(d[:vremanConstant]))) : 2*(0.17)^2
                 Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
-                lestype = VremanLESModel(c,Δ,(nx,ny,nz))
+                VremanLESModel(c,Δ,(nx,ny,nz))
             elseif d[:sLesModel] == "productionViscosity"
                 c = haskey(d,:productionConstant) ? Float64(eval(Meta.parse(d[:productionConstant]))) : 0.1
                 Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
-                lestype = ProductionViscosityLESModel(c,Δ,(nx,ny,nz))
+                ProductionViscosityLESModel(c,Δ,(nx,ny,nz))
             elseif d[:sLesModel] == "dynamicSmagorinsky"
                 Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
                 tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ
                 backscatter = haskey(d,:cmin) ? parse(Float64,d[:cmin]) : 0.0
                 DynamicSmagorinsky(Δ,tΔ,(nx,ny,nz), backscatter)
+            elseif d[:sLesModel] == "PiomelliSmagorinsky"
+                Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
+                tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ
+                PiomelliSmagorinsky(Δ,tΔ,(nx,ny,nz))
             elseif d[:sLesModel] == "fakeSmagorinsky"
                 Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
                 FakeSmagorinsky(Δ,(nx,ny,nz))
@@ -291,6 +352,10 @@ function les_types(d,nx,ny,nz,lx,ly,lz)
                 tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ
                 backscatter = haskey(d,:cmin) ? parse(Float64,d[:cmin]) : 0.0
                 DynamicSmagorinsky(Δ,tΔ,(nx,ny,nz), backscatter)
+            elseif d[:sLesModel] == "PiomelliSmagorinsky"
+                Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
+                tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ
+                PiomelliSmagorinsky(Δ,tΔ,(nx,ny,nz))
             end
             lestype = DynSandP(Slestype)
         end
