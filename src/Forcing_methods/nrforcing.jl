@@ -3,7 +3,7 @@ function (F::NRfForcing)(s::AbstractSimulation)
     cPlaneNumber = 1
     dt = get_dt(s)
     Tf = F.Tf
-    ts = 10*dt/get_cfl(s)
+    ts = dt/get_cfl(s)
 
     it = s.iteration[]
 
