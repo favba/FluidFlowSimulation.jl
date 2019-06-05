@@ -5,7 +5,7 @@ function realspace_LES_calculation!(s::AbstractSimulation)
     if is_dynamic_les(s)
         realspace_dynamic_les_calculation!(s)
         fourierspace_dynamic_les_calculation!(s)
-        #coefficient_dynamic_les_calculation!(s)
+        coefficient_les_calculation!(s)
     end
     calc_les!(s)
 end
@@ -63,21 +63,8 @@ end
         S = τ[i]
 
         if is_dynamic_les(A)
-            L = symouter(û[i],û[i]) - La[i]
-            Sh = Ma[i]
-            if is_dynSmag_les(A)
-                M = Δ̂²*norm(Sh)*Sh - Sa[i]
-                c = max(0.0,0.5*((L:M)/(M:M)))
-            elseif is_piomelliSmag_les(A)
-                M = 2*Δ̂²*norm(Sh)*Sh
-                Mn = M/(M:M)
-                c = (Sa[i] + L):Mn
-                c = max(0.0,min(0.2,((Sa[i] + L):Mn)))
-            end
-            #c = max(0.0 ,c) # to prevent underflow set minimum value for c
-            νt = c*Δ²*norm(S)
+            νt = max(0.0,ca[i])*Δ²*norm(S)
             t = 2*νt*S
-            ca[i] = c
         elseif is_Smagorinsky(A)
             νt = α*norm(S)
             t = 2*νt*S
@@ -99,14 +86,7 @@ end
         end
 
         if is_dynP_les(A)
-            wh = ŵ[i]
-            Ph = Lie(Sh,AntiSymTen(0.5*wh))
-            Mp = Δ̂²*Ph - Pa[i]
-            cp = (L:Mp)/(Mp:Mp) # Should I clip negative values?
-            #cp = max(0.0,cp)
-            cpa[i] = cp
-
-            t += cp*Δ²*Lie(S,AntiSymTen(0.5*w))
+           t += cpa[i]*Δ²*Lie(S,AntiSymTen(0.5*w))
         end
 
         if !(is_FakeSmagorinsky(A) && !is_SandP(A))

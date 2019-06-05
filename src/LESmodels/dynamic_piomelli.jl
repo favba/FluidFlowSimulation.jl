@@ -9,3 +9,19 @@ function calc_cstar!(c,cm1,Δt,Δt2)
         end
     end
 end
+
+function average_c!(c,Δ2)
+    fullfourier!(c)
+
+    @mthreads for k in Base.OneTo(NZ)
+        @inbounds for j in Base.OneTo(NY)
+            @msimd for i in Base.OneTo(NX)
+                G = Gaussfilter(Δ2,i,j,k)
+                c[i,j,k] *= G
+            end
+        end
+    end
+
+    real!(c)
+    return nothing
+end

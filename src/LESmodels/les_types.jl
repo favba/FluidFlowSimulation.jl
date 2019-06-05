@@ -218,6 +218,12 @@ is_dynP_les(a) = false
 @inline @par is_dynP_les(s::Type{T}) where {T<:@par(AbstractSimulation)} = is_dynP_les(LESModelType)
 @inline is_dynP_les(s::T) where {T<:AbstractSimulation} = is_dynP_les(T)
 
+is_dynSandP_les(a::Union{<:DynSandP,<:Type{<:DynSandP}}) = true
+is_dynSandP_les(a) = false
+@inline @par is_dynSandP_les(s::Type{T}) where {T<:@par(AbstractSimulation)} = is_dynSandP_les(LESModelType)
+@inline is_dynSandP_les(s::T) where {T<:AbstractSimulation} = is_dynSandP_les(T)
+
+
 is_dynamic_les(a::Union{<:DynSandP,<:Type{<:DynSandP}}) = true
 
 @inline is_Smagorinsky(a::Union{<:DynSandP{t,S},<:Type{DynSandP{t,S}}}) where {t,S} = is_Smagorinsky(S)
@@ -271,6 +277,54 @@ is_piomelliSmag_les(a::Union{<:PiomelliSmagorinsky,<:Type{<:PiomelliSmagorinsky}
 @inline is_piomelliSmag_les(a) = false
 
 msg(a::PiomelliSmagorinsky) = "\nLES model: Piomelli Smagorinsky\nFilter Width: $(sqrt(a.Δ²))\nTest Filter Width: $(sqrt(a.Δ̂²))\n"
+
+
+struct PiomelliSandP{T<:Real,Smodel<:DynamicEddyViscosityModel} <: AbstractLESModel
+    P::SymTrTenField{T,3,2,false}
+    ŵ::VectorField{T,3,2,false}
+    cp::ScalarField{T,3,2,false}
+    cpm1::ScalarField{T,3,2,false}
+    dtpm1::Base.RefValue{T}
+    Smodel::Smodel
+end
+
+function PiomelliSandP(s::S) where S<:DynamicEddyViscosityModel
+    P = SymTrTenField((NRX,NY,NZ),(LX,LY,LZ))
+    w = VectorField((NRX,NY,NZ),(LX,LY,LZ))
+    cp = ScalarField((NRX,NY,NZ),(LX,LY,LZ))
+    cpm1 = ScalarField((NRX,NY,NZ),(LX,LY,LZ))
+    fill!(cp.rr,0.1)
+    fill!(cpm1.rr,0.1)
+    dtpm1 = Ref(0.0)
+    return PiomelliSandP{Float64,S}(P,w,cp,cpm1,dtpm1,s)
+end
+
+@inline function Base.getproperty(a::PiomelliSandP,s::Symbol)
+    if s === :Smodel || s === :P || s === :ŵ || s === :cp || s === :cpm1 || s === :dtpm1
+        return getfield(a,s)
+    else
+        return getfield(getfield(a,:Smodel),s)
+    end
+end
+
+is_piomelliP_les(a::Union{<:PiomelliSandP,<:Type{<:PiomelliSandP}}) = true
+is_piomelliP_les(a) = false
+@inline @par is_piomelliP_les(s::Type{T}) where {T<:@par(AbstractSimulation)} = is_piomelliP_les(LESModelType)
+@inline is_piomelliP_les(s::T) where {T<:AbstractSimulation} = is_piomelliP_les(T)
+
+
+is_dynP_les(a::Union{<:PiomelliSandP,<:Type{<:PiomelliSandP}}) = true
+
+is_dynamic_les(a::Union{<:PiomelliSandP,<:Type{<:PiomelliSandP}}) = true
+
+@inline is_Smagorinsky(a::Union{<:PiomelliSandP{t,S},<:Type{PiomelliSandP{t,S}}}) where {t,S} = is_Smagorinsky(S)
+@inline is_FakeSmagorinsky(a::Union{<:PiomelliSandP{t,S},<:Type{PiomelliSandP{t,S}}}) where {t,S} = is_FakeSmagorinsky(S)
+@inline is_Vreman(a::Union{<:PiomelliSandP{t,S},<:Type{PiomelliSandP{t,S}}}) where {t,S} = is_Vreman(S)
+@inline is_dynSmag_les(a::Union{<:PiomelliSandP{t,S},<:Type{PiomelliSandP{t,S}}}) where {t,S} = is_dynSmag_les(S)
+@inline is_piomelliSmag_les(a::Union{<:PiomelliSandP{t,S},<:Type{PiomelliSandP{t,S}}}) where {t,S} = is_piomelliSmag_les(S)
+@inline is_production_model(a::Union{<:PiomelliSandP{t,S},<:Type{PiomelliSandP{t,S}}}) where {t,S} = is_production_model(S)
+
+msg(a::PiomelliSandP) = "\nLES model: Piomelli SandP\nEddy Viscosity model: {$(msg(a.Smodel))}\n"
 
 # Scalar models =====================================================================
 
@@ -358,6 +412,18 @@ function les_types(d,nx,ny,nz,lx,ly,lz)
                 PiomelliSmagorinsky(Δ,tΔ,(nx,ny,nz))
             end
             lestype = DynSandP(Slestype)
+        elseif d[:lesModel] == "piomelliSandP"
+            Slestype = if d[:sLesModel] == "dynamicSmagorinsky"
+                Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
+                tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ
+                backscatter = haskey(d,:cmin) ? parse(Float64,d[:cmin]) : 0.0
+                DynamicSmagorinsky(Δ,tΔ,(nx,ny,nz), backscatter)
+            elseif d[:sLesModel] == "PiomelliSmagorinsky"
+                Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
+                tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ
+                PiomelliSmagorinsky(Δ,tΔ,(nx,ny,nz))
+            end
+            lestype = PiomelliSandP(Slestype)
         end
     end
 
