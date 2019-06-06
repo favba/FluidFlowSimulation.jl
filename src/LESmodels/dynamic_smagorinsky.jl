@@ -184,7 +184,7 @@ end
             M = 2*Δ̂²*ah*Sh
             Mn = M/(M:M)
             c = (τ̂ + L):Mn
-            c = max(0.0,min(0.2,c))
+            c = max(-0.2,min(0.2,c))
             #c = ifelse(ah<10.0,0.0,max(0.0,c))
         end
         ca[i] = c
