@@ -155,7 +155,7 @@ function stratificationtype(d::AbstractDict,start,integrator,nx,ny,nz,lx,ly,lz,v
 
         lestypedensity = if haskey(d,:densityLesModel)
             if d[:densityLesModel] == "vorticityDiffusion"
-                c = haskey(d,:densityVorticityCoefficient) ? parse(Float64,d[:densityVorticityCoefficient]) : 1.0
+                c = haskey(d,:densityVorticityCoefficient) ? parse(Float64,d[:densityVorticityCoefficient]) : 0.1
                 VorticityDiffusion(c)
             else
                 EddyDiffusion()
