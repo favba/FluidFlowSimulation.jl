@@ -19,6 +19,11 @@ function writeoutput(s::AbstractSimulation)
         #setfourier!(s.densitystratification.rhs)
         #real!(s.densitystratification.rhs)
         write("rho.$init",s.densitystratification.ρ.rr)
+        if hasdensityles(s)
+            write("dflux1.$init",s.densitystratification.flux.rr.x)
+            write("dflux2.$init",s.densitystratification.flux.rr.y)
+            write("dflux3.$init",s.densitystratification.flux.rr.z)
+        end
         #dealias!(s.densitystratification.ρrhs)
     end
     if hasles(s)

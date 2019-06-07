@@ -139,6 +139,8 @@ end
     end
 
     realspace_LES_calculation!(s)
+    is_output_time(s) && writeoutput(s)
+
     realspacecalculation!(s)
 
     if has_variable_timestep(s)
@@ -148,7 +150,7 @@ end
         end
     end
 
-    is_output_time(s) && writeoutput(s)
+    #is_output_time(s) && writeoutput(s)
 
     if is_vorticityEquation(A)
         myfourier!(s.rhs)
