@@ -99,7 +99,7 @@ end
             ∇ρ = f[i]
             rhsden = νt*∇ρ
             if has_les_density_vorticity_model(A)
-                rhsden -= cρ*w × ∇ρ
+                rhsden += (cρ/2) * (w × ∇ρ)
             end
             f[i] = rhsden
         end
@@ -109,7 +109,7 @@ end
             ∇φ = fφ[i]
             rhsp = νt*fφ[i]
             if has_les_scalar_vorticity_model(A)
-                rhsp -= cφ*w × ∇φ
+                rhsp += (cφ/2) * (w × ∇φ)
             end
             fφ[i] = rhsp
         end
