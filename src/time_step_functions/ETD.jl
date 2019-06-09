@@ -93,13 +93,14 @@ end
 
 get_dt(t::ETD3rdO) = getindex(t.dt)
 
-function initialize!(t::ETD3rdO,rhs::AbstractArray,vis,s::AbstractSimulation)
+function initialize!(t::ETD3rdO{adpt},rhs::AbstractArray,vis,s::AbstractSimulation) where adpt
     mycopy!(data(t.fm1),rhs) 
     mycopy!(data(t.fm2), data(t.fm1)) 
     setindex!(t.dt,get_dt(s))
     setindex!(t.dt2,t.dt[])
     setindex!(t.dt3,t.dt[])
     set_dt!(t,t.dt[])
+    adpt || set_ABCt!(t)
     return nothing
 end
 
