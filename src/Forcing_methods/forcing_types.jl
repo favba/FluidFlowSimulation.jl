@@ -162,7 +162,59 @@ function initialize!(f::NRfForcing,s)
     end
     return nothing
 end
+####################################################################################
+struct CRfForcing{T<:AbstractFloat} <: AbstractForcing
+    Tf::T
+    α::T
+    Kf::T
+    maxDk::T
+    avgK::Vector{T}
+    Zf::Vector{T}
+    Ef::Vector{T} # Velocity Field Spectrum
+    Em::Vector{T} # Target Spectrum
+    R::Vector{T} # Solution to ODE
+    factor::Vector{T} # Factor to multiply velocity Field
+    forcex::PaddedArray{T,3,2,false} # Final force
+    forcey::PaddedArray{T,3,2,false} # Final force
+    init::Bool # Tell if the initial condition spectra should be used instead of from data
+    hp::Base.RefValue{T}
+    vp::Base.RefValue{T}
+end
 
+statsheader(a::CRfForcing) = "hp,vp,tp"
+
+stats(a::CRfForcing,s::AbstractSimulation) = (a.hp[],a.vp[],a.hp[]+a.vp[])
+
+msg(a::CRfForcing) = "\nForcing:  CRf forcing\nTf: $(getTf(a))\nalphac: $(getalpha(a))\nKf: $(getKf(a))\n"
+
+@inline getTf(f::CRfForcing) = f.Tf
+
+@inline getalpha(f::CRfForcing) = f.α
+
+@inline getKf(f::CRfForcing) = f.Kf
+
+@inline getmaxdk(f::CRfForcing) = f.maxDk
+
+@inline getavgk(f::CRfForcing) = f.avgK
+
+@inline getZf(f::CRfForcing) = f.Zf
+
+function add_forcing!(u,f::CRfForcing)
+    add_Rf_forcing!(u.c.x,f.forcex)
+    add_Rf_forcing!(u.c.y,f.forcey)
+end
+
+function initialize!(f::CRfForcing,s)
+    if f.init
+        calculate_u1u2_spectrum!(f.Em,s.u,1)
+    end
+    if isfile("R.$(s.iteration[])")
+        copyto!(f.R, vec(readdlm("R.$(s.iteration[])",Float64)))
+    end
+    return nothing
+end
+
+include("cforcing.jl")
 
 #################################################################################################
 
@@ -220,6 +272,24 @@ function forcing_model(d::AbstractDict,nx::Integer,ny::Integer,nz::Integer,ncx::
             else
                 calculate_Em!(Em,kh)
                 forcingtype = RfForcing{Float64}(TF, alphac, kf, maxdk2D, kh,Zf,Ef,Em,R,N,Nm1,factor,forcex,forcey,false,Ref(0.0),Ref(0.0))
+            end
+        elseif d[:forcing] == "cRfForcing"
+            TF = parse(Float64,d[:TF])
+            alphac = parse(Float64,d[:alphac])
+            kf = parse(Float64,d[:kf])
+            nShells2D, maxdk2D, numPtsInShell2D, kh = compute_shells2D(KX,KY,ncx,ny)
+            Ef = zeros(nShells2D)
+            Em = zeros(nShells2D)
+            R = zeros(nShells2D)
+            factor = zeros(length(kh))
+            forcex = PaddedArray((nx,ny,nz))
+            forcey = PaddedArray((nx,ny,nz))
+            Zf = calculate_Zf(d,kf,kh)
+            if !isfile("targSpectrum.dat")
+                forcingtype = CRfForcing{Float64}(TF, alphac, kf, maxdk2D, kh,Zf,Ef,Em,R,factor,forcex,forcey,true,Ref(0.0),Ref(0.0))
+            else
+                calculate_Em!(Em,kh)
+                forcingtype = CRfForcing{Float64}(TF, alphac, kf, maxdk2D, kh,Zf,Ef,Em,R,factor,forcex,forcey,false,Ref(0.0),Ref(0.0))
             end
         end
     end
