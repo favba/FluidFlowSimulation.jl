@@ -332,11 +332,17 @@ abstract type AbstractLESScalar end
 
 struct NoLESScalar <: AbstractLESScalar end
 
+msg(a::NoLESScalar) = "No LES model"
+
 struct EddyDiffusion <: AbstractLESScalar end
+
+msg(a::EddyDiffusion) = "Eddy diffusion"
 
 struct VorticityDiffusion{T<:Real} <: AbstractLESScalar
     c::T
 end
+
+msg(a::VorticityDiffusion) = "Vorticity diffusion with coefficient: $(a.c)"
 
 VorticityDiffusion() = VorticityDiffusion{Float64}(1.3)
 

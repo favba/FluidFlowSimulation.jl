@@ -105,8 +105,8 @@ g/ρ₀ : $(g)
 Density mean gradient : $(dρdz)
 Density mean gradient direction: $(Gdirec)
 Density time-stepping method: $(TT)
-Density LES model: $(L)
-Density HyperViscosity model: $(HV)
+Density LES model: $(msg(a.lesmodel))
+Density HyperViscosity model: {$(msg(a.hyperviscosity))\n}
 
 """
 
