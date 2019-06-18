@@ -14,9 +14,9 @@ function writeheader(s::AbstractSimulation)
     open("Scales.txt","w") do f
         write(f,"iteration,time,Lk,Lt,lamg,laml,lamt,Lhh,Lvv,Lhv,Lvh,lam12,lam21,L11,L12,L13,L21,L22,L23,L31,L32,L33")
         if hasdensity(s)
-            write(f,",Lb,Lo,Lom,Tk,Tt,Tb,Tbm\n")
+            write(f,",Lb,Lo,Lom,Tk,Tt,Thh,Tb,Tbm\n")
         else
-            write(f,",Tk,Tt\n")
+            write(f,",Tk,Tt,Thh\n")
         end
     end
 
@@ -87,6 +87,7 @@ function stats(s::AbstractSimulation)
     L33 = integral_lenght_z(s.u.c.z,u3p2)
 
     Lhh = (L11 + L22)/2
+    Thh = Lhh/urms
     #λl = (λ11 + λ22)/2
     λl = sqrt(2*(u1p2+u2p2)/(du1dxp2+du2dyp2))
     #λt = (λ12 + λ21)/2
@@ -134,10 +135,10 @@ function stats(s::AbstractSimulation)
         Rebm = (Lom/Lk)^(4/3)
         Frh = 2π*uh/(Nb*Lhh)
         Frh1 = Lhv/Lhh
-        lens = (lensv...,Lb,Lo,Lom,Tk,Tt,Tb,Tbm)
+        lens = (lensv...,Lb,Lo,Lom,Tk,Tt,Thh,Tb,Tbm)
         anums = (Reh,Reh1, Reλg, Reλl, Reλt, Reλg1, Reλl1, Reλt1, Reb, Rebm, Frh,Frh1)
     else
-        lens = (lensv...,Tk,Tt)
+        lens = (lensv...,Tk,Tt,Thh)
         anums = (Reh, Reh1, Reλl, Reλt, Reλl1, Reλt1)
     end
 
