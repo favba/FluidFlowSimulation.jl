@@ -54,6 +54,13 @@ function writeoutput(s::AbstractSimulation)
         writedlm("N.$init",s.forcing.N)
         writedlm("Eh.$init",zip(s.forcing.avgK, s.forcing.Ef))
     end
+
+    if typeof(s.forcing) <: CNRfForcing
+        writedlm("R.$init",s.forcing.R)
+        writedlm("N.$init",s.forcing.N)
+        writedlm("Eh.$init",zip(s.forcing.avgK, s.forcing.Ef))
+    end
+
     if typeof(s.forcing) <: CRfForcing
         writedlm("R.$init",s.forcing.R)
         writedlm("Eh.$init",zip(s.forcing.avgK, s.forcing.Ef))
