@@ -46,6 +46,31 @@
 
 end
 
+@par function write_spec_forcing(s::A) where {A<:@par(Simulation)}
+    i = s.iteration[]
+    hout = s.hspec
+
+    out1D = s.spec1D
+    out2D = s.spec2D
+    tspec1D = s.tspec1D
+
+    fx = s.forcing.forcex
+    fy = s.forcing.forcey
+    ux = s.u.c.x
+    uy = s.u.c.y
+    dt = get_dt(s)
+    spectrum_forcing(hout,ux,uy,fx,fy,dt)
+    write("forcing_h.spec3D.$i",hout)
+
+    calculate_spec12D(out1D,out2D,hout)
+
+    writedlm("forcing_h.spec1D.$i",zip(K1D,out1D))
+    writedlm2D("forcing_h.spec2D.$i",out2D)
+
+    return nothing
+end
+
+
 function writespectrum(n::String,i::Integer,hout,vout,spec1D,spec2D,tspec1D)
     write("$(n)_h.spec3D.$i",hout)
     write("$(n)_v.spec3D.$i",vout)
@@ -113,6 +138,16 @@ function spectrum_buoyancy(out,u,ρ,g)
         @inbounds for j in YRANGE
             @simd for i in XRANGE
                 out[i,j,k] = vecouterproj(u[i,j,k],g*ρ[i,j,k]).z
+            end
+        end
+    end
+end
+
+function spectrum_forcing(out,ux,uy,fx,fy,dt)
+    @mthreads for k in ZRANGE
+        @inbounds for j in YRANGE
+            @simd for i in XRANGE
+                out[i,j,k] = 0.5*(proj(ux[i,j,k],fx[i,j,k]) + proj(uy[i,j,k],fy[i,j,k]))/dt
             end
         end
     end
