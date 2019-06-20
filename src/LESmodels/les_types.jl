@@ -399,7 +399,7 @@ function les_types(d,nx,ny,nz,lx,ly,lz)
                 tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ
                 backscatter = haskey(d,:cmin) ? parse(Float64,d[:cmin]) : 0.0
                 DynamicSmagorinsky(Δ,tΔ,(nx,ny,nz), backscatter)
-            elseif d[:sLesModel] == "PiomelliSmagorinsky"
+            elseif d[:sLesModel] == "piomelliSmagorinsky"
                 Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
                 tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ
                 PiomelliSmagorinsky(Δ,tΔ,(nx,ny,nz))
