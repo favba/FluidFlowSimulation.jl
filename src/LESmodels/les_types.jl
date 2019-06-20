@@ -55,9 +55,10 @@ struct DynamicSmagorinsky{T<:Real} <: DynamicEddyViscosityModel
     S::SymTrTenField{T,3,2,false}
     û::VectorField{T,3,2,false}
     reduction::Vector{T}
+    avg::Bool
 end
 
-function DynamicSmagorinsky(Δ::T, d2::T, dim::NTuple{3,Integer}, cmin::Real=0.0) where {T<:Real}
+function DynamicSmagorinsky(Δ::T, d2::T, dim::NTuple{3,Integer}, cmin::Real=0.0,avg::Bool=false) where {T<:Real}
     c = ScalarField{T}(dim,(LX,LY,LZ))
     L = SymTenField(dim,(LX,LY,LZ))
     tau = SymTrTenField(dim,(LX,LY,LZ))
@@ -66,7 +67,7 @@ function DynamicSmagorinsky(Δ::T, d2::T, dim::NTuple{3,Integer}, cmin::Real=0.0
     u = VectorField{T}(dim,(LX,LY,LZ))
     #fill!(data,0)
     reduction = zeros(THR ? Threads.nthreads() : 1)
-    return DynamicSmagorinsky{T}(Δ^2, d2^2, c, cmin, L, M, tau, S, u, reduction)
+    return DynamicSmagorinsky{T}(Δ^2, d2^2, c, cmin, L, M, tau, S, u, reduction,avg)
 end
 
 DynamicSmagorinsky(Δ::T, dim::NTuple{3,Integer},b::Bool=false) where {T<:Real} = DynamicSmagorinsky(Δ, 2Δ, dim,b)
@@ -81,7 +82,7 @@ is_dynSmag_les(a::Union{<:DynamicSmagorinsky,<:Type{<:DynamicSmagorinsky}}) = tr
 @inline is_dynSmag_les(s::T) where {T<:AbstractSimulation} = is_dynSmag_les(T)
 is_dynSmag_les(a) = false
 
-msg(a::DynamicSmagorinsky) = "\nLES model: Dynamic Smagorinsky\nFilter Width: $(sqrt(a.Δ²))\nTest Filter Width: $(sqrt(a.Δ̂²))\nMinimum coefficient permitted: $(a.cmin)\n"
+msg(a::DynamicSmagorinsky) = "\nLES model: Dynamic Smagorinsky\nFilter Width: $(sqrt(a.Δ²))\nTest Filter Width: $(sqrt(a.Δ̂²))\nMinimum coefficient permitted: $(a.cmin)\nAvg coefficient? $(a.avg)\n"
 
 # Vreman Model Start ======================================================
 
@@ -249,9 +250,10 @@ struct PiomelliSmagorinsky{T<:Real} <: DynamicEddyViscosityModel
     S::SymTrTenField{T,3,2,false}
     û::VectorField{T,3,2,false}
     reduction::Vector{T}
+    avg::Bool
 end
 
-function PiomelliSmagorinsky(Δ::T, d2::T, dim::NTuple{3,Integer}) where {T<:Real}
+function PiomelliSmagorinsky(Δ::T, d2::T, dim::NTuple{3,Integer},avg::Bool=false) where {T<:Real}
     c = ScalarField{T}(dim,(LX,LY,LZ))
     cm1 = ScalarField{T}(dim,(LX,LY,LZ))
     fill!(c.rr,0.0)
@@ -264,7 +266,7 @@ function PiomelliSmagorinsky(Δ::T, d2::T, dim::NTuple{3,Integer}) where {T<:Rea
     u = VectorField{T}(dim,(LX,LY,LZ))
     #fill!(data,0)
     reduction = zeros(THR ? Threads.nthreads() : 1)
-    return PiomelliSmagorinsky{T}(Δ^2, d2^2, c, cm1, dtm1, L, M, tau, S, u, reduction)
+    return PiomelliSmagorinsky{T}(Δ^2, d2^2, c, cm1, dtm1, L, M, tau, S, u, reduction,avg)
 end
 
 PiomelliSmagorinsky(Δ::T, dim::NTuple{3,Integer},b::Bool=false) where {T<:Real} = PiomelliSmagorinsky(Δ, 2Δ, dim,b)
@@ -276,7 +278,7 @@ is_piomelliSmag_les(a::Union{<:PiomelliSmagorinsky,<:Type{<:PiomelliSmagorinsky}
 @inline is_piomelliSmag_les(s::T) where {T<:AbstractSimulation} = is_piomelliSmag_les(T)
 @inline is_piomelliSmag_les(a) = false
 
-msg(a::PiomelliSmagorinsky) = "\nLES model: Piomelli Smagorinsky\nFilter Width: $(sqrt(a.Δ²))\nTest Filter Width: $(sqrt(a.Δ̂²))\n"
+msg(a::PiomelliSmagorinsky) = "\nLES model: Piomelli Smagorinsky\nFilter Width: $(sqrt(a.Δ²))\nTest Filter Width: $(sqrt(a.Δ̂²))\nAvg coefficient? $(a.avg)"
 
 
 struct PiomelliSandP{T<:Real,Smodel<:DynamicEddyViscosityModel} <: AbstractLESModel

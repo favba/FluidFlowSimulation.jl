@@ -118,10 +118,10 @@ end
         coefficient_les_calculation!(s,j)
     end
 
-    average_c!(s.lesmodel.c,s.lesmodel.Δ̂²)
+    s.lesmodel.avg && average_c!(s.lesmodel.c,s.lesmodel.Δ̂²)
 
     if is_dynP_les(s)
-        average_c!(s.lesmodel.cp,s.lesmodel.Δ̂²)
+        s.lesmodel.avg && average_c!(s.lesmodel.cp,s.lesmodel.Δ̂²)
     end
  
     return nothing
@@ -170,7 +170,7 @@ end
         if is_dynSmag_les(A)
             M = Δ̂²*norm(Sh)*Sh - Sa[i]
             #c = max(0.0,0.5*((L:M)/(M:M)))
-            c = 0.5*((L:M)/(M:M))
+            c = max(-0.4,min(0.4,0.5*((L:M)/(M:M))))
         elseif is_piomelliSmag_les(A)
 
             τ̂ = Sa[i]
@@ -184,7 +184,7 @@ end
             M = 2*Δ̂²*ah*Sh
             Mn = M/(M:M)
             c = (τ̂ + L):Mn
-            c = max(-0.2,min(0.2,c))
+            c = max(-0.4,min(0.4,c))
             #c = ifelse(ah<10.0,0.0,max(0.0,c))
         end
         ca[i] = c
@@ -195,7 +195,7 @@ end
            
             if is_dynSandP_les(A)
                 Mp = Δ̂²*Ph - Pa[i]
-                cp = (L:Mp)/(Mp:Mp) # Should I clip negative values?
+                cp = max(-0.8,min(0.8,(L:Mp)/(Mp:Mp))) # Should I clip negative values?
                 #cp = max(0.0,cp)
             elseif is_piomelliP_les(A)
                 if !is_piomelliSmag_les(A)
@@ -203,8 +203,7 @@ end
                 end
                 Mp = Δ̂²*Ph
                 Mpn = Mp/(Mp:Mp)
-                cp = (τ̂ + L):Mpn
-                cp = max(-.5,min(.5,((Sa[i] + L):Mn)))
+                cp = max(-0.8,min(.8,(τ̂ + L):Mpn))
             end
  
             cpa[i] = cp
