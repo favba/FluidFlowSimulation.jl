@@ -4,35 +4,35 @@
     hout = s.hspec
     vout = s.vspec
 
-    out1D = s.spec1D
-    out2D = s.spec2D
-    tspec1D = s.tspec1D
+    outH = s.specH
+    outV = s.specV
+    tspecH = s.tspecH
 
     spectrum_u(hout,vout,s.u)
-    writespectrum("u",i,hout,vout,out1D,out2D,tspec1D)
+    writespectrum("u",i,hout,vout,outH,outV,tspecH)
 
     spectrum_viscosity(hout,vout,hout,vout,s)
-    writespectrum("vis",i,hout,vout,out1D,out2D,tspec1D)
+    writespectrum("vis",i,hout,vout,outH,outV,tspecH)
 
     spectrum_non_linear(hout,vout,s.u,s.rhs)
-    writespectrum("nl",i,hout,vout,out1D,out2D,tspec1D)
+    writespectrum("nl",i,hout,vout,outH,outV,tspecH)
 
     spectrum_pressure(hout,vout,s)
-    writespectrum("press",i,hout,vout,out1D,out2D,tspec1D)
+    writespectrum("press",i,hout,vout,outH,outV,tspecH)
 
     if hasdensity(A)
         spectrum_buoyancy(vout,s.u,s.densitystratification.ρ,gravity(s))
-        write("buoyancy_v.spec.$i",vout)
+        write("buoyancy_v.spec3D.$i",vout)
 
-        calculate_spec12D(out1D,out2D,vout)
+        calculate_specHV(outH,outV,vout)
 
-        writedlm("buoyancy_v.spec1D.$i",zip(K1D,out1D))
-        writedlm2D("buoyancy_v.spec2D.$i",out2D)
+        writedlm("buoyancy_v.specH.$i",zip(KH,outH))
+        writedlm("buoyancy_v.specV.$i",zip(KRZ,outV))
     end
 
     if hasles(A)
         spectrum_les(hout,vout,s.u,s.lesmodel.tau)
-        writespectrum("les",i,hout,vout,out1D,out2D,tspec1D)
+        writespectrum("les",i,hout,vout,outH,outV,tspecH)
     end
 
     if hashyperviscosity(A)
@@ -41,7 +41,7 @@
         else
             spectrum_hyperviscosity(hout,vout,s.u,s)
         end
-        writespectrum("hvis",i,hout,vout,out1D,out2D,tspec1D)
+        writespectrum("hvis",i,hout,vout,outH,outV,tspecH)
     end
 
 end
@@ -50,9 +50,9 @@ end
     i = s.iteration[]
     hout = s.hspec
 
-    out1D = s.spec1D
-    out2D = s.spec2D
-    tspec1D = s.tspec1D
+    outH = s.specH
+    outV = s.specV
+    tspecH = s.tspecH
 
     fx = s.forcing.forcex
     fy = s.forcing.forcey
@@ -62,34 +62,34 @@ end
     spectrum_forcing(hout,ux,uy,fx,fy,dt)
     write("forcing_h.spec3D.$i",hout)
 
-    calculate_spec12D(out1D,out2D,hout)
+    calculate_specHV(outH,outV,hout)
 
-    writedlm("forcing_h.spec1D.$i",zip(K1D,out1D))
-    writedlm2D("forcing_h.spec2D.$i",out2D)
+    writedlm("forcing_h.specH.$i",zip(KH,outH))
+    writedlm("forcing_h.specV.$i",zip(KRZ,outV))
 
     return nothing
 end
 
 
-function writespectrum(n::String,i::Integer,hout,vout,spec1D,spec2D,tspec1D)
+function writespectrum(n::String,i::Integer,hout,vout,specH,specV,tspecH)
     write("$(n)_h.spec3D.$i",hout)
     write("$(n)_v.spec3D.$i",vout)
 
-    calculate_spec12D(spec1D,spec2D,hout)
+    calculate_specHV(specH,specV,hout)
 
-    copy!(tspec1D,spec1D)
+    copy!(tspecH,specH)
 
-    writedlm("$(n)_h.spec1D.$i",zip(K1D,spec1D))
-    writedlm2D("$(n)_h.spec2D.$i",spec2D)
+    writedlm("$(n)_h.specH.$i",zip(KH,specH))
+    writedlm("$(n)_h.specV.$i",zip(KRZ,specV))
 
-    calculate_spec12D(spec1D,spec2D,vout)
+    calculate_specHV(specH,specV,vout)
 
-    tspec1D .+= spec1D
+    tspecH .+= specH
+    writedlm("$(n).specH.$i",zip(KH,tspecH))
 
-    writedlm("$(n)_v.spec1D.$i",zip(K1D,spec1D))
-    writedlm2D("$(n)_v.spec2D.$i",spec2D)
+    writedlm("$(n)_v.specH.$i",zip(KH,specH))
+    writedlm("$(n)_v.specV.$i",zip(KRZ,specV))
 
-    writedlm("$(n).spec1D.$i",zip(K1D,tspec1D))
 
     return nothing
 end
@@ -200,8 +200,8 @@ function spectrum_u(hout,vout,u::VectorField{T}) where {T}
             for j in YRANGE
                 @simd for i in XRANGE
                     out = vecouterproj(u[i,j,l], u[i,j,l])
-                    hout[i,j,l] = out.x + out.y 
-                    vout[i,j,l] = out.z
+                    hout[i,j,l] = (out.x + out.y)/2
+                    vout[i,j,l] = out.z/2
                 end
             end
         end
@@ -275,29 +275,29 @@ end
     end
 end
 
-function calculate_spec12D(s1,s2,out)
-    fill!(s1,0.0)
-    fill!(s2,0.0)
+function calculate_specHV(h,v,out)
+    fill!(h,0.0)
+    fill!(v,0.0)
     @inbounds for l in ZRANGE
         KZ2 = KZ[l]^2
+        nk = round(Int, fsqrt(KZ2)/DKZ) + 1
         @inbounds for j in YRANGE
             KY2 = KY[j]^2
-            KYZ2 = KY[j]^2 + KZ2
-            n1 = round(Int, fsqrt(KYZ2)/MAXDK1D) + 1
-            n2 = round(Int, fsqrt(KY2)/MAXDKH) + 1
+            nj = round(Int, fsqrt(KY2)/MAXDKH) + 1
             ee = out[1,j,l]
-            s1[n1] += ee
-            s2[n2,l] += ee
+            h[1] += 0.5*ee
+            h[nj] += 0.5*ee
+            v[nk] += ee
             @msimd for i in 2:NX
-                k = fsqrt(muladd(KX[i],KX[i], KYZ2))
-                kh = fsqrt(muladd(KX[i],KX[i], KY2))
+                k = fsqrt(KX[i]*KX[i])
 
-                n1 = round(Int, k/MAXDK1D) + 1
-                n2 = round(Int, kh/MAXDKH) + 1
+                nx = round(Int, k/MAXDKH) + 1
 
                 ee = 2*out[i,j,l]
-                s1[n1] += ee
-                s2[n2,l] += ee
+                h[nx] += 0.5*ee*MAXDKH
+                h[nj] += 0.5*ee*MAXDKH
+                v[nk] += ee*DKZ
+ 
             end
         end
     end

@@ -4,7 +4,7 @@ module Globals
 using GlobalFileHelper, FluidTensors, FluidFields, StaticArrays
 
 export LX,LY,LZ,NX,NY,NZ,NRRX,NRX,ν,DEALIAS_TYPE,KX,KY,KZ,THR,NT,TRANGE,REAL_RANGES,DEALIAS,K,RXRANGE,XRANGE,YRANGE,ZRANGE,RANGEC, COMPLEX_RANGES
-export RYRANGE, RZRANGE, XRANGE2X, KH, K1D, MAXDKH, MAXDK1D
+export RYRANGE, RZRANGE, XRANGE2X, KH, MAXDKH, KRZ, DKZ
 
 include("CatVec.jl")
 
@@ -145,13 +145,11 @@ end
     const global KY = FluidFields.SKvec(NY,LY)#(kyp...,)
     const global KZ = FluidFields.SKvec(NZ,LZ)#(kzp...,)
 
-    const global KH = compute_shells2D(KX,KY)
-    _,aux = nshells2D(KX,KY)
-    const global MAXDKH = aux
+    const global KH = (KX[2] >= KY[2]) ? KX : FluidFields.SRKvec(NY,LY)
+    const global MAXDKH = KH[2]
 
-    const global K1D = compute_shells(KX,KY,KZ)
-    _,aux = nshells(KX,KY,KZ)
-    const global MAXDK1D = aux
+    const global KRZ = FluidFields.SRKvec(NZ,LZ)
+    const global DKZ = KRZ[2]
 
 
     s = (NX,NY,NZ)
