@@ -1,5 +1,5 @@
 function statsheader(s::AbstractSimulation)
-    simulationheader = "iteration,time,u1,u2,u3,u1p2,u2p2,u3p2,kh,kv,k,dissh,dissv,diss,nlh,nlv,pressh,pressv,tnlh,tnlv,tdiss"
+    simulationheader = "iteration,time,u1,u2,u3,u1p2,u2p2,u3p2,kh,kv,kaniso,k,dissh,dissv,diss,nlh,nlv,pressh,pressv,tnlh,tnlv,tdiss"
     header = join(Iterators.filter(x->x !== "",
       (simulationheader,statsheader.(getfield.(Ref(s),sim_fields))...,"\n")),
       ",","")
@@ -57,7 +57,7 @@ function stats(s::AbstractSimulation)
     u3p2 = vstats[6]
     uh = sqrt((u1p2+u2p2)/2)
     urms = sqrt((u1p2 + u2p2 + u3p2)/3)
-    k = vstats[9]
+    k = vstats[10]
 
     L11 = integral_lenght_x(s.u.c.x,u1p2)
     L12 = integral_lenght_y(s.u.c.x,u1p2)
@@ -98,7 +98,7 @@ function stats(s::AbstractSimulation)
 
     otherstats = stats.(getfield.(Ref(s),sim_fields),Ref(s))
 
-    tdiss = vstats[12]
+    tdiss = vstats[13]
 
     hashyperviscosity(s) && (tdiss += otherstats[5][3])
     hasles(s) && (tdiss += otherstats[3][4])
@@ -158,6 +158,7 @@ end
     kh = (u12+u22)/2
     kv = u32/2
     k = (kh+kv)
+    kaniso = 2*kv/kh
 
 #    d1d1 = dx_squared_mean(s.reduction, s.u.c.x)
 #    d1d2 = dy_squared_mean(s.reduction, s.u.c.x)
@@ -179,7 +180,7 @@ end
     #pressh, pressv = pressure_stats(s.reductionh,s.reductionv,s)
     pressh, pressv = s.pressstats[]
 
-    return u1, u2, u3, u12, u22, u32, kh, kv, k, εh, εv, ε, nlh, nlv, pressh, pressv, -(nlh+pressh),(nlv+pressv)
+    return u1, u2, u3, u12, u22, u32, kh, kv, kaniso, k, εh, εv, ε, nlh, nlv, pressh, pressv, -(nlh+pressh),(nlv+pressv)
 end
 
 @par function scalar_stats(ρ,s1,s::@par(AbstractSimulation))
