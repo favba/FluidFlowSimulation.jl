@@ -28,6 +28,40 @@
 
         writedlm("buoyancy_v.specH.$i",zip(KH,outH))
         writedlm("buoyancy_v.specV.$i",zip(KRZ,outV))
+
+        outH .= (-).(outH ./ gravity(s.densitystratification).z) .* meangradient(s.densitystratification)
+        outV .= (-).(outV ./ gravity(s.densitystratification).z) .* meangradient(s.densitystratification)
+
+        writedlm("rhosource.specH.$i",zip(KH,outH))
+        writedlm("rhosource.specV.$i",zip(KRZ,outV))
+        
+        spectrum_rho(hout,s.densitystratification.ρ)
+        write("rho.spec3D.$i",hout)
+    
+        calculate_specHV(outH,outV,hout)
+    
+        writedlm("rho.specH.$i",zip(KH,outH))
+        writedlm("rho.specV.$i",zip(KRZ,outV))
+
+        spectrum_rhodiss(hout,hout,s)
+
+        write("rhodiss.spec3D.$i",hout)
+    
+        calculate_specHV(outH,outV,hout)
+    
+        writedlm("rhodiss.specH.$i",zip(KH,outH))
+        writedlm("rhodiss.specV.$i",zip(KRZ,outV))
+
+        spectrum_rhonl(hout,s.densitystratification.ρ,s.densitystratification.flux)
+        write("rhonl.spec3D.$i",hout)
+    
+        calculate_specHV(outH,outV,hout)
+    
+        writedlm("rhonl.specH.$i",zip(KH,outH))
+        writedlm("rhonl.specV.$i",zip(KRZ,outV))
+
+
+ 
     end
 
     if hasles(A)
@@ -133,6 +167,18 @@ function spectrum_les(hout,vout,u,τ)
     end
 end
 
+function spectrum_rhonl(hout,rho,flux)
+    @mthreads for k in ZRANGE
+        @inbounds for j in YRANGE
+            @simd for i in XRANGE
+                kh = K[i,j,k]
+                out = proj((im*kh)⋅flux[i,j,k],rho[i,j,k])
+                hout[i,j,k] = out
+            end
+        end
+    end
+end
+
 function spectrum_buoyancy(out,u,ρ,g)
     @mthreads for k in ZRANGE
         @inbounds for j in YRANGE
@@ -208,6 +254,19 @@ function spectrum_u(hout,vout,u::VectorField{T}) where {T}
     end
 end
 
+function spectrum_rho(hout,rho::ScalarField{T}) where {T}
+    @mthreads for l in ZRANGE
+        @inbounds begin
+            for j in YRANGE
+                @simd for i in XRANGE
+                    out = proj(rho[i,j,l], rho[i,j,l])
+                    hout[i,j,l] = out
+                end
+            end
+        end
+    end
+end
+
 function spectrum_viscosity(hout,vout,hin,vin,s) where {T}
     @mthreads for l in ZRANGE
         mν = -ν
@@ -219,6 +278,22 @@ function spectrum_viscosity(hout,vout,hin,vin,s) where {T}
                     k2 = muladd(KX[i], KX[i], kyz2)
                     hout[i,j,l] = 2*mν*k2*hin[i,j,l]
                     vout[i,j,l] = 2*mν*k2*vin[i,j,l]
+                end
+            end
+        end
+    end
+end
+
+function spectrum_rhodiss(hout,hin,s) where {T}
+    @mthreads for l in ZRANGE
+        mν = -diffusivity(s.densitystratification)
+        @inbounds begin
+            kz2 = KZ[l]*KZ[l]
+            for j in YRANGE
+                kyz2 = muladd(KY[j], KY[j], kz2)
+                @simd for i in XRANGE
+                    k2 = muladd(KX[i], KX[i], kyz2)
+                    hout[i,j,l] = mν*k2*hin[i,j,l]
                 end
             end
         end
