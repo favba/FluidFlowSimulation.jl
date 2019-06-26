@@ -217,8 +217,8 @@ function spectrum_viscosity(hout,vout,hin,vin,s) where {T}
                 kyz2 = muladd(KY[j], KY[j], kz2)
                 @simd for i in XRANGE
                     k2 = muladd(KX[i], KX[i], kyz2)
-                    hout[i,j,l] = mν*k2*hin[i,j,l]
-                    vout[i,j,l] = mν*k2*vin[i,j,l]
+                    hout[i,j,l] = 2*mν*k2*hin[i,j,l]
+                    vout[i,j,l] = 2*mν*k2*vin[i,j,l]
                 end
             end
         end
