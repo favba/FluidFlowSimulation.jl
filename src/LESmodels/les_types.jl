@@ -109,6 +109,8 @@ msg(a::VremanLESModel) = "\nLES model: Vreman\nConstant: $(a.c)\nFilter Width: $
 
 include("VremanLESModel.jl")
 
+include("silvismodel.jl")
+
 # Vreman Model Start ======================================================
 
 struct ProductionViscosityLESModel{T} <: EddyViscosityModel
@@ -364,6 +366,11 @@ function les_types(d,nx,ny,nz,lx,ly,lz)
             c = haskey(d,:vremanConstant) ? Float64(eval(Meta.parse(d[:vremanConstant]))) : 2*(0.17)^2
             Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
             lestype = VremanLESModel(c,Δ,(nx,ny,nz))
+        elseif d[:lesModel] == "Silvis"
+            c = haskey(d,:silvisConstant) ? Float64(eval(Meta.parse(d[:silvisConstant]))) : sqrt(0.17)
+            cp = haskey(d,:silvisPConstant) ? Float64(eval(Meta.parse(d[:silvisPConstant]))) : 5.0
+            Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
+            lestype = SilvisModel(c,cp,Δ,(nx,ny,nz))
         elseif d[:lesModel] == "productionViscosity"
             c = haskey(d,:productionConstant) ? Float64(eval(Meta.parse(d[:productionConstant]))) : 0.4
             Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr

@@ -58,6 +58,11 @@ end
         β = s.lesmodel.cb*Δ²
     end
 
+    if is_Silvis(A)
+        c = s.lesmodel.c
+        cp = s.lesmodel.cp
+    end
+
     @inbounds @msimd for i in REAL_RANGES[j]
         w = rhs[i]
         S = τ[i]
@@ -74,6 +79,11 @@ end
         elseif is_production_model(A)
             νt = production_eddy_viscosity(S,AntiSymTen(-0.5w),c,Δ²)
             t = 2*νt*S
+        elseif is_Silvis(A)
+            fv = fvs(S,w)
+            νt = Silvis_eddy_viscosity(S,fv,c,Δ²)
+            νp = Silvis_P_coeff(cp,fv,Δ²)
+            t = 2*νt*S + νp*Lie(S,AntiSymTen(0.5*w))
         end
 
         if is_SandP(A)
