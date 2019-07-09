@@ -63,6 +63,10 @@ end
         cp = s.lesmodel.cp
     end
 
+    if is_stable_nl_model(A)
+        c = s.lesmodel.c
+    end
+
     @inbounds @msimd for i in REAL_RANGES[j]
         w = rhs[i]
         S = τ[i]
@@ -84,6 +88,11 @@ end
             νt = Silvis_eddy_viscosity(S,fv,c,Δ²)
             νp = Silvis_P_coeff(cp,fv,Δ²)
             t = 2*νt*S + νp*Lie(S,AntiSymTen(0.5*w))
+        elseif is_stable_nl_model(A)
+            W = AntiSymTen(-0.5w)
+            T = square(W) - Lie(S,W) - square(S)
+            νt, mnut = stable_nl_eddy_viscosity(S,AntiSymTen(-0.5w),c,Δ²)
+            t = c*Δ²*T + 2*mnut*S
         end
 
         if is_SandP(A)

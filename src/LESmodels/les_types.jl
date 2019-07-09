@@ -136,6 +136,8 @@ msg(a::ProductionViscosityLESModel) = "\nLES model: Production Viscosity\nConsta
 
 include("ProductionViscosityLESModel.jl")
 
+include("stablenonlinearmodel.jl")
+
 # Smagorinsky+P Model Start ======================================================
 
 struct SandP{T<:Real,Smodel<:EddyViscosityModel} <: AbstractLESModel
@@ -375,6 +377,10 @@ function les_types(d,nx,ny,nz,lx,ly,lz)
             c = haskey(d,:productionConstant) ? Float64(eval(Meta.parse(d[:productionConstant]))) : 0.4
             Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
             lestype = ProductionViscosityLESModel(c,Δ,(nx,ny,nz))
+        elseif d[:lesModel] == "stableNonLinear"
+            c = haskey(d,:nlConstant) ? Float64(eval(Meta.parse(d[:nlConstant]))) : 0.1
+            Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
+            lestype = StableNonLinearLESModel(c,Δ,(nx,ny,nz))
         elseif d[:lesModel] == "dynamicSmagorinsky"
             Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
             tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ
