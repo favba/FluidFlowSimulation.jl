@@ -447,6 +447,7 @@ end
 
     u = s.u.c
     rhsv = s.rhs.c
+    ke = s.kspec.c
 
     if hasles(A)
         τ = s.lesmodel.tau.c
@@ -463,7 +464,7 @@ end
             kh = K[i,j,k]
             K2 = kh⋅kh
             v = u[i,j,k]
-            rhs = rhsv[i,j,k]
+            rhs = rhsv[i,j,k] - (im*ke[i,j,k])*kh
 
             if hasles(A)
                 if !(!is_SandP(A) && is_FakeSmagorinsky(A))
@@ -493,7 +494,7 @@ end
     return nothing
 end
 
-function non_linear_stats(hout,vout,u,nl)
+function non_linear_stats(hout,vout,u,nl,ke)
     fill!(hout,0.0)
     fill!(vout,0.0)
     @mthreads for k in ZRANGE
@@ -502,7 +503,8 @@ function non_linear_stats(hout,vout,u,nl)
         ii = Threads.threadid()
         @inbounds for j in YRANGE
             @simd for i in XRANGE
-                out = vecouterproj(nl[i,j,k],u[i,j,k])
+                ∇ = im*K[i,j,k]
+                out = vecouterproj(nl[i,j,k] - ∇*ke[i,j,k],u[i,j,k])
                 eeh += (1 + (i>1))*(out.x + out.y)
                 eev += (1 + (i>1))*out.z
             end

@@ -66,12 +66,14 @@ struct @par(Simulation) <: @par(AbstractSimulation)
     specH::Array{Float64,1}
     tspecH::Array{Float64,1}
     specV::Array{Float64,1}
+    kspec::ScalarField{Float64,3,2,false}
     nlstats::Base.RefValue{Tuple{Float64,Float64}}
     pressstats::Base.RefValue{Tuple{Float64,Float64}}
   
     @par function @par(Simulation)(u::VectorField,equation,timestep,passivescalar,densitystratification,lesmodel,forcing,hv,iteration,time,dtout,dtstats,dtspecs) 
 
         rhs = similar(u)
+        kspec = ScalarField{Float64}(size(u.r),(LX,LY,LZ))
   
         reductionh = zeros(THR ? Threads.nthreads() : 1)
         reductionv = zeros(THR ? Threads.nthreads() : 1)
@@ -87,7 +89,7 @@ struct @par(Simulation) <: @par(AbstractSimulation)
         nlstats = Ref((1.0,1.0))
         pressstats = Ref((1.0,1.0))
 
-        return @par(new)(u,rhs,reductionh,reductionv,xspec,yspec,equation,timestep,passivescalar,densitystratification,lesmodel,forcing,hv,iteration,time,dtout,dtstats,dtspecs,hspec,vspec,specH,tspecH,specV,nlstats,pressstats)
+        return @par(new)(u,rhs,reductionh,reductionv,xspec,yspec,equation,timestep,passivescalar,densitystratification,lesmodel,forcing,hv,iteration,time,dtout,dtstats,dtspecs,hspec,vspec,specH,tspecH,specV,kspec,nlstats,pressstats)
     end
 
 end

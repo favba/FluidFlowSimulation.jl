@@ -36,7 +36,7 @@ end
 
     is_spec_time(s) && write_spec(s)
     if is_stats_time(s)
-        s.nlstats[] = non_linear_stats(s.reductionh,s.reductionv,s.u,s.rhs)
+        s.nlstats[] = non_linear_stats(s.reductionh,s.reductionv,s.u,s.rhs,s.kspec)
         s.pressstats[] = pressure_stats(s.reductionh,s.reductionv,s)
     end
 
@@ -120,6 +120,12 @@ end
     if !is_vorticityEquation(A)
         setreal!(s.equation.uu)
     end
+
+    if is_spec_time(s) || is_stats_time(s)
+        setreal!(s.kspec)
+        calc_k!(s.kspec.rr,s.u.rr)
+        myfourier!(s.kspec)
+    end
   
     haspassivescalar(A) && real!(s.passivescalar.φ)
     hasdensity(A) && real!(s.densitystratification.ρ)
@@ -201,6 +207,17 @@ end
     return nothing
 end
 
+function calc_k!(k,u)
+    @mthreads for j in TRANGE
+        calc_k!(k,u,j)
+    end
+end
+
+@inline function calc_k!(k,u,j)
+    @inbounds for i in REAL_RANGES[j]
+        k[i] = 0.5*(u[i]⋅u[i])
+    end
+end
 
 @par function realspacecalculation!(s::A) where {A<:@par(AbstractSimulation)}
     #@assert !(hasdensity(A) & haspassivescalar(A))

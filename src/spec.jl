@@ -14,7 +14,7 @@
     spectrum_viscosity(hout,vout,hout,vout,s)
     writespectrum("vis",i,hout,vout,outH,outV,tspecH)
 
-    spectrum_non_linear(hout,vout,s.u,s.rhs)
+    spectrum_non_linear(hout,vout,s.u,s.rhs,s.kspec)
     writespectrum("nl",i,hout,vout,outH,outV,tspecH)
 
     spectrum_pressure(hout,vout,s)
@@ -142,11 +142,12 @@ vecouterproj(a,b) = Vec(proj(a.x,b.x),
                         proj(a.y,b.y),
                         proj(a.z,b.z))
 
-function spectrum_non_linear(hout,vout,u,nl)
+function spectrum_non_linear(hout,vout,u,nl,ke)
     @mthreads for k in ZRANGE
         @inbounds for j in YRANGE
             @simd for i in XRANGE
-                out = vecouterproj(nl[i,j,k],u[i,j,k])
+                ∇ = im*K[i,j,k]
+                out = vecouterproj(nl[i,j,k] - ∇*ke[i,j,k],u[i,j,k])
                 hout[i,j,k] = out.x + out.y
                 vout[i,j,k] = out.z
             end
@@ -309,6 +310,7 @@ end
 @par function spectrum_pressure(k::Int,hout,vout,s::A) where {A<:@par(Simulation)}
     u = s.u.c
     rhsv = s.rhs.c
+    ke = s.kspec
 
     if hasles(A)
         τ = s.lesmodel.tau.c
@@ -325,7 +327,7 @@ end
             kh = K[i,j,k]
             K2 = kh⋅kh
             v = u[i,j,k]
-            rhs = rhsv[i,j,k]
+            rhs = rhsv[i,j,k] - (im*ke[i,j,k])*kh
 
             if hasles(A)
                 if !(!is_SandP(A) && is_FakeSmagorinsky(A))
