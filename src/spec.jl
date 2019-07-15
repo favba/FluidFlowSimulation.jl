@@ -194,7 +194,7 @@ function spectrum_forcing(out,ux,uy,fx,fy,dt)
     @mthreads for k in ZRANGE
         @inbounds for j in YRANGE
             @simd for i in XRANGE
-                out[i,j,k] = 0.5*(proj(ux[i,j,k],fx[i,j,k]) + proj(uy[i,j,k],fy[i,j,k]))/dt
+                out[i,j,k] = (proj(ux[i,j,k],fx[i,j,k]) + proj(uy[i,j,k],fy[i,j,k]))/dt
             end
         end
     end
