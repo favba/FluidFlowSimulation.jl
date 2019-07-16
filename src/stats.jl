@@ -191,7 +191,7 @@ end
     drd2 = dy_squared_mean(s1.reduction, ρ)
     drd3 = dz_squared_mean(s1.reduction, ρ)
 
-    rhodiss = diffusivity(s1)*(drd1^2 + drd2^2 + drd3^2)
+    rhodiss = diffusivity(s1)*(drd1 + drd2 + drd3)
 
     return rho, rho2, drd1, drd2, drd3, rhodiss
 end

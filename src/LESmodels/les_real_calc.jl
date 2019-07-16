@@ -90,8 +90,8 @@ end
             t = 2*νt*S + νp*Lie(S,AntiSymTen(0.5*w))
         elseif is_stable_nl_model(A)
             W = AntiSymTen(-0.5w)
-            T = square(W) - Lie(S,W) - square(S)
-            νt, mnut = stable_nl_eddy_viscosity(S,AntiSymTen(-0.5w),c,Δ²)
+            T = traceless(square(W) - Lie(S,W) - square(S))
+            νt, mnut = stable_nl_eddy_viscosity(S,W,c,Δ²)
             t = c*Δ²*T + 2*mnut*S
         end
 
