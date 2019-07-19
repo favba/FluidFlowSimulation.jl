@@ -299,8 +299,8 @@ function PiomelliSandP(s::S) where S<:DynamicEddyViscosityModel
     w = VectorField((NRX,NY,NZ),(LX,LY,LZ))
     cp = ScalarField((NRX,NY,NZ),(LX,LY,LZ))
     cpm1 = ScalarField((NRX,NY,NZ),(LX,LY,LZ))
-    fill!(cp.rr,0.1)
-    fill!(cpm1.rr,0.1)
+    fill!(cp.rr,0.093)
+    fill!(cpm1.rr,0.093)
     dtpm1 = Ref(0.0)
     return PiomelliSandP{Float64,S}(P,w,cp,cpm1,dtpm1,s)
 end
@@ -394,7 +394,7 @@ function les_types(d,nx,ny,nz,lx,ly,lz)
             Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
             lestype = FakeSmagorinsky(Δ,(nx,ny,nz))
         elseif d[:lesModel] == "SandP"
-            cb = haskey(d,:pConstant) ? Float64(eval(Meta.parse(d[:pConstant]))) : 0.1
+            cb = haskey(d,:pConstant) ? Float64(eval(Meta.parse(d[:pConstant]))) : 0.093
             Slestype = if d[:sLesModel] == "Smagorinsky"
                 c = haskey(d,:smagorinskyConstant) ? Float64(eval(Meta.parse(d[:smagorinskyConstant]))) : 0.17 
                 Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)/Globals.cutoffr
