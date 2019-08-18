@@ -150,7 +150,7 @@ end
     La = s.lesmodel.L.rr
     Ma = s.lesmodel.M.rr
     Sa = s.lesmodel.S.rr
-    Δ̂² = s.lesmodel.Δ̂²
+    Δ̂² = s.lesmodel.Δ̂² + Δ²
     #cmin = s.lesmodel.cmin
 
     if is_dynP_les(A)
