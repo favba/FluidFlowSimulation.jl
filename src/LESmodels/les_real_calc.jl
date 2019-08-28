@@ -42,7 +42,7 @@ end
         Ma = s.lesmodel.M.rr
         Sa = s.lesmodel.S.rr
         Δ̂² = s.lesmodel.Δ̂²
-        #cmin = s.lesmodel.cmin
+        cmin = s.lesmodel.cmin
     elseif is_Smagorinsky(A) || is_Vreman(A) || is_production_model(A)
         c = s.lesmodel.c
         α = c*c*Δ²
@@ -72,7 +72,7 @@ end
         S = τ[i]
 
         if is_dynamic_les(A)
-            νt = max(0.0,ca[i])*Δ²*norm(S)
+            νt = max(cmin,ca[i])*Δ²*norm(S)
             t = 2*νt*S
         elseif is_Smagorinsky(A)
             νt = α*norm(S)

@@ -247,6 +247,7 @@ struct PiomelliSmagorinsky{T<:Real} <: DynamicEddyViscosityModel
     Δ̂²::T
     c::ScalarField{T,3,2,false}
     cm1::ScalarField{T,3,2,false}
+    cmin::T
     dtm1::Base.RefValue{T}
     L::SymTenField{T,3,2,false}
     M::SymTrTenField{T,3,2,false}
@@ -257,7 +258,7 @@ struct PiomelliSmagorinsky{T<:Real} <: DynamicEddyViscosityModel
     avg::Bool
 end
 
-function PiomelliSmagorinsky(Δ::T, d2::T, dim::NTuple{3,Integer},avg::Bool=false) where {T<:Real}
+function PiomelliSmagorinsky(Δ::T, d2::T, dim::NTuple{3,Integer},cmin::T=0,avg::Bool=false) where {T<:Real}
     c = ScalarField{T}(dim,(LX,LY,LZ))
     cm1 = ScalarField{T}(dim,(LX,LY,LZ))
     fill!(c.rr,0.0)
@@ -270,10 +271,10 @@ function PiomelliSmagorinsky(Δ::T, d2::T, dim::NTuple{3,Integer},avg::Bool=fals
     u = VectorField{T}(dim,(LX,LY,LZ))
     #fill!(data,0)
     reduction = zeros(THR ? Threads.nthreads() : 1)
-    return PiomelliSmagorinsky{T}(Δ^2, d2^2, c, cm1, dtm1, L, M, tau, S, u, reduction,avg)
+    return PiomelliSmagorinsky{T}(Δ^2, d2^2, c, cm1, cmin, dtm1, L, M, tau, S, u, reduction,avg)
 end
 
-PiomelliSmagorinsky(Δ::T, dim::NTuple{3,Integer},b::Bool=false) where {T<:Real} = PiomelliSmagorinsky(Δ, 2Δ, dim,b)
+PiomelliSmagorinsky(Δ::T, dim::NTuple{3,Integer},cmin::T=0,b::Bool=false) where {T<:Real} = PiomelliSmagorinsky(Δ, 2Δ, dim,cmin,b)
 
 is_dynamic_les(a::Union{<:PiomelliSmagorinsky,<:Type{<:PiomelliSmagorinsky}}) = true
 
@@ -282,7 +283,7 @@ is_piomelliSmag_les(a::Union{<:PiomelliSmagorinsky,<:Type{<:PiomelliSmagorinsky}
 @inline is_piomelliSmag_les(s::T) where {T<:AbstractSimulation} = is_piomelliSmag_les(T)
 @inline is_piomelliSmag_les(a) = false
 
-msg(a::PiomelliSmagorinsky) = "\nLES model: Piomelli Smagorinsky\nFilter Width: $(sqrt(a.Δ²))\nTest Filter Width: $(sqrt(a.Δ̂²))\nAvg coefficient? $(a.avg)"
+msg(a::PiomelliSmagorinsky) = "\nLES model: Piomelli Smagorinsky\nFilter Width: $(sqrt(a.Δ²))\nTest Filter Width: $(sqrt(a.Δ̂²))\nMinimum coefficient permitted: $(a.cmin)\nAvg coefficient? $(a.avg)"
 
 
 struct PiomelliSandP{T<:Real,Smodel<:DynamicEddyViscosityModel} <: AbstractLESModel
@@ -389,7 +390,8 @@ function les_types(d,nx,ny,nz,lx,ly,lz)
         elseif d[:lesModel] == "piomelliSmagorinsky"
             Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
             tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ
-            lestype = PiomelliSmagorinsky(Δ,tΔ,(nx,ny,nz))
+            backscatter = haskey(d,:cmin) ? parse(Float64,d[:cmin]) : 0.0
+            lestype = PiomelliSmagorinsky(Δ,tΔ,(nx,ny,nz),backscatter)
         elseif d[:lesModel] == "fakeSmagorinsky"
             Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
             lestype = FakeSmagorinsky(Δ,(nx,ny,nz))
@@ -415,7 +417,8 @@ function les_types(d,nx,ny,nz,lx,ly,lz)
             elseif d[:sLesModel] == "piomelliSmagorinsky"
                 Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
                 tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ
-                PiomelliSmagorinsky(Δ,tΔ,(nx,ny,nz))
+                backscatter = haskey(d,:cmin) ? parse(Float64,d[:cmin]) : 0.0
+                PiomelliSmagorinsky(Δ,tΔ,(nx,ny,nz),backscatter)
             elseif d[:sLesModel] == "fakeSmagorinsky"
                 Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
                 FakeSmagorinsky(Δ,(nx,ny,nz))
@@ -430,7 +433,8 @@ function les_types(d,nx,ny,nz,lx,ly,lz)
             elseif d[:sLesModel] == "piomelliSmagorinsky"
                 Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
                 tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ
-                PiomelliSmagorinsky(Δ,tΔ,(nx,ny,nz))
+                backscatter = haskey(d,:cmin) ? parse(Float64,d[:cmin]) : 0.0
+                PiomelliSmagorinsky(Δ,tΔ,(nx,ny,nz),backscatter)
             end
             lestype = DynSandP(Slestype)
         elseif d[:lesModel] == "piomelliSandP"
@@ -442,7 +446,8 @@ function les_types(d,nx,ny,nz,lx,ly,lz)
             elseif d[:sLesModel] == "piomelliSmagorinsky"
                 Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
                 tΔ = haskey(d,:TestFilterWidth) ? Float64(eval(Meta.parse(d[:TestFilterWidth]))) : 2*Δ
-                PiomelliSmagorinsky(Δ,tΔ,(nx,ny,nz))
+                backscatter = haskey(d,:cmin) ? parse(Float64,d[:cmin]) : 0.0
+                PiomelliSmagorinsky(Δ,tΔ,(nx,ny,nz),backscatter)
             end
             lestype = PiomelliSandP(Slestype)
         end
