@@ -4,7 +4,7 @@ module Globals
 using GlobalFileHelper, FluidTensors, FluidFields, StaticArrays
 
 export LX,LY,LZ,NX,NY,NZ,NRRX,NRX,ν,DEALIAS_TYPE,KX,KY,KZ,THR,NT,TRANGE,REAL_RANGES,DEALIAS,K,RXRANGE,XRANGE,YRANGE,ZRANGE,RANGEC, COMPLEX_RANGES
-export RYRANGE, RZRANGE, XRANGE2X, KH, MAXDKH, KRZ, DKZ
+export RYRANGE, RZRANGE, XRANGE2X, KH, MAXDKH, KRZ, DKZ, SPEC_FIL_D2
 
 include("CatVec.jl")
 
@@ -167,5 +167,12 @@ end
 
     const global ZRANGE = CatVec(StaticArrays.SOneTo(findfirst(view(DEALIAS,1,1,:))-1), 
                                  StaticArrays.SUnitRange(NZ-findfirst(view(DEALIAS,1,1,:)) ,NZ))
+
+    const global SPEC_FIL_D2 = if haskey(d,:specFil)
+        nf = parse(Float64,d[:specFil])
+        (2π*LX*nf/NX)^2
+    else
+        0.0
+    end
  
 end

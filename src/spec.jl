@@ -11,18 +11,38 @@
     spectrum_u(hout,vout,s.u)
     writespectrum("u",i,hout,vout,outH,outV,tspecH)
 
+    if (SPEC_FIL_D2 != 0.0)
+      filter_spectrum!(hout,vout)
+      writespectrum("u_fil",i,hout,vout,outH,outV,tspecH)
+    end
+
     spectrum_viscosity(hout,vout,hout,vout,s)
     writespectrum("vis",i,hout,vout,outH,outV,tspecH)
+
+    if (SPEC_FIL_D2 != 0.0)
+      filter_spectrum!(hout,vout)
+      writespectrum("vis_fil",i,hout,vout,outH,outV,tspecH)
+    end
 
     spectrum_non_linear(hout,vout,s.u,s.rhs,s.kspec)
     writespectrum("nl",i,hout,vout,outH,outV,tspecH)
 
+    if (SPEC_FIL_D2 != 0.0)
+      filter_spectrum!(hout,vout)
+      writespectrum("nl_fil",i,hout,vout,outH,outV,tspecH)
+    end
+
     spectrum_pressure(hout,vout,s)
     writespectrum("press",i,hout,vout,outH,outV,tspecH)
 
+    if (SPEC_FIL_D2 != 0.0)
+      filter_spectrum!(hout,vout)
+      writespectrum("press_fil",i,hout,vout,outH,outV,tspecH)
+    end
+
     if hasdensity(A)
         spectrum_buoyancy(vout,s.u,s.densitystratification.ρ,gravity(s))
-        write("buoyancy_v.spec3D.$i",vout)
+        #write("buoyancy_v.spec3D.$i",vout)
 
         calculate_specHV(outH,outV,vout)
 
@@ -36,7 +56,7 @@
         writedlm("rhosource.specV.$i",zip(KRZ,outV))
         
         spectrum_rho(hout,s.densitystratification.ρ)
-        write("rho.spec3D.$i",hout)
+        #write("rho.spec3D.$i",hout)
     
         calculate_specHV(outH,outV,hout)
     
@@ -45,7 +65,7 @@
 
         spectrum_rhodiss(hout,hout,s)
 
-        write("rhodiss.spec3D.$i",hout)
+        #write("rhodiss.spec3D.$i",hout)
     
         calculate_specHV(outH,outV,hout)
     
@@ -53,15 +73,56 @@
         writedlm("rhodiss.specV.$i",zip(KRZ,outV))
 
         spectrum_rhonl(hout,s.densitystratification.ρ,s.densitystratification.flux)
-        write("rhonl.spec3D.$i",hout)
+        #write("rhonl.spec3D.$i",hout)
     
         calculate_specHV(outH,outV,hout)
     
         writedlm("rhonl.specH.$i",zip(KH,outH))
         writedlm("rhonl.specV.$i",zip(KRZ,outV))
-
-
- 
+        if (SPEC_FIL_D2 != 0.0)
+            spectrum_buoyancy(vout,s.u,s.densitystratification.ρ,gravity(s))
+            filter_spectrum!(hout,vout)
+            #write("buoyancy_v.spec3D.$i",vout)
+    
+            calculate_specHV(outH,outV,vout)
+    
+            writedlm("buoyancy_fil_v.specH.$i",zip(KH,outH))
+            writedlm("buoyancy_fil_v.specV.$i",zip(KRZ,outV))
+    
+            outH .= (-).(outH ./ gravity(s.densitystratification).z) .* meangradient(s.densitystratification)
+            outV .= (-).(outV ./ gravity(s.densitystratification).z) .* meangradient(s.densitystratification)
+    
+            writedlm("rhosource_fil.specH.$i",zip(KH,outH))
+            writedlm("rhosource_fil.specV.$i",zip(KRZ,outV))
+            
+            spectrum_rho(hout,s.densitystratification.ρ)
+            filter_spectrum!(hout,vout)
+            #write("rho.spec3D.$i",hout)
+        
+            calculate_specHV(outH,outV,hout)
+        
+            writedlm("rho_fil.specH.$i",zip(KH,outH))
+            writedlm("rho_fil.specV.$i",zip(KRZ,outV))
+    
+            spectrum_rhodiss(hout,hout,s)
+            filter_spectrum!(hout,vout)
+    
+            #write("rhodiss.spec3D.$i",hout)
+        
+            calculate_specHV(outH,outV,hout)
+        
+            writedlm("rhodiss_fil.specH.$i",zip(KH,outH))
+            writedlm("rhodiss_fil.specV.$i",zip(KRZ,outV))
+    
+            spectrum_rhonl(hout,s.densitystratification.ρ,s.densitystratification.flux)
+            filter_spectrum!(hout,vout)
+            #write("rhonl.spec3D.$i",hout)
+        
+            calculate_specHV(outH,outV,hout)
+        
+            writedlm("rhonl_fil.specH.$i",zip(KH,outH))
+            writedlm("rhonl_fil.specV.$i",zip(KRZ,outV))
+        end
     end
 
     if hasles(A)
@@ -76,6 +137,11 @@
             spectrum_hyperviscosity(hout,vout,s.u,s)
         end
         writespectrum("hvis",i,hout,vout,outH,outV,tspecH)
+
+        if (SPEC_FIL_D2 != 0.0)
+          filter_spectrum!(hout,vout)
+          writespectrum("hvis_fil",i,hout,vout,outH,outV,tspecH)
+        end
     end
 
 end
@@ -94,7 +160,7 @@ end
     uy = s.u.c.y
     dt = get_dt(s)
     spectrum_forcing(hout,ux,uy,fx,fy,dt)
-    write("forcing_h.spec3D.$i",hout)
+    #write("forcing_h.spec3D.$i",hout)
 
     calculate_specHV(outH,outV,hout)
 
@@ -106,8 +172,8 @@ end
 
 
 function writespectrum(n::String,i::Integer,hout,vout,specH,specV,tspecH)
-    write("$(n)_h.spec3D.$i",hout)
-    write("$(n)_v.spec3D.$i",vout)
+    #write("$(n)_h.spec3D.$i",hout)
+    #write("$(n)_v.spec3D.$i",vout)
 
     calculate_specHV(specH,specV,hout)
 
@@ -375,6 +441,24 @@ function calculate_specHV(h,v,out)
                 h[nj] += 0.5*ee*MAXDKH
                 v[nk] += ee*DKZ
  
+            end
+        end
+    end
+end
+
+function filter_spectrum!(hout,vout)
+    @mthreads for l in ZRANGE
+        KZ2 = KZ[l]^2
+        @inbounds begin
+            for j in YRANGE
+                KY2 = KZ2 + KY[j]^2
+                @simd for i in XRANGE
+                    K2 = muladd(KX[i],KX[i],KY2)
+                    G2 = Gaussfilter(SPEC_FIL_D2,K2)
+                    G2 *=G2
+                    hout[i,j,l] = G2*hout[i,j,l]
+                    vout[i,j,l] = G2*vout[i,j,l]
+                end
             end
         end
     end
