@@ -4,7 +4,7 @@ module Globals
 using GlobalFileHelper, FluidTensors, FluidFields, StaticArrays
 
 export LX,LY,LZ,NX,NY,NZ,NRRX,NRX,ν,DEALIAS_TYPE,KX,KY,KZ,THR,NT,TRANGE,REAL_RANGES,DEALIAS,K,RXRANGE,XRANGE,YRANGE,ZRANGE,RANGEC, COMPLEX_RANGES
-export RYRANGE, RZRANGE, XRANGE2X, KH, MAXDKH, KRZ, DKZ, SPEC_FIL_D2
+export RYRANGE, RZRANGE, XRANGE2X, KH, MAXDKH, KRZ, DKZ, SPEC_FIL_D2, SPEC_FIL_CUTOFF
 
 include("CatVec.jl")
 
@@ -174,5 +174,7 @@ end
     else
         0.0
     end
+
+    const global SPEC_FIL_CUTOFF = π*π/SPEC_FIL_D2
  
 end

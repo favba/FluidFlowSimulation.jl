@@ -451,10 +451,12 @@ function filter_spectrum!(hout,vout)
         KZ2 = KZ[l]^2
         @inbounds begin
             for j in YRANGE
-                KY2 = KZ2 + KY[j]^2
+                KY2 = KY[j]^2
+                KYZ2 = KZ2 + KY2
                 @simd for i in XRANGE
-                    K2 = muladd(KX[i],KX[i],KY2)
-                    G2 = Gaussfilter(SPEC_FIL_D2,K2)
+                    KX2 = KX[i]*KX[i]
+                    K2 = KYZ2 + KX2
+                    G2 = Gaussfilter(SPEC_FIL_D2,K2) * ((KX2 < SPEC_FIL_CUTOFF) & (KY2 < SPEC_FIL_CUTOFF) & (KZ2 < SPEC_FIL_CUTOFF))
                     G2 *=G2
                     hout[i,j,l] = G2*hout[i,j,l]
                     vout[i,j,l] = G2*vout[i,j,l]
