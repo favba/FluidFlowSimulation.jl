@@ -18,7 +18,7 @@
       filter_spectrum!(hout,vout)
       writespectrum("u_fil",i,hout,vout,outH,outV,tspecH)
 
-    spectrum_viscosity(hout,vout,hout,vout,s)
+      spectrum_viscosity(hout,vout,hout,vout,s)
       writespectrum("vis_fil",i,hout,vout,outH,outV,tspecH)
     end
 
@@ -334,7 +334,7 @@ end
 
 function spectrum_viscosity(hout,vout,hin,vin,s) where {T}
     @mthreads for l in ZRANGE
-        mν = -ν
+        mν = ν
         @inbounds begin
             kz2 = KZ[l]*KZ[l]
             for j in YRANGE
@@ -351,7 +351,7 @@ end
 
 function spectrum_rhodiss(hout,hin,s) where {T}
     @mthreads for l in ZRANGE
-        mν = -diffusivity(s.densitystratification)
+        mν = diffusivity(s.densitystratification)
         @inbounds begin
             kz2 = KZ[l]*KZ[l]
             for j in YRANGE
