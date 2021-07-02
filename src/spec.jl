@@ -11,16 +11,14 @@
     spectrum_u(hout,vout,s.u)
     writespectrum("u",i,hout,vout,outH,outV,tspecH)
 
-    if (SPEC_FIL_D2 != 0.0)
-      filter_spectrum!(hout,vout)
-      writespectrum("u_fil",i,hout,vout,outH,outV,tspecH)
-    end
-
     spectrum_viscosity(hout,vout,hout,vout,s)
     writespectrum("vis",i,hout,vout,outH,outV,tspecH)
 
     if (SPEC_FIL_D2 != 0.0)
       filter_spectrum!(hout,vout)
+      writespectrum("u_fil",i,hout,vout,outH,outV,tspecH)
+
+    spectrum_viscosity(hout,vout,hout,vout,s)
       writespectrum("vis_fil",i,hout,vout,outH,outV,tspecH)
     end
 
