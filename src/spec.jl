@@ -15,6 +15,7 @@
     writespectrum("vis",i,hout,vout,outH,outV,tspecH)
 
     if (SPEC_FIL_D2 != 0.0)
+      spectrum_u(hout,vout,s.u)
       filter_spectrum!(hout,vout)
       writespectrum("u_fil",i,hout,vout,outH,outV,tspecH)
 
