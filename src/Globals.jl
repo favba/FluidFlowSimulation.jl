@@ -170,7 +170,7 @@ end
 
     const global SPEC_FIL_D2 = if haskey(d,:specFil)
         nf = parse(Float64,d[:specFil])
-        (2π*LX*nf/NX)^2
+        (2π*LX*nf/NRX)^2
     else
         0.0
     end
