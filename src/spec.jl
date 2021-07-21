@@ -455,7 +455,7 @@ function filter_spectrum!(hout,vout)
                 @simd for i in XRANGE
                     KX2 = KX[i]*KX[i]
                     K2 = KYZ2 + KX2
-                    G2 = Gaussfilter(SPEC_FIL_D2,K2) * ((KX2 < SPEC_FIL_CUTOFF) & (KY2 < SPEC_FIL_CUTOFF) & (KZ2 < SPEC_FIL_CUTOFF))
+                    G2 = Gaussfilter(SPEC_FIL_D2,K2) * ((KX2 <= SPEC_FIL_CUTOFF) & (KY2 <= SPEC_FIL_CUTOFF) & (KZ2 <= SPEC_FIL_CUTOFF))
                     G2 *=G2
                     hout[i,j,l] = G2*hout[i,j,l]
                     vout[i,j,l] = G2*vout[i,j,l]
