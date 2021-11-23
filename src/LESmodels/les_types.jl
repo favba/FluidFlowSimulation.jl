@@ -261,8 +261,8 @@ end
 function PiomelliSmagorinsky(Δ::T, d2::T, dim::NTuple{3,Integer},cmin::T=0,avg::Bool=false) where {T<:Real}
     c = ScalarField{T}(dim,(LX,LY,LZ))
     cm1 = ScalarField{T}(dim,(LX,LY,LZ))
-    fill!(c.rr,0.0)
-    fill!(cm1.rr,0.0)
+    fill!(c.rr,0.0289)
+    fill!(cm1.rr,0.0289)
     dtm1 = Ref(zero(T))
     L = SymTenField(dim,(LX,LY,LZ))
     tau = SymTrTenField(dim,(LX,LY,LZ))
