@@ -141,7 +141,7 @@ include("stablenonlinearmodel.jl")
 # Smagorinsky+P Model Start ======================================================
 
 struct SandP{T<:Real,Smodel<:EddyViscosityModel} <: AbstractLESModel
-    cb::T # default: 0.1
+    cb::T # default: 0.0885
     Smodel::Smodel
 end
 
@@ -396,7 +396,7 @@ function les_types(d,nx,ny,nz,lx,ly,lz)
             Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
             lestype = FakeSmagorinsky(Δ,(nx,ny,nz))
         elseif d[:lesModel] == "SandP"
-            cb = haskey(d,:pConstant) ? Float64(eval(Meta.parse(d[:pConstant]))) : 0.093
+            cb = haskey(d,:pConstant) ? Float64(eval(Meta.parse(d[:pConstant]))) : 0.0885
             Slestype = if d[:sLesModel] == "Smagorinsky"
                 c = haskey(d,:smagorinskyConstant) ? Float64(eval(Meta.parse(d[:smagorinskyConstant]))) : 0.17 
                 Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)/Globals.cutoffr
