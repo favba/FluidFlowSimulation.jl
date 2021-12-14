@@ -264,10 +264,75 @@ function initialize!(f::CNRfForcing,s)
 end
 
 include("cnrforcing.jl")
+#######################################################################
+struct QfForcing{T<:AbstractFloat} <: AbstractForcing
+    alveliusP::T
+    alveliusC::T
+    alveliusKf::T
+    Kf::T
+    maxDk::T
+    avgK::Vector{T}
+    Ef::Vector{T} # Velocity Field Spectrum
+    R::Vector{T} # Solution to ODE
+    numPtsInShell2D::Vector{Int} # Factor to multiply velocity Field
+    forcex::PaddedArray{T,3,2,false} # Final force
+    forcey::PaddedArray{T,3,2,false} # Final force
+    hp::Base.RefValue{T}
+    vp::Base.RefValue{T}
+end
+
+statsheader(a::QfForcing) = "hp,vp,tp"
+
+stats(a::QfForcing,s::AbstractSimulation) = (a.hp[],a.vp[],a.hp[]+a.vp[])
+
+msg(a::QfForcing) = "\nForcing:  Qf forcing\nP: $(a.alveliusP)\nc: $(a.alveliusC)\nalveliusKf: $(a.alveliusKf)\nKf: $(a.Kf)\n"
+
+function add_forcing!(u,f::QfForcing)
+    add_Rf_forcing!(u.c.x,f.forcex)
+    add_Rf_forcing!(u.c.y,f.forcey)
+end
+
+function initialize!(f::QfForcing,s)
+    return nothing
+end
+
+@inline getKf(f::QfForcing) = f.Kf
+@inline getmaxdk(f::QfForcing) = f.maxDk
+@inline getavgk(f::QfForcing) = f.avgK
+
+function build_Qf_power_spectrum!(R,avgK,alveliusP, alveliusC,alveliusKf,kf,filter_width,lfilter)
+
+    nShells2d = length(avgK)
+    integral=0.0
+    R .= 0.0
+    @inbounds for i=2:nShells2d
+        kh = avgK[i]
+        if kh <= kf
+            term = exp(-((kh - alveliusKf)/alveliusC)^2)
+            R[i] = alveliusP*term
+            integral += term#*(kh - avgK[i-1])
+        end
+    end
+    R ./= integral
+    
+    if lfilter
+        Δ² = filter_width^2
+        @inbounds for i=2:nShells2d
+            kh = avgK[i]
+            if kh <= kf
+                G = Gaussfilter(Δ²,kh*kh)
+                R[i] *= G*G
+            end
+        end
+    end
+
+    return R
+end
+include("qfforcing.jl")
 #################################################################################################
 
 
-function forcing_model(d::AbstractDict,nx::Integer,ny::Integer,nz::Integer,ncx::Integer)
+function forcing_model(d::AbstractDict,nx::Integer,ny::Integer,nz::Integer,ncx::Integer,lx::Real)
 
     forcingtype = NoForcing()
 
@@ -359,7 +424,25 @@ function forcing_model(d::AbstractDict,nx::Integer,ny::Integer,nz::Integer,ncx::
                 calculate_Em!(Em,kh)
                 forcingtype = CNRfForcing{Float64}(TF, alphac, kf, maxdk2D, kh,Zf,Ef,Em,R,N,Nm1,factor,forcex,forcey,false,Ref(0.0),Ref(0.0))
             end
-
+        elseif d[:forcing] == "QfForcing"
+            alveliusP = parse(Float64,d[:alveliusP])
+            alveliusC = parse(Float64,d[:alveliusC])
+            alveliusKf = parse(Float64,d[:alveliusKf])
+            kf = parse(Float64,d[:kf])
+            nShells2D, maxdk2D, numPtsInShell2D, kh = compute_shells2D(KX,KY,ncx,ny)
+            Ef = zeros(nShells2D)
+            R = zeros(nShells2D)
+            if haskey(d,:lesModel)
+                lfilter = d[:lesModel] != "noLesModel" ? true : false
+                filter_width = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
+            else
+                lfilter = false
+                filter_width=0.0
+            end
+            build_Qf_power_spectrum!(R,kh,alveliusP,alveliusC,alveliusKf,kf,filter_width,lfilter)
+            forcex = PaddedArray((nx,ny,nz))
+            forcey = PaddedArray((nx,ny,nz))
+            forcingtype = QfForcing{Float64}(alveliusP,alveliusC,alveliusKf,kf, maxdk2D, kh,Ef,R,numPtsInShell2D,forcex,forcey,Ref(0.0),Ref(0.0))
         end
     end
 

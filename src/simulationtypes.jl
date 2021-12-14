@@ -350,7 +350,7 @@ function parameters(d::Dict)
 
     lestype = les_types(d,nx,ny,nz,lx,ly,lz)
 
-    forcingtype = forcing_model(d,nx,ny,nz,ncx)
+    forcingtype = forcing_model(d,nx,ny,nz,ncx,lx)
 
     s = Simulation{typeof(equation),typeof(vtimestep),
         typeof(scalartype),typeof(densitytype),typeof(lestype),typeof(forcingtype),
