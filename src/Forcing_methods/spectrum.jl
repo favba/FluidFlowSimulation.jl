@@ -14,8 +14,8 @@ function calculate_u1u2_spectrum!(Ef,u,cplane)
                 magsq = abs2(ux[i,j,cplane]) + abs2(uy[i,j,cplane])
                 ee = 0.5*conjFactX * magsq;
                 Ef[n]+=ee;
-                conjFactX=2.0;
             end
+            conjFactX=2.0;
         end
     end
 end
@@ -58,8 +58,8 @@ function calculate_u1u2_mag_spectrum!(Ef,u,cplane)
                 mag = fsqrt(abs2(ux[i,j,cplane]) + abs2(uy[i,j,cplane]))
                 ee = conjFactX * mag;
                 Ef[n]+=ee;
-                conjFactX=2.0;
             end
+            conjFactX=2.0;
         end
     end
 end

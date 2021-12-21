@@ -47,8 +47,8 @@ function (F::AForcing)(s::AbstractSimulation)
                 s2[i,j,1] = u2[i,j,1]*factor[i,j]
                 ff += (abs2(s1[i,j,1]) + abs2(s2[i,j,1]))*conjFactX
                 fv += (proj(u1[i,j,1],s1[i,j,1]) + proj(u2[i,j,1],s2[i,j,1]))*conjFactX
-                conjFactX=2.0
             end
+            conjFactX=2.0
         end
     end
     ff = ff*0.5/dt
