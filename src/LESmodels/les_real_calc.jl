@@ -72,7 +72,7 @@ end
         S = τ[i]
 
         if is_dynamic_les(A)
-            νt = max(cmin,ca[i])*Δ²*norm(S)
+            νt = max(cmin,min(0.4,ca[i]))*Δ²*norm(S)
             t = 2*νt*S
         elseif is_Smagorinsky(A)
             νt = α*norm(S)
@@ -105,7 +105,7 @@ end
         end
 
         if is_dynP_les(A)
-           t += cpa[i]*Δ²*Lie(S,AntiSymTen(0.5*w))
+           t += max(-0.8,min(0.8,cpa[i]))*Δ²*Lie(S,AntiSymTen(0.5*w))
         end
 
         if !(is_FakeSmagorinsky(A) && !is_SandP(A))

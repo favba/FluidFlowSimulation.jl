@@ -58,7 +58,7 @@ struct DynamicSmagorinsky{T<:Real} <: DynamicEddyViscosityModel
     avg::Bool
 end
 
-function DynamicSmagorinsky(Δ::T, d2::T, dim::NTuple{3,Integer}, cmin::Real=0.0,avg::Bool=false) where {T<:Real}
+function DynamicSmagorinsky(Δ::T, d2::T, dim::NTuple{3,Integer}, cmin::Real=0.0,avg::Bool=true) where {T<:Real}
     c = ScalarField{T}(dim,(LX,LY,LZ))
     L = SymTenField(dim,(LX,LY,LZ))
     tau = SymTrTenField(dim,(LX,LY,LZ))
@@ -258,7 +258,7 @@ struct PiomelliSmagorinsky{T<:Real} <: DynamicEddyViscosityModel
     avg::Bool
 end
 
-function PiomelliSmagorinsky(Δ::T, d2::T, dim::NTuple{3,Integer},cmin::T=0,avg::Bool=false) where {T<:Real}
+function PiomelliSmagorinsky(Δ::T, d2::T, dim::NTuple{3,Integer},cmin::T=0,avg::Bool=true) where {T<:Real}
     c = ScalarField{T}(dim,(LX,LY,LZ))
     cm1 = ScalarField{T}(dim,(LX,LY,LZ))
     fill!(c.rr,0.0289)
