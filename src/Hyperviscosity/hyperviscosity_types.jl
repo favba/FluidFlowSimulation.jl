@@ -52,14 +52,16 @@ function spectral_barrier_stats(reductionh,reductionv,u::VectorField{T},hv::Spec
     isrealspace(u) && fourier!(u)
     resulth = fill!(reductionh,zero(T))
     resultv = fill!(reductionv,zero(T))
-    @mthreads for l in ZRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        l = ZRANGE[kk]
+        j = YRANGE[jj]
         @inbounds begin
             f = hv.func
             eeh = zero(T)
             eev = zero(T)
             ii = Threads.threadid()
             kz2 = KZ[l]*KZ[l]
-            for j in YRANGE
                 kyz2 = muladd(KY[j], KY[j], kz2)
                 for i in XRANGE
                     k2 = muladd(KX[i], KX[i], kyz2)
@@ -70,7 +72,6 @@ function spectral_barrier_stats(reductionh,reductionv,u::VectorField{T},hv::Spec
                     eeh += (1 + (i>1)) * fk*(proj(uh.x,uh.x) + proj(uh.y,uh.y)) 
                     eev += (1 + (i>1)) * fk*proj(uh.z,uh.z) 
                 end
-            end
             resulth[ii] += eeh
             resultv[ii] += eev
         end

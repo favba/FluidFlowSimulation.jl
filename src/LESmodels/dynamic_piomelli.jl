@@ -12,14 +12,13 @@ end
 
 function average_c!(c,Δ2)
     fullfourier!(c)
-
-    @mthreads for k in Base.OneTo(NZ)
-        @inbounds for j in Base.OneTo(NY)
-            @msimd for i in Base.OneTo(NX)
+    ind = CartesianIndices((Base.OneTo(NY),Base.OneTo(NZ)))
+    @mthreads for jk in ind
+        j,k = Tuple(jk)
+            @inbounds @msimd for i in Base.OneTo(NX)
                 G = Gaussfilter(Δ2,i,j,k)
                 c[i,j,k] *= G
             end
-        end
     end
 
     real!(c)

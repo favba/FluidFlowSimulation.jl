@@ -13,12 +13,13 @@ set_dt!(t::Euller{true},dt::Real) = setindex!(t.dt,dt)
 
 @par function (f::Euller)(ρ::AbstractArray{<:Real,3},rhs::AbstractArray{<:Real,3},s::@par(AbstractSimulation))
     dt = get_dt(f)
-    @mthreads for k in ZRANGE
-        for j in YRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        k = ZRANGE[kk]
+        j = YRANGE[jj]
             @inbounds @msimd for i in XRANGE
                 ρ[i,j,k] = muladd(dt,rhs[i,j,k],ρ[i,j,k])
             end
-        end
     end
     return nothing
 end

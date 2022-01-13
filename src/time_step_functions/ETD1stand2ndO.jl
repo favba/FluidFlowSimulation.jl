@@ -1,13 +1,16 @@
 
 
 function ETD1stO!(u::AbstractArray,rhs::AbstractArray,c::AbstractArray,dt::Real)
-    @mthreads for k in ZRANGE
-        ETD1stO!(u,rhs,c,dt,k)
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        k = ZRANGE[kk]
+        j = YRANGE[jj]
+        ETD1stO!(u,rhs,c,dt,j,k)
     end
 end
 
-function ETD1stO!(u::AbstractArray,rhs::AbstractArray,cc::AbstractArray,dt::Real,k::Integer)
-    @inbounds for j in YRANGE
+function ETD1stO!(u::AbstractArray,rhs::AbstractArray,cc::AbstractArray,dt::Real,j::Integer,k::Integer)
+    @inbounds begin
         @msimd for i in XRANGE
             c = cc[i,j,k]
             cdt = c*dt
@@ -23,13 +26,16 @@ function ETD1stO!(u::AbstractArray,rhs::AbstractArray,cc::AbstractArray,dt::Real
 end
 
 function ETD2ndO!(u::AbstractArray,rhs::AbstractArray,c::AbstractArray,fm1::AbstractArray,dt::Real,dt2::Real)
-    @mthreads for k in ZRANGE
-        ETD2ndO!(u,rhs,c,fm1,dt,dt2,k)
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        k = ZRANGE[kk]
+        j = YRANGE[jj]
+        ETD2ndO!(u,rhs,c,fm1,dt,dt2,j,k)
     end
 end
 
-function ETD2ndO!(u::AbstractArray,rhs::AbstractArray,cc::AbstractArray,fm1::AbstractArray,dt::Real,dt2::Real,k::Integer)
-    @inbounds for j in YRANGE
+function ETD2ndO!(u::AbstractArray,rhs::AbstractArray,cc::AbstractArray,fm1::AbstractArray,dt::Real,dt2::Real,j::Integer,k::Integer)
+    @inbounds begin
         @msimd for i in XRANGE
             c = cc[i,j,k]
             cp2 = c*c

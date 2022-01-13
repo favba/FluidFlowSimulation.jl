@@ -58,36 +58,39 @@ init_c!(c::Array{Float64,3},ν::Real,hv::HyperViscosity) = init_c_hv!(c,-ν,hv)
 init_c!(c::Array{Float64,3},ν::Real,hv::SpectralBarrier) = init_c_spectral_barrier!(c,-ν,hv)
 
 function init_c!(c::AbstractArray,mν::Real)
-    @mthreads for k in ZRANGE
-        for j in YRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        k = ZRANGE[kk]
+        j = YRANGE[jj]
             @inbounds @msimd for i in XRANGE
                 c[i,j,k] = muladd(KX[i], KX[i], muladd(KY[j], KY[j], KZ[k]*KZ[k]))*mν
             end
-        end
     end
 end
 
 function init_c_spectral_barrier!(c::AbstractArray,mν::Real,hv::SpectralBarrier)
-    @mthreads for k in ZRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        k = ZRANGE[kk]
+        j = YRANGE[jj]
         f = hv.func
-        for j in YRANGE
             @inbounds @msimd for i in XRANGE
                 modk = muladd(KX[i], KX[i], muladd(KY[j], KY[j], KZ[k]*KZ[k])) 
                 c[i,j,k] = muladd(modk, mν, f(sqrt(modk))) 
             end
-        end
     end
 end
 
 function init_c_hv!(c::AbstractArray,mν::Real,hv::HyperViscosity{n,M}) where {n,M}
     mνh::Float64 = -n
-    @mthreads for k in ZRANGE
-        for j in YRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        k = ZRANGE[kk]
+        j = YRANGE[jj]
             @inbounds @msimd for i in XRANGE
                 modk = muladd(KX[i], KX[i], muladd(KY[j], KY[j], KZ[k]*KZ[k])) 
                 c[i,j,k] = muladd(modk, mν, modk^M * mνh) 
             end
-        end
     end
 end
 
@@ -137,13 +140,16 @@ function fix_fm2!(fm2::AbstractArray,fm1::AbstractArray,rhs::AbstractArray,dt2::
 end
 
 function set_ABCt!(t::ETD3rdO)
-    @mthreads for k in ZRANGE
-        set_ABCt!(t,k)
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        k = ZRANGE[kk]
+        j = YRANGE[jj]
+        set_ABCt!(t,j,k)
     end
     return nothing
 end
 
-function set_ABCt!(t::ETD3rdO,k::Integer)
+function set_ABCt!(t::ETD3rdO,j::Integer, k::Integer)
     l = t.c
     At = t.At
     Bt = t.Bt
@@ -166,7 +172,7 @@ function set_ABCt!(t::ETD3rdO,k::Integer)
     e8 = dt*(dt+dt2)
     e9 = dt3*(dt2+dt3)
  
-    @inbounds for j in YRANGE
+    @inbounds begin
         @msimd for i in XRANGE
             l1 = l[i,j,k]
             l2 = l1*l1
@@ -228,8 +234,11 @@ end
         ETD2ndO!(ρ,ρrhs,f.c,f.fm1,f.dt[],f.dt2[])
     else
         set_coefficients!(f,ρrhs)
-        @mthreads for kk = ZRANGE
-            _tETD3rdO!(kk, ρ,ρrhs,f.fm1,f.fm2,f,s)
+        @mthreads for ind in ZYRANGE
+            jj,kk = Tuple(ind)
+            k = ZRANGE[kk]
+            j = YRANGE[jj]
+            _tETD3rdO!(j,k, ρ,ρrhs,f.fm1,f.fm2,f,s)
         end
     end
     mycopy!(f.fm2,f.fm1)
@@ -237,51 +246,17 @@ end
     return nothing
 end
 
-@par function _tETD3rdO!(k::Integer, u::AbstractArray{T,3}, rhs::AbstractArray, rm1::AbstractArray, rm2::AbstractArray, f, s::@par(AbstractSimulation)) where {T}
+@par function _tETD3rdO!(j::Integer,k::Integer, u::AbstractArray{T,3}, rhs::AbstractArray, rm1::AbstractArray, rm2::AbstractArray, f, s::@par(AbstractSimulation)) where {T}
 @inbounds begin
     At = f.At
     Bt = f.Bt
     Ct = f.Ct
     c = f.c
     dt = get_dt(f)
-    for j in YRANGE
+    @inbounds begin
         @msimd for i in XRANGE
             u[i,j,k] = muladd(At[i,j,k], rhs[i,j,k], muladd(Bt[i,j,k], rm1[i,j,k], muladd(Ct[i,j,k], rm2[i,j,k], exp(c[i,j,k]*dt)*u[i,j,k])))
         end
     end
 end
 end
-
-# with forcing
-#@par function (f::ETD3rdO)(ρ::AbstractArray{<:Complex,3},ρrhs::AbstractArray{<:Complex,3}, forcing::AbstractArray{<:Complex,3}, s::@par(AbstractSimulation))
-#    set_coefficients!(f,ρrhs)
-#    @mthreads for kk = ZRANGE
-#        _tETD3rdO!(kk, ρ,ρrhs, forcing, f.fm1,f.fm2,f,s)
-#    end
-#    mycopy!(f.fm2,f.fm1)
-#    mycopy!(f.fm1,ρrhs)
-#    return nothing
-#end
-
-#@inline @par function _tETD3rdO!(k::Integer, u::AbstractArray{Complex{Float64},3}, rhs::AbstractArray, forcing, rm1::AbstractArray, rm2::AbstractArray, f,s::@par(AbstractSimulation)) 
-#@inbounds begin
-#    At = f.At
-#    Bt = f.Bt
-#    Ct = f.Ct
-#    c = f.c
-#    dt = get_dt(f)
-#    if (6 < k < NZ-4)
-#        for j in YRANGE
-#            @msimd for i in XRANGE
-#                u[i,j,k] = muladd(At[i,j,k], rhs[i,j,k], muladd(Bt[i,j,k], rm1[i,j,k], muladd(Ct[i,j,k], rm2[i,j,k], exp(c[i,j,k]*dt)*u[i,j,k])))
-#            end
-#        end
-#    else
-#        for j in YRANGE
-#            @msimd for i in XRANGE
-#                u[i,j,k] = muladd(At[i,j,k], rhs[i,j,k], muladd(Bt[i,j,k], rm1[i,j,k], muladd(Ct[i,j,k], rm2[i,j,k],muladd(exp(c[i,j,k]*dt), u[i,j,k], forcing[i,j,k]))))
-#            end
-#        end
-#    end
-#end
-#end

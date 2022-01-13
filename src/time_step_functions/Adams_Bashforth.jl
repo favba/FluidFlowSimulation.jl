@@ -101,60 +101,27 @@ end
 
 @par function (f::Adams_Bashforth3rdO)(ρ::AbstractArray{<:Complex,3},ρrhs::AbstractArray{<:Complex,3}, s::@par(AbstractSimulation))
     set_coefficients!(f,ρrhs)
-    @mthreads for kk in ZRANGE
-        _tAdams_Bashforth3rdO!(kk, ρ,ρrhs,f.fm1,f.fm2,f,s)
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        k = ZRANGE[kk]
+        j = YRANGE[jj]
+        _tAdams_Bashforth3rdO!(j,k, ρ,ρrhs,f.fm1,f.fm2,f,s)
     end
     return nothing
 end
 
-@inline @par function _tAdams_Bashforth3rdO!(k::Integer, u::AbstractArray{Complex{Float64},3}, rhs::AbstractArray, rm1::AbstractArray, rm2::AbstractArray, f, s::@par(AbstractSimulation)) 
+@inline @par function _tAdams_Bashforth3rdO!(j::Integer,k::Integer, u::AbstractArray{Complex{Float64},3}, rhs::AbstractArray, rm1::AbstractArray, rm2::AbstractArray, f, s::@par(AbstractSimulation)) 
 @inbounds begin
     At = get_At(f)
     Bt = get_Bt(f)
     Ct = get_Ct(f)
-    for j in YRANGE
+    @inbounds begin
         @msimd for i in XRANGE
             #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
             #u[i,j,k] = muladd(muladd(23, rhs[i,j,k], muladd(-16, rm1[i,jj,kk], 5rm2[i,jj,kk])), dt12, u[i,j,k])
             u[i,j,k] = muladd(At, rhs[i,j,k], muladd(Bt, rm1[i,j,k], muladd(Ct, rm2[i,j,k], u[i,j,k])))
             rm2[i,j,k] = rm1[i,j,k]
             rm1[i,j,k] = rhs[i,j,k]
-        end
-    end
-end
-end
-
-# with forcing
-@par function (f::Adams_Bashforth3rdO)(ρ::AbstractArray{<:Complex,3},ρrhs::AbstractArray{<:Complex,3}, forcing::AbstractArray{<:Complex,3}, s::@par(AbstractSimulation))
-    set_coefficients!(f,ρrhs)
-    @mthreads for kk in ZRANGE
-        _tAdams_Bashforth3rdO!(kk, ρ,ρrhs, forcing, f.fm1,f.fm2,f,s)
-    end
-    return nothing
-end
-
-@inline @par function _tAdams_Bashforth3rdO!(k::Integer, u::AbstractArray{Complex{Float64},3}, rhs::AbstractArray, forcing, rm1::AbstractArray, rm2::AbstractArray, f,s::@par(AbstractSimulation)) 
-@inbounds begin
-    At = get_At(f)
-    Bt = get_Bt(f)
-    Ct = get_Ct(f)
-    if (6 < k < NZ-4)
-        for j in YRANGE
-            @msimd for i in XRANGE
-                #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
-                u[i,j,k] = muladd(At, rhs[i,j,k], muladd(Bt, rm1[i,j,k], muladd(Ct, rm2[i,j,k], u[i,j,k])))
-                rm2[i,j,k] = rm1[i,j,k]
-                rm1[i,j,k] = rhs[i,j,k]
-            end
-        end
-    else
-        for j in YRANGE
-            @msimd for i in XRANGE
-                #u[i] += dt12*(23*rhs[i] - 16rm1[i] + 5rm2[i])
-                u[i,j,k] = muladd(At, rhs[i,j,k], muladd(Bt, rm1[i,j,k], muladd(Ct, rm2[i,j,k], u[i,j,k]))) + forcing[i,j,k]
-                rm2[i,j,k] = rm1[i,j,k]
-                rm1[i,j,k] = rhs[i,j,k]
-            end
         end
     end
 end

@@ -39,13 +39,14 @@ mycopy!(o::SymTrTenField,i::SymTrTenField) = (mycopy!(o.rr.xx,i.rr.xx);
                                               mycopy!(o.rr.yz,i.rr.yz))
 
 @par function myscale!(field::AbstractArray{<:Real,N}) where N
-    @mthreads for k in ZRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        k = ZRANGE[kk]
+        j = YRANGE[jj]
         x = 1/(NRX*NY*NZ)
-        for j in YRANGE
             @msimd for i in XRANGE2X
                 @inbounds field[i,j,k] = x*field[i,j,k]
             end
-        end
     end
 end 
 

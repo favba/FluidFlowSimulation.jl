@@ -83,8 +83,10 @@ end
     fullfourier!(s.lesmodel.L)
     is_dynP_les(A) && fullfourier!(s.lesmodel.P)
 
-    @mthreads for k in Base.OneTo(NZ)
-        fourierspace_dynamic_les_calculation!(s,k)
+    ind = CartesianIndices((Base.OneTo(NY),Base.OneTo(NZ)))
+    @mthreads for jk in ind
+        j,k = Tuple(jk)
+        fourierspace_dynamic_les_calculation!(s,j,k)
     end
 
     real!(s.lesmodel.S)
@@ -93,7 +95,7 @@ end
     return nothing
 end
 
-@par function fourierspace_dynamic_les_calculation!(s::A,k::Integer) where {A<:@par(AbstractSimulation)}
+@par function fourierspace_dynamic_les_calculation!(s::A,j::Integer, k::Integer) where {A<:@par(AbstractSimulation)}
     S = s.lesmodel.S.c
     L = s.lesmodel.L.c
     Δ̂² = s.lesmodel.Δ̂² 
@@ -101,7 +103,7 @@ end
         P = s.lesmodel.P.c
     end
 
-    @inbounds for j in Base.OneTo(NY)
+    @inbounds begin
         @msimd for i in Base.OneTo(NX) 
             G = Gaussfilter(Δ̂²,i,j,k)
             S[i,j,k] *= G

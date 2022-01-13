@@ -238,16 +238,17 @@ end
 function squared_mean(reduction,u::ScalarField{T}) where {T}
     isrealspace(u) && fourier!(u)
     result = fill!(reduction,zero(T))
-    @mthreads for l in ZRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        l = ZRANGE[kk]
+        j = YRANGE[jj]
         @inbounds begin
             ee = zero(T)
             ii = Threads.threadid()
-            @inbounds for j in YRANGE
                 @simd for i in XRANGE
                     magsq = abs2(u[i,j,l])
                     ee += (1 + (i>1))*magsq 
                 end
-            end
             result[ii] += ee
         end
     end
@@ -257,16 +258,17 @@ end
 function dx_squared_mean(reduction,u::ScalarField{T}) where {T}
     isrealspace(u) && fourier!(u)
     result = fill!(reduction,zero(T))
-    @mthreads for l in ZRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        l = ZRANGE[kk]
+        j = YRANGE[jj]
         @inbounds begin
             ee = zero(T)
             ii = Threads.threadid()
-            @inbounds for j in YRANGE
                 @simd for i in XRANGE
                     magsq = abs2(im*KX[i]*u[i,j,l])
                     ee += (1 + (i>1))*magsq 
                 end
-            end
             result[ii] += ee
         end
     end
@@ -276,17 +278,18 @@ end
 function dy_squared_mean(reduction,u::ScalarField{T}) where {T}
     isrealspace(u) && fourier!(u)
     result = fill!(reduction,zero(T))
-    @mthreads for l in ZRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        l = ZRANGE[kk]
+        j = YRANGE[jj]
         @inbounds begin
             ee = zero(T)
             ii = Threads.threadid()
-            @inbounds for j in YRANGE
                 ky = KY[j]
                 @simd for i in XRANGE
                     magsq = abs2(im*ky*u[i,j,l])
                     ee += (1 + (i>1))*magsq 
                 end
-            end
             result[ii] += ee
         end
     end
@@ -296,17 +299,18 @@ end
 function dz_squared_mean(reduction,u::ScalarField{T}) where {T}
     isrealspace(u) && fourier!(u)
     result = fill!(reduction,zero(T))
-    @mthreads for l in ZRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        l = ZRANGE[kk]
+        j = YRANGE[jj]
         @inbounds begin
+            kz = KZ[l]
             ee = zero(T)
             ii = Threads.threadid()
-            kz = KZ[l]
-            @inbounds for j in YRANGE
                 @simd for i in XRANGE
                     magsq = abs2(im*kz*u[i,j,l])
                     ee += (1 + (i>1))*magsq 
                 end
-            end
             result[ii] += ee
         end
     end
@@ -321,16 +325,17 @@ function proj_mean(reduction,u::AbstractField{T},v::AbstractField{T}) where {T}
     isrealspace(u) && fourier!(u)
     isrealspace(v) && fourier!(v)
     result = fill!(reduction,zero(T))
-    @mthreads for l in ZRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        l = ZRANGE[kk]
+        j = YRANGE[jj]
         @inbounds begin
             ee = zero(T)
             ii = Threads.threadid()
-            @inbounds for j in YRANGE
                 @simd for i in XRANGE
                     magsq = proj(u[i,j,l],v[i,j,l])
                     ee += (1 + (i>1))*magsq 
                 end
-            end
             result[ii] += ee
         end
     end
@@ -347,14 +352,16 @@ function hyperviscosity_stats(reductionh,reductionv,u::VectorField{T},s) where {
     isrealspace(u) && fourier!(u)
     resulth = fill!(reductionh,zero(T))
     resultv = fill!(reductionv,zero(T))
-    @mthreads for l in ZRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        l = ZRANGE[kk]
+        j = YRANGE[jj]
         @inbounds begin
             eeh = zero(T)
             eev = zero(T)
             ii = Threads.threadid()
             M::Int = get_hyperviscosity_exponent(s)
             kz2 = KZ[l]*KZ[l]
-            for j in YRANGE
                 kyz2 = muladd(KY[j], KY[j], kz2)
                 @simd for i in XRANGE
                     k2 = muladd(KX[i], KX[i], kyz2)
@@ -362,7 +369,6 @@ function hyperviscosity_stats(reductionh,reductionv,u::VectorField{T},s) where {
                     eeh += (1 + (i>1)) * (k2^M)*(proj(uh.x,uh.x)+proj(uh.y,uh.y)) 
                     eev += (1 + (i>1)) * (k2^M)*proj(uh.z,uh.z) 
                 end
-            end
             resulth[ii] += eeh
             resultv[ii] += eev
         end
@@ -377,13 +383,15 @@ function viscosity_stats(reductionh,reductionv,u::VectorField{T}) where {T}
     isrealspace(u) && fourier!(u)
     resulth = fill!(reductionh,zero(T))
     resultv = fill!(reductionv,zero(T))
-    @mthreads for l in ZRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        l = ZRANGE[kk]
+        j = YRANGE[jj]
         @inbounds begin
             eeh = zero(T)
             eev = zero(T)
             ii = Threads.threadid()
             kz2 = KZ[l]*KZ[l]
-            for j in YRANGE
                 kyz2 = muladd(KY[j], KY[j], kz2)
                 @simd for i in XRANGE
                     k2 = muladd(KX[i], KX[i], kyz2)
@@ -391,7 +399,6 @@ function viscosity_stats(reductionh,reductionv,u::VectorField{T}) where {T}
                     eeh += (1 + (i>1)) * k2*(proj(uh.x,uh.x)+proj(uh.y,uh.y)) 
                     eev += (1 + (i>1)) * k2*proj(uh.z,uh.z) 
                 end
-            end
             resulth[ii] += eeh
             resultv[ii] += eev
         end
@@ -406,19 +413,20 @@ function les_stats(reductionh,reductionv,τ::AbstractField{T},u::VectorField{T})
     isrealspace(τ) && fourier!(τ)
     resulth = fill!(reductionh,zero(T))
     resultv = fill!(reductionv,zero(T))
-    @mthreads for l in ZRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        l = ZRANGE[kk]
+        j = YRANGE[jj]
         @inbounds begin
             eeh = zero(T)
             eev = zero(T)
             ii = Threads.threadid()
-            @inbounds for j in YRANGE
                 @simd for i in XRANGE
                     kh = K[i,j,l]
                     out = vecouterproj((im*kh)⋅τ[i,j,l],u[i,j,l])
                     eeh += (1 + (i>1))*(out.x + out.y) 
                     eev += (1 + (i>1))*out.z 
                 end
-            end
             resulth[ii] += eeh
             resultv[ii] += eev
         end
@@ -433,14 +441,17 @@ end
     resulth = fill!(resulth,0.0)
     resultv = fill!(resultv,0.0)
 
-    @mthreads for k in ZRANGE
-        pressure_stats(k,resulth,resultv,s)
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        k = ZRANGE[kk]
+        j = YRANGE[jj]
+        pressure_stats(j,k,resulth,resultv,s)
     end
 
     return sum(resulth), sum(resultv)
 end
 
-@par function pressure_stats(k::Int,hr,vr,s::A) where {A<:@par(Simulation)}
+@par function pressure_stats(j::Int,k::Int,hr,vr,s::A) where {A<:@par(Simulation)}
     eeh = 0.0
     eev = 0.0
     ii = Threads.threadid()
@@ -458,8 +469,7 @@ end
         g = gravity(s.densitystratification)
     end
     
-    @inbounds for j in YRANGE
-        @msimd for i in XRANGE
+        @inbounds @msimd for i in XRANGE
 
             kh = K[i,j,k]
             K2 = kh⋅kh
@@ -486,7 +496,6 @@ end
             eeh += (1 + (i>1))*outxy 
             eev += (1 + (i>1))*outz 
         end
-    end
 
     hr[ii] += eeh
     vr[ii] += eev
@@ -497,18 +506,19 @@ end
 function non_linear_stats(hout,vout,u,nl,ke)
     fill!(hout,0.0)
     fill!(vout,0.0)
-    @mthreads for k in ZRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        k = ZRANGE[kk]
+        j = YRANGE[jj]
         eeh = 0.0
         eev = 0.0
         ii = Threads.threadid()
-        @inbounds for j in YRANGE
             @simd for i in XRANGE
                 ∇ = im*K[i,j,k]
                 out = vecouterproj(nl[i,j,k] - ∇*ke[i,j,k],u[i,j,k])
                 eeh += (1 + (i>1))*(out.x + out.y)
                 eev += (1 + (i>1))*out.z
             end
-        end
         hout[ii]+=eeh
         vout[ii]+=eev
     end
@@ -599,17 +609,18 @@ function scalar_les_stats(reduction,f::AbstractField{T},ρ::ScalarField{T}) wher
     isrealspace(ρ) && fourier!(ρ)
     isrealspace(f) && fourier!(f)
     result = fill!(reduction,zero(T))
-    @mthreads for l in ZRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        l = ZRANGE[kk]
+        j = YRANGE[jj]
         @inbounds begin
             ee = zero(T)
             ii = Threads.threadid()
-            @inbounds for j in YRANGE
                 @simd for i in XRANGE
                     kh = K[i,j,l]
                     out = proj((im*kh)⋅f[i,j,l],ρ[i,j,l])
                     ee += (1 + (i>1))*out
                 end
-            end
             result[ii] += ee
         end
     end
@@ -620,20 +631,21 @@ end
 function scalar_hvis_stats(reduction,u::ScalarField{T},s::HyperViscosity) where {T}
     isrealspace(u) && fourier!(u)
     result = fill!(reduction,zero(T))
-    @mthreads for l in ZRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        l = ZRANGE[kk]
+        j = YRANGE[jj]
         @inbounds begin
             ee = zero(T)
             ii = Threads.threadid()
             M::Int = get_hyperviscosity_exponent(s)
             kz2 = KZ[l]*KZ[l]
-            for j in YRANGE
                 kyz2 = muladd(KY[j], KY[j], kz2)
                 @simd for i in XRANGE
                     k2 = muladd(KX[i], KX[i], kyz2)
                     uh = u[i,j,l]
                     ee += (1 + (i>1)) * (k2^M)*proj(uh,uh) 
                 end
-            end
             result[ii] += ee
         end
     end
@@ -645,13 +657,15 @@ end
 function scalar_hvis_stats(reduction,u::ScalarField{T},hv::SpectralBarrier{ini,cut,F}) where {T,F,ini,cut}
     isrealspace(u) && fourier!(u)
     result = fill!(reduction,zero(T))
-    @mthreads for l in ZRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        l = ZRANGE[kk]
+        j = YRANGE[jj]
         @inbounds begin
             f = hv.func
             ee = zero(T)
             ii = Threads.threadid()
             kz2 = KZ[l]*KZ[l]
-            for j in YRANGE
                 kyz2 = muladd(KY[j], KY[j], kz2)
                 for i in XRANGE
                     k2 = muladd(KX[i], KX[i], kyz2)
@@ -661,7 +675,6 @@ function scalar_hvis_stats(reduction,u::ScalarField{T},hv::SpectralBarrier{ini,c
                     fk = ifelse(fk == -Inf, 0.0,fk)
                     ee += (1 + (i>1)) * fk*proj(uh,uh) 
                 end
-            end
             result[ii] += ee
         end
     end

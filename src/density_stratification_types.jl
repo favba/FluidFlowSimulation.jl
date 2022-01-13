@@ -180,15 +180,3 @@ function buoyancy_flux(a::AbstractDensityStratification,s::AbstractSimulation)
        return -g.x*proj_mean(a.reduction,s.u.c.x,a.ρ)
     end
 end
-
-function buoyancy_flux(u::AbstractArray{T,3},ρ::AbstractArray{T,3},g::T,reduction::Vector{T}) where {T}
-    result = fill!(reduction,0.0)
-    @mthreads for k in ZRANGE
-        for j in YRANGE
-            @inbounds @msimd for i in RXRANGE
-                result[Threads.threadid()] += ρ[i,j,k]*u[i,j,k]*g
-            end
-        end
-    end
-    return sum(result)/(NRX*NY*NZ)
-end

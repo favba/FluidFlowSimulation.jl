@@ -3,7 +3,7 @@ module Globals
 
 using GlobalFileHelper, FluidTensors, FluidFields, StaticArrays
 
-export LX,LY,LZ,NX,NY,NZ,NRRX,NRX,ν,DEALIAS_TYPE,KX,KY,KZ,THR,NT,TRANGE,REAL_RANGES,DEALIAS,K,RXRANGE,XRANGE,YRANGE,ZRANGE,RANGEC, COMPLEX_RANGES
+export LX,LY,LZ,NX,NY,NZ,NRRX,NRX,ν,DEALIAS_TYPE,KX,KY,KZ,THR,NT,TRANGE,REAL_RANGES,DEALIAS,K,RXRANGE,XRANGE,YRANGE,ZRANGE,RANGEC, COMPLEX_RANGES, ZYRANGE
 export RYRANGE, RZRANGE, XRANGE2X, KH, MAXDKH, KRZ, DKZ, SPEC_FIL_D2, SPEC_FIL_CUTOFF
 
 include("CatVec.jl")
@@ -167,6 +167,8 @@ end
 
     const global ZRANGE = CatVec(StaticArrays.SOneTo(findfirst(view(DEALIAS,1,1,:))-1), 
                                  StaticArrays.SUnitRange(NZ-findfirst(view(DEALIAS,1,1,:)) ,NZ))
+
+    const global ZYRANGE = CartesianIndices((StaticArrays.SOneTo(length(YRANGE)),StaticArrays.SOneTo(length(ZRANGE))))
 
     const global SPEC_FIL_D2 = if haskey(d,:specFil)
         nf = parse(Float64,d[:specFil])

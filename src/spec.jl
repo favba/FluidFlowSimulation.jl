@@ -208,69 +208,76 @@ vecouterproj(a,b) = Vec(proj(a.x,b.x),
                         proj(a.z,b.z))
 
 function spectrum_non_linear(hout,vout,u,nl,ke)
-    @mthreads for k in ZRANGE
-        @inbounds for j in YRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        k = ZRANGE[kk]
+        j = YRANGE[jj]
             @simd for i in XRANGE
                 ∇ = im*K[i,j,k]
                 out = vecouterproj(nl[i,j,k] - ∇*ke[i,j,k],u[i,j,k])
                 hout[i,j,k] = out.x + out.y
                 vout[i,j,k] = out.z
             end
-        end
     end
 end
 
 function spectrum_les(hout,vout,u,τ)
-    @mthreads for k in ZRANGE
-        @inbounds for j in YRANGE
-            @simd for i in XRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        k = ZRANGE[kk]
+        j = YRANGE[jj]
+            @inbounds @simd for i in XRANGE
                 kh = K[i,j,k]
                 out = vecouterproj((im*kh)⋅τ[i,j,k],u[i,j,k])
                 hout[i,j,k] = out.x + out.y
                 vout[i,j,k] = out.z
             end
-        end
     end
 end
 
 function spectrum_rhonl(hout,rho,flux)
-    @mthreads for k in ZRANGE
-        @inbounds for j in YRANGE
-            @simd for i in XRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        k = ZRANGE[kk]
+        j = YRANGE[jj]
+            @inbounds @simd for i in XRANGE
                 kh = K[i,j,k]
                 out = proj((im*kh)⋅flux[i,j,k],rho[i,j,k])
                 hout[i,j,k] = out
             end
-        end
     end
 end
 
 function spectrum_buoyancy(out,u,ρ,g)
-    @mthreads for k in ZRANGE
-        @inbounds for j in YRANGE
-            @simd for i in XRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        k = ZRANGE[kk]
+        j = YRANGE[jj]
+            @inbounds @simd for i in XRANGE
                 out[i,j,k] = vecouterproj(u[i,j,k],g*ρ[i,j,k]).z
             end
-        end
     end
 end
 
 function spectrum_forcing(out,ux,uy,fx,fy,dt)
-    @mthreads for k in ZRANGE
-        @inbounds for j in YRANGE
-            @simd for i in XRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        k = ZRANGE[kk]
+        j = YRANGE[jj]
+            @inbounds @simd for i in XRANGE
                 out[i,j,k] = (proj(ux[i,j,k],fx[i,j,k]) + proj(uy[i,j,k],fy[i,j,k]))/dt
             end
-        end
     end
 end
 
 function spectrum_spectral_barrier(hout,vout,u::VectorField{T},hv::SpectralBarrier{ini,cut,F}) where {T,F,ini,cut}
-    @mthreads for l in ZRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        l = ZRANGE[kk]
+        j = YRANGE[jj]
         @inbounds begin
             f = hv.func
             kz2 = KZ[l]*KZ[l]
-            for j in YRANGE
                 kyz2 = muladd(KY[j], KY[j], kz2)
                 for i in XRANGE
                     k2 = muladd(KX[i], KX[i], kyz2)
@@ -282,18 +289,19 @@ function spectrum_spectral_barrier(hout,vout,u::VectorField{T},hv::SpectralBarri
                     hout[i,j,l] = out.x + out.y 
                     vout[i,j,l] = out.z
                 end
-            end
         end
     end
 end
 
 function spectrum_hyperviscosity(hout,vout,u::VectorField{T},s) where {T}
-    @mthreads for l in ZRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        l = ZRANGE[kk]
+        j = YRANGE[jj]
         mν = nuh(s)
         @inbounds begin
             M::Int = get_hyperviscosity_exponent(s)
             kz2 = KZ[l]*KZ[l]
-            for j in YRANGE
                 kyz2 = muladd(KY[j], KY[j], kz2)
                 @simd for i in XRANGE
                     k2 = muladd(KX[i], KX[i], kyz2)
@@ -301,78 +309,76 @@ function spectrum_hyperviscosity(hout,vout,u::VectorField{T},s) where {T}
                     hout[i,j,l] = out.x + out.y 
                     vout[i,j,l] = out.z
                 end
-            end
         end
     end
 end
 
 function spectrum_u(hout,vout,u::VectorField{T}) where {T}
-    @mthreads for l in ZRANGE
-        @inbounds begin
-            for j in YRANGE
-                @simd for i in XRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        l = ZRANGE[kk]
+        j = YRANGE[jj]
+                @inbounds @simd for i in XRANGE
                     out = vecouterproj(u[i,j,l], u[i,j,l])
                     hout[i,j,l] = (out.x + out.y)/2
                     vout[i,j,l] = out.z/2
                 end
-            end
-        end
     end
 end
 
 function spectrum_rho(hout,rho::ScalarField{T}) where {T}
-    @mthreads for l in ZRANGE
-        @inbounds begin
-            for j in YRANGE
-                @simd for i in XRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        l = ZRANGE[kk]
+        j = YRANGE[jj]
+                @inbounds @simd for i in XRANGE
                     out = proj(rho[i,j,l], rho[i,j,l])
                     hout[i,j,l] = out
                 end
-            end
-        end
     end
 end
 
 function spectrum_viscosity(hout,vout,hin,vin,s) where {T}
-    @mthreads for l in ZRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        l = ZRANGE[kk]
+        j = YRANGE[jj]
         mν = ν
-        @inbounds begin
             kz2 = KZ[l]*KZ[l]
-            for j in YRANGE
                 kyz2 = muladd(KY[j], KY[j], kz2)
-                @simd for i in XRANGE
+                @inbounds @simd for i in XRANGE
                     k2 = muladd(KX[i], KX[i], kyz2)
                     hout[i,j,l] = 2*mν*k2*hin[i,j,l]
                     vout[i,j,l] = 2*mν*k2*vin[i,j,l]
                 end
-            end
-        end
     end
 end
 
 function spectrum_rhodiss(hout,hin,s) where {T}
-    @mthreads for l in ZRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        l = ZRANGE[kk]
+        j = YRANGE[jj]
         mν = diffusivity(s.densitystratification)
-        @inbounds begin
             kz2 = KZ[l]*KZ[l]
-            for j in YRANGE
                 kyz2 = muladd(KY[j], KY[j], kz2)
-                @simd for i in XRANGE
+                @inbounds @simd for i in XRANGE
                     k2 = muladd(KX[i], KX[i], kyz2)
                     hout[i,j,l] = mν*k2*hin[i,j,l]
                 end
-            end
-        end
     end
 end
 
 @par function spectrum_pressure(hout,vout,s::@par(Simulation))
-    @mthreads for k in ZRANGE
-        spectrum_pressure(k,hout,vout,s)
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        k = ZRANGE[kk]
+        j = YRANGE[jj]
+        spectrum_pressure(j,k,hout,vout,s)
     end
 end
 
-@par function spectrum_pressure(k::Int,hout,vout,s::A) where {A<:@par(Simulation)}
+@par function spectrum_pressure(j::Int,k::Int,hout,vout,s::A) where {A<:@par(Simulation)}
     u = s.u.c
     rhsv = s.rhs.c
     ke = s.kspec
@@ -386,8 +392,7 @@ end
         g = gravity(s.densitystratification)
     end
     
-    @inbounds for j in YRANGE
-        @msimd for i in XRANGE
+        @inbounds @msimd for i in XRANGE
 
             kh = K[i,j,k]
             K2 = kh⋅kh
@@ -414,7 +419,6 @@ end
             hout[i,j,k] = outxy
             vout[i,j,k] = outz
         end
-    end
 end
 
 function calculate_specHV(h,v,out)
@@ -446,10 +450,12 @@ function calculate_specHV(h,v,out)
 end
 
 function filter_spectrum!(hout,vout)
-    @mthreads for l in ZRANGE
-        KZ2 = KZ[l]^2
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
         @inbounds begin
-            for j in YRANGE
+            l = ZRANGE[kk]
+            j = YRANGE[jj]
+            KZ2 = KZ[l]^2
                 KY2 = KY[j]^2
                 KYZ2 = KZ2 + KY2
                 @simd for i in XRANGE
@@ -461,7 +467,6 @@ function filter_spectrum!(hout,vout)
                     hout[i,j,l] = G2*hout[i,j,l]
                     vout[i,j,l] = G2*vout[i,j,l]
                 end
-            end
         end
     end
 end

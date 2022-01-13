@@ -46,13 +46,16 @@ end
 end
 
 @par function fourierspacep1!(s::A) where {A<:@par(AbstractSimulation)}
-    @mthreads for k in ZRANGE
-        fourierspacep1!(k,s)
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        k = ZRANGE[kk]
+        j = YRANGE[jj]
+        fourierspacep1!(j,k,s)
     end
     return nothing
 end
 
-@par function fourierspacep1!(k,s::A) where {A<:@par(AbstractSimulation)}
+@par function fourierspacep1!(j,k,s::A) where {A<:@par(AbstractSimulation)}
     rhs = s.rhs.c
     u = s.u.c
     if hasles(A)
@@ -77,7 +80,6 @@ end
         fφ = s.passivescalar.flux
     end
 
-    @inbounds for j in YRANGE
         @msimd for i in XRANGE 
             v = u[i,j,k]
             ∇ = im*K[i,j,k]  
@@ -109,7 +111,6 @@ end
             end
 
         end
-    end
 end
 
 @par function realspace!(s::A) where {A<:@par(AbstractSimulation)}
@@ -274,13 +275,16 @@ end
 end
 
 @par function fourierspacep2_velocity!(s::A) where {A<:@par(AbstractSimulation)}
-    @mthreads for k in ZRANGE
-        fourierspacep2_velocity!(k,s)
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        k = ZRANGE[kk]
+        j = YRANGE[jj]
+        fourierspacep2_velocity!(j,k,s)
     end
     return nothing
 end
 
-@inline @par function fourierspacep2_velocity!(k,s::A) where {A<:@par(AbstractSimulation)}
+@inline @par function fourierspacep2_velocity!(j,k,s::A) where {A<:@par(AbstractSimulation)}
     u = s.u.c
     rhsv = s.rhs.c
 
@@ -301,8 +305,7 @@ end
         g = gravity(s.densitystratification)
     end
     
-    @inbounds for j in YRANGE
-        @msimd for i in XRANGE 
+        @inbounds @msimd for i in XRANGE 
 
             kh = K[i,j,k]
             K2 = kh⋅kh
@@ -330,8 +333,6 @@ end
             p1 = ifelse(k==j==i==1,zero(ComplexF64),-(kh⋅rhs)/K2)
             rhsv[i,j,k] = p1*kh + rhs
         end
-    end
-
 end
 
 @par function fourierspacep2!(s::A) where {A<:@par(AbstractSimulation)}
@@ -358,12 +359,13 @@ end
 end
 
 function div!(out,input)
-    @mthreads for k in ZRANGE
-        @inbounds for j in YRANGE
-            @msimd for i in XRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        k = ZRANGE[kk]
+        j = YRANGE[jj]
+            @inbounds @msimd for i in XRANGE
                 out[i,j,k] = (im*K[i,j,k]) ⋅ input[i,j,k]
             end
-        end
     end
 end
 
@@ -434,8 +436,10 @@ end
 #end
 
 @par function pressure_projection!(rhs,s::@par(AbstractSimulation))
-    @mthreads for k in ZRANGE
-        for j in YRANGE
+    @mthreads for ind in ZYRANGE
+        jj,kk = Tuple(ind)
+        k = ZRANGE[kk]
+        j = YRANGE[jj]
             @inbounds @msimd for i in XRANGE
                 rhsh = rhs[i,j,k]
                 kh = K[i,j,k]
@@ -443,7 +447,6 @@ end
                 p1 = ifelse(k==j==i==1,zero(ComplexF64),-(kh⋅rhsh)/K2)
                 rhs[i,j,k] = p1*kh + rhsh
             end
-        end
     end
 end
 
