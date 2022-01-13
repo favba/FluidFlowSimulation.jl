@@ -44,26 +44,46 @@ abstract type AbstractDensityStratification{L,HV,TT,α,dρdz,g,Gdirec} end
     end
 
     function stats(a::AbstractDensityStratification{L,HV},s::A) where {L,HV,A<:AbstractSimulation}
-        sstats = scalar_stats(a.ρ,a,s)
+        sstats, sstats_fil = scalar_stats(a.ρ,a,s)
         trhodiss = sstats[end]
-        bf = buoyancy_flux(a,s)
+        trhodiss_fil = sstats_fil[end]
+        bf, bf_fil = buoyancy_flux(a,s)
 
         if L !== NoLESScalar
-            lesstats = (scalar_les_stats(a.reduction,a.flux,a.ρ),)
-            #lesstats = (0.,)
-            trhodiss += lesstats[1]
+            if !STAT_FIL
+                lesstats = (scalar_les_stats(a.reduction,a.flux,a.ρ),)
+                lesstats_fil = (0.,)
+                trhodiss += lesstats[1]
+            else
+                lesstatsv, lesstats_filv = scalar_les_stats(a.reduction,s.reductionh,a.flux,a.ρ)
+                lesstats = (lesstatsv,)
+                lesstats_fil = (lesstats_filv,)
+                trhodiss += lesstats[1]
+                trhodiss_fil += lesstats_fil[1]
+            end
         else
             lesstats = ()
+            lesstats_fil = ()
         end
 
         if HV !== NoHyperViscosity
-            hvstats = (scalar_hvis_stats(a.reduction,a.ρ,a.hyperviscosity),)
-            trhodiss += hvstats[1]
+            if !STAT_FIL
+                hvstats = (scalar_hvis_stats(a.reduction,a.ρ,a.hyperviscosity),)
+                hvsstats_fil = (0.,)
+                trhodiss += hvstats[1]
+            else
+                hvstatsv, hvstats_filv = scalar_hvis_stats(a.reduction,s.reductionh,a.ρ,a.hyperviscosity)
+                hvstats = (hvstatsv,)
+                hvsstats_fil = (hvstats_filv,)
+                trhodiss += hvstats[1]
+                trhodiss_fil += hvstats_fil[1]
+            end
         else
             hvstats = ()
+            hvstats_fil = ()
         end
 
-        return (sstats...,trhodiss,bf,lesstats...,hvstats...)
+        return (sstats...,trhodiss,bf,lesstats...,hvstats...),(sstats_fil...,trhodiss_fil,bf_fil,lesstats_fil...,hvstats_fil...)
     end
 
 struct NoDensityStratification <: AbstractDensityStratification{NoLESScalar,NoHyperViscosity,nothing,nothing,nothing,nothing,nothing} end
@@ -72,7 +92,7 @@ struct NoDensityStratification <: AbstractDensityStratification{NoLESScalar,NoHy
 
     statsheader(a::NoDensityStratification) = ""
 
-    stats(a::NoDensityStratification,s::AbstractSimulation) = ()
+    stats(a::NoDensityStratification,s::AbstractSimulation) = (),()
 
     msg(a::NoDensityStratification) = "\nDensity Stratification: No density stratification\n"
 
@@ -172,11 +192,21 @@ end
 function buoyancy_flux(a::AbstractDensityStratification,s::AbstractSimulation) 
     gdir = graddir(a)
     g = gravity(s)
-    if gdir === :z
-       return -g.z*proj_mean(a.reduction,s.u.c.z,a.ρ)
-    elseif gdir === :y
-       return -g.y*proj_mean(a.reduction,s.u.c.y,a.ρ)
-    elseif gdir === :x
-       return -g.x*proj_mean(a.reduction,s.u.c.x,a.ρ)
+    if !STAT_FIL
+        if gdir === :z
+           return -g.z*proj_mean(a.reduction,s.u.c.z,a.ρ), 0.0
+        elseif gdir === :y
+           return -g.y*proj_mean(a.reduction,s.u.c.y,a.ρ), 0.0
+        elseif gdir === :x
+           return -g.x*proj_mean(a.reduction,s.u.c.x,a.ρ), 0.0
+        end
+    else
+        if gdir === :z
+           return -g.z .* proj_mean(a.reduction,s.reductionh,s.u.c.z,a.ρ)
+        elseif gdir === :y
+           return -g.y .* proj_mean(a.reduction,s.reductionh,s.u.c.y,a.ρ)
+        elseif gdir === :x
+           return -g.x .* proj_mean(a.reduction,s.reductionh,s.u.c.x,a.ρ)
+        end
     end
 end

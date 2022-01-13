@@ -36,8 +36,13 @@ end
 
     is_spec_time(s) && write_spec(s)
     if is_stats_time(s)
-        s.nlstats[] = non_linear_stats(s.reductionh,s.reductionv,s.u,s.rhs,s.kspec)
-        s.pressstats[] = pressure_stats(s.reductionh,s.reductionv,s)
+        if !STAT_FIL
+            s.nlstats[] = non_linear_stats(s.reductionh,s.reductionv,s.u,s.rhs,s.kspec)
+            s.pressstats[] = pressure_stats(s.reductionh,s.reductionv,s)
+        else
+            s.nlstats[] = non_linear_stats(s.reductionh,s.reductionv,s.reductionh_fil,s.reductionv_fil,s.u,s.rhs,s.kspec)
+            s.pressstats[] = pressure_stats(s.reductionh,s.reductionv,s.reductionh_fil,s.reductionv_fil,s)
+        end
     end
 
     fourierspacep2!(s)

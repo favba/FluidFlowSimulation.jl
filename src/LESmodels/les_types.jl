@@ -15,7 +15,7 @@ struct NoLESModel <: AbstractLESModel end
 
 # Smagorinsky Model Start ======================================================
 
-stats(a::AbstractLESModel,s::AbstractSimulation) = (les_stats(s.reductionh,s.reductionv,a.tau,s.u))
+stats(a::AbstractLESModel,s::AbstractSimulation) = !STAT_FIL ? (les_stats(s.reductionh,s.reductionv,a.tau,s.u),(0.0,0.0,0.0,0.0)) : les_stats(s.reductionh,s.reductionv,s.reductionh_fil,s.reductionv_fil,a.tau,s.u)
 statsheader(a::AbstractLESModel) = "prh,prv,praniso,pr"
 
 abstract type EddyViscosityModel <: AbstractLESModel end

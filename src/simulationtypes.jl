@@ -47,6 +47,8 @@ struct @par(Simulation) <: @par(AbstractSimulation)
     rhs::VectorField{Float64,3,2,false}
     reductionh::Vector{Float64}
     reductionv::Vector{Float64}
+    reductionh_fil::Vector{Float64}
+    reductionv_fil::Vector{Float64}
     xspec::PaddedArray{Float64,1,0,true}
     yspec::PaddedArray{Float64,1,0,true}
     equation::EquationType
@@ -67,8 +69,8 @@ struct @par(Simulation) <: @par(AbstractSimulation)
     tspecH::Array{Float64,1}
     specV::Array{Float64,1}
     kspec::ScalarField{Float64,3,2,false}
-    nlstats::Base.RefValue{Tuple{Float64,Float64}}
-    pressstats::Base.RefValue{Tuple{Float64,Float64}}
+    nlstats::Base.RefValue{Tuple{Float64,Float64,Float64,Float64}}
+    pressstats::Base.RefValue{Tuple{Float64,Float64,Float64,Float64}}
   
     @par function @par(Simulation)(u::VectorField,equation,timestep,passivescalar,densitystratification,lesmodel,forcing,hv,iteration,time,dtout,dtstats,dtspecs) 
 
@@ -78,6 +80,9 @@ struct @par(Simulation) <: @par(AbstractSimulation)
         reductionh = zeros(THR ? Threads.nthreads() : 1)
         reductionv = zeros(THR ? Threads.nthreads() : 1)
 
+        reductionh_fil = !STAT_FIL ? zeros(1) : zeros(THR ? Threads.nthreads() : 1)
+        reductionv_fil = !STAT_FIL ? zeros(1) : zeros(THR ? Threads.nthreads() : 1)
+
         xspec = PaddedArray(NRX)
         yspec = PaddedArray(NY)
 
@@ -86,10 +91,10 @@ struct @par(Simulation) <: @par(AbstractSimulation)
         specH = zeros(Float64,length(KH))
         tspecH = zeros(Float64,length(KH))
         specV = zeros(Float64,length(KRZ))
-        nlstats = Ref((1.0,1.0))
-        pressstats = Ref((1.0,1.0))
+        nlstats = Ref((1.0,1.0,1.0,1.0))
+        pressstats = Ref((1.0,1.0,1.0,1.0))
 
-        return @par(new)(u,rhs,reductionh,reductionv,xspec,yspec,equation,timestep,passivescalar,densitystratification,lesmodel,forcing,hv,iteration,time,dtout,dtstats,dtspecs,hspec,vspec,specH,tspecH,specV,kspec,nlstats,pressstats)
+        return @par(new)(u,rhs,reductionh,reductionv,reductionh_fil,reductionv_fil,xspec,yspec,equation,timestep,passivescalar,densitystratification,lesmodel,forcing,hv,iteration,time,dtout,dtstats,dtspecs,hspec,vspec,specH,tspecH,specV,kspec,nlstats,pressstats)
     end
 
 end
@@ -185,7 +190,7 @@ struct NoPassiveScalar <: AbstractPassiveScalar{NoLESScalar,nothing,nothing,noth
 
     statsheader(a::NoPassiveScalar) = ""
 
-    stats(a::NoPassiveScalar,s::AbstractSimulation) = ()
+    stats(a::NoPassiveScalar,s::AbstractSimulation) = (),()
 
     msg(a::NoPassiveScalar) = "\nPassive Scalar: No passive scalar\n"
 

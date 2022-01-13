@@ -4,7 +4,7 @@ struct NoForcing <: AbstractForcing end
 
 statsheader(a::NoForcing) = ""
 
-stats(a::NoForcing,s::AbstractSimulation) = ()
+stats(a::NoForcing,s::AbstractSimulation) = (),()
 
 msg(a::NoForcing) = "\nForcing: No forcing\n"
 
@@ -30,7 +30,7 @@ end
 
 statsheader(a::RfForcing) = "hp,vp,tp"
 
-stats(a::RfForcing,s::AbstractSimulation) = (a.hp[],a.vp[],a.hp[]+a.vp[])
+stats(a::RfForcing,s::AbstractSimulation) = ((a.hp[],a.vp[],a.hp[]+a.vp[]),(a.hp[],a.vp[],a.hp[]+a.vp[]))
 
 msg(a::RfForcing) = "\nForcing:  Rf forcing\nTf: $(getTf(a))\nalphac: $(getalpha(a))\nKf: $(getKf(a))\n"
 
@@ -100,7 +100,7 @@ end
 
 statsheader(a::AForcing) = "hp,vp"
 
-stats(a::AForcing,s::AbstractSimulation) = (a.hp[],a.vp[])
+stats(a::AForcing,s::AbstractSimulation) = (a.hp[],a.vp[]),(a.hp[],a.vp[])
 
 msg(a::AForcing) = "\nForcing:  Aforcing\nTf: $(a.Tf)\nalphac: $(a.α)\nKf: $(a.Kf)\n"
 
@@ -139,7 +139,7 @@ end
 
 statsheader(a::NRfForcing) = "hp,vp,tp"
 
-stats(a::NRfForcing,s::AbstractSimulation) = (a.hp[],a.vp[],a.hp[]+a.vp[])
+stats(a::NRfForcing,s::AbstractSimulation) = (a.hp[],a.vp[],a.hp[]+a.vp[]),(a.hp[],a.vp[],a.hp[]+a.vp[])
 
 msg(a::NRfForcing) = "\nForcing:  NRf forcing\nTf: $(a.Tf)\nalphac: $(a.α)\nKf: $(a.Kf)\n"
 
@@ -183,7 +183,7 @@ end
 
 statsheader(a::CRfForcing) = "hp,vp,tp"
 
-stats(a::CRfForcing,s::AbstractSimulation) = (a.hp[],a.vp[],a.hp[]+a.vp[])
+stats(a::CRfForcing,s::AbstractSimulation) = (a.hp[],a.vp[],a.hp[]+a.vp[]),(a.hp[],a.vp[],a.hp[]+a.vp[])
 
 msg(a::CRfForcing) = "\nForcing:  CRf forcing\nTf: $(getTf(a))\nalphac: $(getalpha(a))\nKf: $(getKf(a))\n"
 
@@ -239,7 +239,7 @@ end
 
 statsheader(a::CNRfForcing) = "hp,vp,tp"
 
-stats(a::CNRfForcing,s::AbstractSimulation) = (a.hp[],a.vp[],a.hp[]+a.vp[])
+stats(a::CNRfForcing,s::AbstractSimulation) = (a.hp[],a.vp[],a.hp[]+a.vp[]),(a.hp[],a.vp[],a.hp[]+a.vp[])
 
 msg(a::CNRfForcing) = "\nForcing:  CNRf forcing\nTf: $(a.Tf)\nalphac: $(a.α)\nKf: $(a.Kf)\n"
 
@@ -283,7 +283,7 @@ end
 
 statsheader(a::QfForcing) = "hp,vp,tp"
 
-stats(a::QfForcing,s::AbstractSimulation) = (a.hp[],a.vp[],a.hp[]+a.vp[])
+stats(a::QfForcing,s::AbstractSimulation) = (a.hp[],a.vp[],a.hp[]+a.vp[]),(a.hp[],a.vp[],a.hp[]+a.vp[])
 
 msg(a::QfForcing) = "\nForcing:  Qf forcing\nP: $(a.alveliusP)\nc: $(a.alveliusC)\nalveliusKf: $(a.alveliusKf)\nKf: $(a.Kf)\n"
 
