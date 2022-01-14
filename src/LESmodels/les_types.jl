@@ -8,7 +8,7 @@ struct NoLESModel <: AbstractLESModel end
 
     statsheader(a::NoLESModel) = ""
 
-    stats(a::NoLESModel,s::AbstractSimulation) = ()
+    stats(a::NoLESModel,s::AbstractSimulation) = ((),())
 
     msg(a::NoLESModel) = "\nLES model: No LES model\n"
 
