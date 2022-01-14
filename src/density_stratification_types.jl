@@ -69,12 +69,12 @@ abstract type AbstractDensityStratification{L,HV,TT,α,dρdz,g,Gdirec} end
         if HV !== NoHyperViscosity
             if !STAT_FIL
                 hvstats = (scalar_hvis_stats(a.reduction,a.ρ,a.hyperviscosity),)
-                hvsstats_fil = (0.,)
+                hvstats_fil = (0.,)
                 trhodiss += hvstats[1]
             else
                 hvstatsv, hvstats_filv = scalar_hvis_stats(a.reduction,s.reductionh,a.ρ,a.hyperviscosity)
                 hvstats = (hvstatsv,)
-                hvsstats_fil = (hvstats_filv,)
+                hvstats_fil = (hvstats_filv,)
                 trhodiss += hvstats[1]
                 trhodiss_fil += hvstats_fil[1]
             end
