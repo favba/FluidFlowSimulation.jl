@@ -366,7 +366,7 @@ function les_types(d,nx,ny,nz,lx,ly,lz)
             Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
             lestype = Smagorinsky(c,Δ,(nx,ny,nz))
         elseif d[:lesModel] == "Vreman"
-            c = haskey(d,:vremanConstant) ? Float64(eval(Meta.parse(d[:vremanConstant]))) : 2.5*(0.17)^2
+            c = haskey(d,:vremanConstant) ? Float64(eval(Meta.parse(d[:vremanConstant]))) : 0.032 #From a priori analysis of case F3 # 2.5*(0.17)^2 = 0.072
             Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
             lestype = VremanLESModel(c,Δ,(nx,ny,nz))
         elseif d[:lesModel] == "Silvis"
