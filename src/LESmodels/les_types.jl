@@ -402,7 +402,7 @@ function les_types(d,nx,ny,nz,lx,ly,lz)
                 Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : 2*(lx*2π/nx)/Globals.cutoffr
                 Smagorinsky(c,Δ,(nx,ny,nz))
             elseif d[:sLesModel] == "Vreman"
-                c = haskey(d,:vremanConstant) ? Float64(eval(Meta.parse(d[:vremanConstant]))) : 2.5*(0.17)^2
+                c = haskey(d,:vremanConstant) ? Float64(eval(Meta.parse(d[:vremanConstant]))) : 0.032 #2.5*(0.17)^2
                 Δ = haskey(d,:filterWidth) ? Float64(eval(Meta.parse(d[:filterWidth]))) : (lx*2π/nx)/Globals.cutoffr
                 VremanLESModel(c,Δ,(nx,ny,nz))
             elseif d[:sLesModel] == "productionViscosity"
